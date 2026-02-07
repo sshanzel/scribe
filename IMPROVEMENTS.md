@@ -56,7 +56,9 @@ Tracked enhancements to implement after core features are complete.
 
 **Benefit:** Streamlined workflow - update all contacts from one meeting in a single modal session.
 
-## 3. Unify HubSpot and Salesforce CRM integration code
+## 3. Unify HubSpot and Salesforce CRM integration code ✅
+
+> **Status:** Implemented via shared helpers and components
 
 **Problem:** HubSpot and Salesforce integrations are nearly identical in structure:
 - Both have modal components with the same UI flow
@@ -66,55 +68,53 @@ Tracked enhancements to implement after core features are complete.
 
 This leads to code duplication and maintenance overhead.
 
-**Solution:** Create a unified CRM abstraction:
-1. Generic `CrmModalComponent` that accepts a provider adapter
-2. Unified `CrmSuggestions` module with provider-specific field mappings
-3. `CrmApiBehaviour` that both HubSpot and Salesforce implement
-4. Single AI prompt that specifies which fields are available per provider - AI response indicates which provider(s) each extracted field applies to
-5. Field mapping config that defines:
-   - Common fields (phone, email, name, company) → both providers
-   - Provider-specific fields (e.g., `twitter_handle` → HubSpot only, `department` → Salesforce only)
-6. UI shows provider icons next to each suggestion indicating where the update will be applied
+**Solution Implemented:**
+1. Created `CRMModalHelpers` module with config-based approach for CRM-specific settings
+2. Created `CRMModalComponents` with shared UI components (header, search, suggestions list, etc.)
+3. Refactored both `HubspotModalComponent` and `SalesforceModalComponent` to use shared helpers
+4. Single `handle_update/3` function handles all common update logic
+5. Auto-search on modal open for both CRMs
 
-**Implementation:**
-1. Create `CrmProvider` behaviour defining common interface
-2. Implement `HubspotProvider` and `SalesforceProvider` adapters
-3. Create generic modal component that delegates to provider
-4. Consolidate suggestions logic with field mapping config
-5. Unify AI prompts with provider-specific field names
+**Files created/modified:**
+- `lib/social_scribe_web/live/meeting_live/crm_modal_helpers.ex` (NEW)
+- `lib/social_scribe_web/components/crm_modal_components.ex` (NEW)
+- `lib/social_scribe_web/live/meeting_live/hubspot_modal_component.ex` (refactored)
+- `lib/social_scribe_web/live/meeting_live/salesforce_modal_component.ex` (refactored)
 
-**Files to create/modify:**
-- `lib/social_scribe/crm/crm_provider.ex` (behaviour)
-- `lib/social_scribe/crm/hubspot_provider.ex`
-- `lib/social_scribe/crm/salesforce_provider.ex`
-- `lib/social_scribe_web/live/meeting_live/crm_modal_component.ex`
-- Deprecate individual modal components
+**Benefit:** Adding new CRMs is now trivial - just create a new modal component with CRM-specific config and reuse all shared helpers.
 
-**Benefit:** Single codebase for all CRM integrations. Adding new CRMs (Pipedrive, Zoho, etc.) becomes trivial.
+## 4. Normalize contacts with calendar event attendees ✅
 
-## 4. Add CRM IDs to contacts table
+> **Status:** Implemented for accurate chat contact-to-meeting matching
 
-**Problem:** The chat feature's contacts table is intentionally lean (id, user_id, name, email). When we need to fetch fresh CRM data for a contact, we have no direct link to the CRM record - we must search by email.
+**Problem:** The original contacts table was user-scoped (each user had their own copy of contacts). This made it difficult to accurately match contacts to meetings in the chat feature - name-based matching is ambiguous (multiple "John"s).
 
-**Solution:** Add optional CRM ID columns to the contacts table:
-```elixir
-# contacts (extended)
-- hubspot_id (string, nullable)
-- salesforce_id (string, nullable)
+**Solution Implemented:**
+1. Made contacts global (one record per email address)
+2. Created `calendar_event_attendees` join table linking contacts to calendar events
+3. Updated `CalendarSyncronizer` to create attendee records during sync
+4. Chat feature now uses contact_id → attendee → calendar_event → meeting for precise matching
+
+**Schema Changes:**
+```
+# Before
+contacts: id, user_id, name, email
+
+# After
+contacts: id, name, email (unique)
+calendar_event_attendees: id, calendar_event_id, contact_id, display_name, response_status, is_organizer
 ```
 
-**Implementation:**
-1. Add migration for new columns
-2. When user creates contact from CRM search results, store the CRM ID
-3. When fetching CRM data, use direct ID lookup instead of email search
-4. Update contact CRM IDs when syncing
+**Files created/modified:**
+- `priv/repo/migrations/20260207181056_remove_user_id_from_contacts.exs`
+- `priv/repo/migrations/20260207181106_create_calendar_event_attendees.exs`
+- `lib/social_scribe/calendar/calendar_event_attendee.ex` (NEW)
+- `lib/social_scribe/contacts/contact.ex` (removed user_id)
+- `lib/social_scribe/contacts.ex` (new query patterns via join)
+- `lib/social_scribe/calendar_syncronizer.ex` (creates attendee records)
+- `lib/social_scribe/chat_ai.ex` (uses contact_id for meeting lookup)
 
-**Files to modify:**
-- `priv/repo/migrations/xxx_add_crm_ids_to_contacts.exs`
-- `lib/social_scribe/contacts/contact.ex`
-- `lib/social_scribe/contacts.ex`
-
-**Benefit:** Direct CRM lookups are faster and more reliable than email-based search. Enables future features like "open in HubSpot/Salesforce" links.
+**Benefit:** Chat feature accurately retrieves meetings for a tagged contact by email, not ambiguous name matching.
 
 ---
 
@@ -153,6 +153,49 @@ This leads to code duplication and maintenance overhead.
 
 **File modified:**
 - `lib/social_scribe_web/components/sidebar.ex`
+
+### Custom 404/500 error pages ✅
+
+> **Status:** Implemented
+
+**Problem:** Default Phoenix error pages showed plain text "Not Found" with no styling.
+
+**Solution:** Created styled error pages matching app design with Tailwind CSS.
+
+**Files created/modified:**
+- `lib/social_scribe_web/controllers/error_html.ex` (enabled embed_templates)
+- `lib/social_scribe_web/controllers/error_html/404.html.heex` (NEW)
+- `lib/social_scribe_web/controllers/error_html/500.html.heex` (NEW)
+
+### Developer experience improvements ✅
+
+> **Status:** Implemented
+
+**Problem:** Manual environment setup was error-prone and undocumented.
+
+**Solutions implemented:**
+1. Added `dotenvy` for automatic `.env` loading in dev/test
+2. Created `.env.example` with all required environment variables
+3. Updated seeds to auto-load `.env` file
+4. Updated `CLAUDE.md` with testing guidelines and migration best practices
+
+**Files created/modified:**
+- `mix.exs` (added dotenvy dependency)
+- `config/runtime.exs` (dotenvy source)
+- `.env.example` (NEW)
+- `priv/repo/seeds.exs` (dotenvy loading)
+- `CLAUDE.md` (testing and migration guidelines)
+
+### Meeting show page crash on invalid ID ✅
+
+> **Status:** Resolved
+
+**Problem:** Accessing `/dashboard/meetings/999` (non-existent ID) crashed with nil pointer error.
+
+**Solution:** Added nil check in mount function with redirect to meetings list.
+
+**File modified:**
+- `lib/social_scribe_web/live/meeting_live/show.ex`
 
 ---
 
