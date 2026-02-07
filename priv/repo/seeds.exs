@@ -5,6 +5,24 @@
 # This seeds realistic meeting data for testing the chat feature.
 # Flow: Salesforce contacts → Calendar events with attendees → Local contacts
 
+# Load .env file if it exists (for SEED_USER_EMAIL)
+if File.exists?(".env") do
+  ".env"
+  |> File.read!()
+  |> String.split("\n")
+  |> Enum.each(fn line ->
+    case String.split(line, "=", parts: 2) do
+      [key, value] ->
+        key = key |> String.trim() |> String.replace(~r/^export\s+/, "")
+        value = value |> String.trim() |> String.replace(~r/^["']|["']$/, "")
+        System.put_env(key, value)
+
+      _ ->
+        :ok
+    end
+  end)
+end
+
 alias SocialScribe.Repo
 alias SocialScribe.Accounts.{User, UserCredential}
 alias SocialScribe.Calendar.CalendarEvent
@@ -66,7 +84,8 @@ contacts_data = [
 defmodule SeedHelpers do
   def generate_transcript(host_name, guest_name, topic, details) do
     segments = [
-      {host_name, "Hi #{guest_name}, thanks for joining today's call. I wanted to discuss #{topic}."},
+      {host_name,
+       "Hi #{guest_name}, thanks for joining today's call. I wanted to discuss #{topic}."},
       {guest_name, "Thanks for having me! Yes, I've been looking forward to this discussion."},
       {host_name, "Great. So let's dive in. #{details[:question]}"},
       {guest_name, details[:answer]},
@@ -74,9 +93,11 @@ defmodule SeedHelpers do
       {guest_name, details[:response]},
       {host_name, "That's really helpful. What about #{details[:topic2]}?"},
       {guest_name, details[:topic2_response]},
-      {host_name, "Perfect. Let me note down your contact details. What's the best way to reach you?"},
+      {host_name,
+       "Perfect. Let me note down your contact details. What's the best way to reach you?"},
       {guest_name, details[:contact_info]},
-      {host_name, "Got it. Thanks so much for your time today, #{guest_name}. I'll follow up with next steps."},
+      {host_name,
+       "Got it. Thanks so much for your time today, #{guest_name}. I'll follow up with next steps."},
       {guest_name, "Sounds great! Looking forward to it. Have a great day!"}
     ]
 
@@ -390,7 +411,12 @@ Enum.each(meetings_data, fn meeting_data ->
 
   # Create attendee records (links contacts to calendar events)
   attendees_data = [
-    %{"email" => user_email, "displayName" => "You", "responseStatus" => "accepted", "organizer" => true},
+    %{
+      "email" => user_email,
+      "displayName" => "You",
+      "responseStatus" => "accepted",
+      "organizer" => true
+    },
     %{"email" => contact_email, "displayName" => contact_name, "responseStatus" => "accepted"}
   ]
 
@@ -485,5 +511,5 @@ IO.puts("  4. Ask questions like:")
 IO.puts("     - \"What was discussed in our last meeting?\"")
 IO.puts("     - \"What is Sarah's phone number?\"")
 IO.puts("     - \"What are the Q1 product priorities?\"")
-IO.puts("\n💡 Tip: Set SEED_USER_EMAIL to your actual login email:")
-IO.puts("   SEED_USER_EMAIL=your@email.com mix run priv/repo/seeds.exs")
+IO.puts("\n💡 Tip: Set SEED_USER_EMAIL in your .env file to your actual login email:")
+IO.puts("   SEED_USER_EMAIL=your@email.com")

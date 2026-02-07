@@ -15,8 +15,21 @@ defmodule SocialScribeWeb.MeetingLive.Show do
 
   @impl true
   def mount(%{"id" => meeting_id}, _session, socket) do
-    meeting = Meetings.get_meeting_with_details(meeting_id)
+    case Meetings.get_meeting_with_details(meeting_id) do
+      nil ->
+        socket =
+          socket
+          |> put_flash(:error, "Meeting not found.")
+          |> redirect(to: ~p"/dashboard/meetings")
 
+        {:ok, socket}
+
+      meeting ->
+        mount_with_meeting(meeting, meeting_id, socket)
+    end
+  end
+
+  defp mount_with_meeting(meeting, meeting_id, socket) do
     user_has_automations =
       Automations.list_active_user_automations(socket.assigns.current_user.id)
       |> length()
@@ -30,7 +43,7 @@ defmodule SocialScribeWeb.MeetingLive.Show do
         |> put_flash(:error, "You do not have permission to view this meeting.")
         |> redirect(to: ~p"/dashboard/meetings")
 
-      {:error, socket}
+      {:ok, socket}
     else
       hubspot_credential = Accounts.get_user_hubspot_credential(socket.assigns.current_user.id)
 
