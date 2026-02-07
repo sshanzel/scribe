@@ -23,8 +23,9 @@ defmodule SocialScribeWeb.ChatLive do
       |> assign(:loading, false)
       |> assign(:message_input, "")
       |> assign(:contact_results, [])
-      |> assign(:selected_contact, nil)
+      |> assign(:mentions, [])
       |> assign(:show_mention_dropdown, false)
+      |> assign(:mention_search_start, nil)
 
     # Load threads if user is logged in
     socket =
@@ -105,67 +106,54 @@ defmodule SocialScribeWeb.ChatLive do
 
             <!-- Message Input -->
             <div class="p-4 border-t border-gray-200">
-              <!-- Selected Contact Badge -->
-              <div :if={@selected_contact} class="mb-2 flex items-center gap-2">
-                <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full flex items-center gap-1">
-                  <.icon name="hero-user" class="size-3" />
-                  <%= @selected_contact.name %>
-                  <button phx-click="clear_contact" class="hover:text-indigo-900">
-                    <.icon name="hero-x-mark" class="size-3" />
-                  </button>
-                </span>
-              </div>
+              <div class="flex gap-2">
+                <div class="flex-1 relative">
+                  <!-- Contenteditable Input with Mention Support -->
+                  <div
+                    id="mention-input"
+                    phx-hook="MentionInput"
+                    phx-update="ignore"
+                    contenteditable="true"
+                    data-placeholder="Type @ to mention a contact..."
+                    class="min-h-[38px] max-h-[120px] overflow-y-auto w-full rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none text-sm px-3 py-2 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
+                  ></div>
 
-              <!-- Input Area -->
-              <div class="relative">
-                <form phx-submit="send_message">
-                  <div class="flex gap-2">
-                    <div class="flex-1 relative">
-                      <input
-                        type="text"
-                        name="message"
-                        value={@message_input}
-                        phx-keyup="message_input_change"
-                        phx-debounce="100"
-                        placeholder={if @selected_contact, do: "Ask about #{@selected_contact.name}...", else: "Type @ to mention a contact..."}
-                        class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-                        autocomplete="off"
-                      />
-
-                      <!-- Contact Mention Dropdown -->
-                      <div
-                        :if={@show_mention_dropdown && length(@contact_results) > 0}
-                        class="absolute bottom-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto"
-                      >
-                        <button
-                          :for={contact <- @contact_results}
-                          type="button"
-                          phx-click="select_contact"
-                          phx-value-id={contact.id}
-                          class="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
-                        >
-                          <.icon name="hero-user" class="size-4 text-gray-400" />
-                          <div>
-                            <div class="text-sm font-medium text-gray-900"><%= contact.name %></div>
-                            <div class="text-xs text-gray-500"><%= contact.email %></div>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-
+                  <!-- Contact Mention Dropdown -->
+                  <div
+                    :if={@show_mention_dropdown && length(@contact_results) > 0}
+                    class="absolute bottom-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto z-10"
+                  >
                     <button
-                      type="submit"
-                      disabled={@selected_contact == nil || @message_input == ""}
-                      class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      :for={contact <- @contact_results}
+                      type="button"
+                      phx-click="select_contact"
+                      phx-value-id={contact.id}
+                      class="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
                     >
-                      <.icon name="hero-paper-airplane" class="size-5" />
+                      <span class="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center text-xs text-indigo-600 font-medium">
+                        <%= String.first(contact.name) %>
+                      </span>
+                      <div>
+                        <div class="text-sm font-medium text-gray-900"><%= contact.name %></div>
+                        <div class="text-xs text-gray-500"><%= contact.email %></div>
+                      </div>
                     </button>
                   </div>
-                </form>
+                </div>
+
+                <button
+                  type="button"
+                  id="chat-submit-btn"
+                  phx-click={JS.dispatch("chat:submit", to: "#mention-input")}
+                  disabled={@mentions == [] || @message_input == ""}
+                  class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed self-end"
+                >
+                  <.icon name="hero-paper-airplane" class="size-5" />
+                </button>
               </div>
 
-              <p :if={@selected_contact == nil} class="text-xs text-gray-400 mt-2">
-                Tag a contact using @ to start asking questions
+              <p :if={@mentions == []} class="text-xs text-gray-400 mt-2">
+                Type @ to mention a contact and ask questions about your meetings
               </p>
             </div>
           <% else %>
@@ -261,8 +249,10 @@ defmodule SocialScribeWeb.ChatLive do
       |> assign(:current_thread, nil)
       |> assign(:messages, [])
       |> assign(:threads, threads)
-      |> assign(:selected_contact, nil)
+      |> assign(:mentions, [])
       |> assign(:message_input, "")
+      |> assign(:show_mention_dropdown, false)
+      |> push_event("clear_input", %{})
 
     {:noreply, socket}
   end
@@ -285,58 +275,64 @@ defmodule SocialScribeWeb.ChatLive do
     contact_id = String.to_integer(id)
     contact = Contacts.get_contact!(contact_id)
 
-    # Remove the @ and search query from input
-    message_input =
-      socket.assigns.message_input
-      |> String.replace(~r/@\S*$/, "")
-      |> String.trim()
+    # Add contact to mentions list
+    mentions = socket.assigns.mentions ++ [contact]
 
     socket =
       socket
-      |> assign(:selected_contact, contact)
+      |> assign(:mentions, mentions)
       |> assign(:show_mention_dropdown, false)
       |> assign(:contact_results, [])
-      |> assign(:message_input, message_input)
+      |> push_event("insert_mention", %{id: contact.id, name: contact.name})
 
     {:noreply, socket}
   end
 
   @impl true
-  def handle_event("clear_contact", _params, socket) do
-    {:noreply, assign(socket, selected_contact: nil)}
+  def handle_event("close_mention_dropdown", _params, socket) do
+    {:noreply, assign(socket, show_mention_dropdown: false, contact_results: [])}
   end
 
   @impl true
-  def handle_event("send_message", %{"message" => content}, socket) do
+  def handle_event("send_message", %{"message" => content, "mentions" => mentions_data}, socket) do
     content = String.trim(content)
 
-    if content == "" || socket.assigns.selected_contact == nil do
+    if content == "" || mentions_data == [] do
       {:noreply, socket}
     else
       thread = socket.assigns.current_thread
-      contact = socket.assigns.selected_contact
 
+      # Build metadata from mentions
       metadata = %{
-        "mentions" => [
-          %{
-            "contact_id" => contact.id,
-            "name" => contact.name,
-            "email" => contact.email
-          }
-        ]
+        "mentions" =>
+          Enum.map(socket.assigns.mentions, fn contact ->
+            %{
+              "contact_id" => contact.id,
+              "name" => contact.name,
+              "email" => contact.email
+            }
+          end)
       }
 
-      # Show loading state
+      # Show loading state and clear input
       socket =
         socket
         |> assign(:loading, true)
         |> assign(:message_input, "")
+        |> assign(:mentions, [])
+        |> push_event("clear_input", %{})
 
       # Generate response asynchronously
       send(self(), {:generate_response, thread, content, metadata})
 
       {:noreply, socket}
     end
+  end
+
+  # Fallback for old send_message format (form submission)
+  @impl true
+  def handle_event("send_message", %{"message" => content}, socket) do
+    handle_event("send_message", %{"message" => content, "mentions" => socket.assigns.mentions}, socket)
   end
 
   @impl true

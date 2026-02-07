@@ -140,7 +140,7 @@ defmodule SocialScribe.ChatAI do
   end
 
   defp get_hubspot_contact_data(user, email) do
-    case Accounts.get_user_credential(user.id, "hubspot") do
+    case Accounts.get_user_credential(user, "hubspot") do
       nil ->
         {:error, :no_hubspot_credential}
 
@@ -155,7 +155,7 @@ defmodule SocialScribe.ChatAI do
   end
 
   defp get_salesforce_contact_data(user, email) do
-    case Accounts.get_user_credential(user.id, "salesforce") do
+    case Accounts.get_user_credential(user, "salesforce") do
       nil ->
         {:error, :no_salesforce_credential}
 
