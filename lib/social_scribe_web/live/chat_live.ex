@@ -90,7 +90,7 @@ defmodule SocialScribeWeb.ChatLive do
               <div :for={message <- @messages} class={message_class(message.role)}>
                 <div class={message_bubble_class(message.role)}>
                   <div class="prose prose-sm max-w-none">
-                    {raw(render_markdown(message.content))}
+                    {raw(render_message_content(message))}
                   </div>
                   <div class="text-xs mt-1 opacity-70">
                     {Calendar.strftime(message.inserted_at, "%H:%M")}
@@ -439,13 +439,67 @@ defmodule SocialScribeWeb.ChatLive do
   defp message_bubble_class(_),
     do: "bg-gray-100 text-gray-900 rounded-lg px-4 py-2 max-w-[80%]"
 
-  defp render_markdown(content) do
-    # Simple markdown rendering - just escape HTML and convert basic markdown
+  defp render_message_content(%{content: content, metadata: metadata, role: "user"}) do
+    # For user messages: escape first, then render mentions with avatars
+    mentions = metadata["mentions"] || []
+
     content
-    |> Phoenix.HTML.html_escape()
-    |> Phoenix.HTML.safe_to_string()
+    |> escape_html()
+    |> render_markdown_simple()
+    |> render_mentions(mentions)
+  end
+
+  defp render_message_content(%{content: content, metadata: metadata, role: _role}) do
+    # For assistant messages: escape first, then render meeting links and markdown
+    meeting_refs = metadata["meeting_refs"] || []
+
+    content
+    |> escape_html()
+    |> render_meeting_links(meeting_refs)
+    |> render_markdown_simple()
+  end
+
+  defp render_mentions(content, []), do: content
+
+  defp render_mentions(content, mentions) do
+    Enum.reduce(mentions, content, fn mention, acc ->
+      name = mention["name"] || ""
+      first_name = name |> String.split() |> List.first() || name
+      encoded_name = URI.encode(name)
+
+      # The @ was already escaped, so match the escaped version
+      pattern = "@#{escape_html(name)}"
+
+      avatar_html =
+        ~s(<span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 rounded-full px-2 py-0.5 text-sm font-medium"><img src="https://ui-avatars.com/api/?name=#{encoded_name}&size=20&background=4f46e5&color=fff&bold=true" class="w-5 h-5 rounded-full" alt="#{first_name}"/>#{first_name}</span>)
+
+      String.replace(acc, pattern, avatar_html)
+    end)
+  end
+
+  defp render_meeting_links(content, []), do: content
+
+  defp render_meeting_links(content, _meeting_refs) do
+    # Convert [Meeting: title (date)](meeting:123) to clickable links
+    # Note: brackets and parens are not escaped by our escape_html
+    Regex.replace(
+      ~r/\[Meeting:\s*(.+?)\]\(meeting:(\d+)\)/,
+      content,
+      ~s(<a href="/dashboard/meetings/\\2" class="text-indigo-600 hover:text-indigo-800 underline">\\1</a>)
+    )
+  end
+
+  defp render_markdown_simple(content) do
+    # Simple markdown rendering - content is already escaped
+    content
     |> String.replace(~r/\*\*(.+?)\*\*/, "<strong>\\1</strong>")
     |> String.replace(~r/\*(.+?)\*/, "<em>\\1</em>")
     |> String.replace(~r/\n/, "<br/>")
+  end
+
+  defp escape_html(content) do
+    content
+    |> Phoenix.HTML.html_escape()
+    |> Phoenix.HTML.safe_to_string()
   end
 end
