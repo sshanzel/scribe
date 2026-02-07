@@ -26,9 +26,13 @@ defmodule SocialScribeWeb.CRMModalComponents do
 
   def crm_modal_header(assigns) do
     assigns =
-      assign_new(assigns, :description, fn ->
-        "Here are suggested updates to sync with your integrations based on this meeting"
-      end)
+      if is_nil(assigns.description) do
+        assign(assigns, :description,
+          "Here are suggested updates to sync with your integrations based on this meeting"
+        )
+      else
+        assigns
+      end
 
     ~H"""
     <div>

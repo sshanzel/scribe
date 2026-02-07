@@ -16,7 +16,10 @@ defmodule SocialScribe.Contacts do
   alias SocialScribe.Accounts.User
 
   @doc """
-  Creates a new contact or returns existing one if email already exists.
+  Creates a new contact.
+
+  Returns `{:error, changeset}` if the email already exists.
+  Use `find_or_create_contact/1` to get existing contact instead.
   """
   def create_contact(attrs) do
     %Contact{}
@@ -79,7 +82,7 @@ defmodule SocialScribe.Contacts do
       join: cea in CalendarEventAttendee, on: cea.contact_id == c.id,
       join: ce in CalendarEvent, on: ce.id == cea.calendar_event_id,
       where: ce.user_id == ^user_id,
-      distinct: c.id,
+      distinct: true,
       order_by: [asc: c.name]
     )
     |> Repo.all()
@@ -101,7 +104,7 @@ defmodule SocialScribe.Contacts do
       join: ce in CalendarEvent, on: ce.id == cea.calendar_event_id,
       where: ce.user_id == ^user_id,
       where: ilike(c.name, ^search_term) or ilike(c.email, ^search_term),
-      distinct: c.id,
+      distinct: true,
       order_by: [asc: c.name],
       limit: 10
     )
@@ -144,11 +147,28 @@ defmodule SocialScribe.Contacts do
 
   @doc """
   Creates a calendar event attendee record linking a contact to an event.
+
+  If the attendee already exists for this event, returns the existing record.
   """
   def create_calendar_event_attendee(attrs) do
-    %CalendarEventAttendee{}
-    |> CalendarEventAttendee.changeset(attrs)
-    |> Repo.insert(on_conflict: :nothing)
+    changeset = CalendarEventAttendee.changeset(%CalendarEventAttendee{}, attrs)
+
+    case Repo.insert(changeset, on_conflict: :nothing) do
+      {:ok, %CalendarEventAttendee{id: nil}} ->
+        # Conflict occurred, fetch the existing record
+        calendar_event_id = attrs[:calendar_event_id] || attrs["calendar_event_id"]
+        contact_id = attrs[:contact_id] || attrs["contact_id"]
+
+        existing =
+          CalendarEventAttendee
+          |> where([a], a.calendar_event_id == ^calendar_event_id and a.contact_id == ^contact_id)
+          |> Repo.one()
+
+        {:ok, existing}
+
+      result ->
+        result
+    end
   end
 
   @doc """

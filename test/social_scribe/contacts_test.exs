@@ -107,6 +107,35 @@ defmodule SocialScribe.ContactsTest do
 
       assert Contacts.list_contacts(user2) == []
     end
+
+    test "does not return duplicates when contact appears in multiple events" do
+      user = user_fixture()
+      {:ok, contact} = Contacts.create_contact(%{name: "John", email: "john@multi.com"})
+
+      # Create two calendar events for the same user
+      event1 = calendar_event_fixture(%{user_id: user.id})
+      event2 = calendar_event_fixture(%{user_id: user.id})
+
+      # Link the same contact to both events
+      {:ok, _} =
+        Contacts.create_calendar_event_attendee(%{
+          calendar_event_id: event1.id,
+          contact_id: contact.id,
+          display_name: "John"
+        })
+
+      {:ok, _} =
+        Contacts.create_calendar_event_attendee(%{
+          calendar_event_id: event2.id,
+          contact_id: contact.id,
+          display_name: "John"
+        })
+
+      # Should return only 1 contact, not 2 duplicates
+      contacts = Contacts.list_contacts(user)
+      assert length(contacts) == 1
+      assert hd(contacts).id == contact.id
+    end
   end
 
   describe "search_contacts/2" do
@@ -293,6 +322,33 @@ defmodule SocialScribe.ContactsTest do
       records = Contacts.create_attendees_from_event_data(calendar_event.id, attendees)
 
       assert length(records) == 1
+    end
+
+    test "returns existing attendee when called twice for same contact/event" do
+      user = user_fixture()
+      calendar_event = calendar_event_fixture(%{user_id: user.id})
+      {:ok, contact} = Contacts.create_contact(%{name: "John", email: "john@duplicate.com"})
+
+      # First creation
+      {:ok, attendee1} =
+        Contacts.create_calendar_event_attendee(%{
+          calendar_event_id: calendar_event.id,
+          contact_id: contact.id,
+          display_name: "John"
+        })
+
+      # Second creation with same contact/event should return existing
+      {:ok, attendee2} =
+        Contacts.create_calendar_event_attendee(%{
+          calendar_event_id: calendar_event.id,
+          contact_id: contact.id,
+          display_name: "John Updated"
+        })
+
+      # Both should have valid IDs and be the same record
+      assert attendee1.id != nil
+      assert attendee2.id != nil
+      assert attendee1.id == attendee2.id
     end
 
     test "sets is_organizer flag correctly" do
