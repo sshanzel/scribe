@@ -350,14 +350,14 @@ SocialScribeWeb.ChatLive.MessageComponent
   - [x] Integration test with mock Google Calendar response
 
 ### Step 2: Database & Schemas
-- [ ] Create contacts migration (lean: id, user_id, name, email)
-- [ ] Create chat_threads migration (no contact_id)
-- [ ] Create chat_messages migration
-- [ ] Create Ecto schemas with changesets
-- [ ] **Tests:**
-  - [ ] Contact changeset tests (validation, unique constraint)
-  - [ ] ChatThread changeset tests
-  - [ ] ChatMessage changeset tests (role, content, metadata)
+- [x] Create contacts migration (lean: id, user_id, name, email)
+- [x] Create chat_threads migration (no contact_id)
+- [x] Create chat_messages migration
+- [x] Create Ecto schemas with changesets
+- [x] **Tests:**
+  - [x] Contact changeset tests (validation, unique constraint)
+  - [x] ChatThread changeset tests
+  - [x] ChatMessage changeset tests (role, content, metadata)
 
 ### Step 3: Contacts Context
 - [ ] Create Contacts context module
