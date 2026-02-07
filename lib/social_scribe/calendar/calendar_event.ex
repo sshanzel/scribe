@@ -13,6 +13,7 @@ defmodule SocialScribe.Calendar.CalendarEvent do
     field :start_time, :utc_datetime
     field :end_time, :utc_datetime
     field :record_meeting, :boolean, default: false
+    field :attendees, {:array, :map}, default: []
     field :user_id, :id
     field :user_credential_id, :id
 
@@ -33,6 +34,7 @@ defmodule SocialScribe.Calendar.CalendarEvent do
       :start_time,
       :end_time,
       :record_meeting,
+      :attendees,
       :user_id,
       :user_credential_id
     ])

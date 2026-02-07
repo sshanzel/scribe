@@ -46,8 +46,8 @@
                   meeting.meeting_participants
                 )}
               </p>
-              <p class="text-xs text-slate-500 mt-1 ">
-                <% 
+              <p class="text-xs text-slate-500 mt-1">
+                <%
                   names =
                     meeting.meeting_participants
                     |> Enum.map(fn p ->
@@ -58,8 +58,7 @@
                   shown = Enum.take(names, 3)
                   remaining = max(length(names) - length(shown), 0)
                 %>
-                Attendees:
-                {Enum.join(shown, ", ")}
+                Attendees: {Enum.join(shown, ", ")}
                 <%= if remaining > 0 do %>
                   +{remaining} more
                 <% end %>

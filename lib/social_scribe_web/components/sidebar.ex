@@ -65,7 +65,7 @@ defmodule SocialScribeWeb.Sidebar do
 
     ~H"""
     <.link
-      href={@href}
+      navigate={@href}
       class={[
         "flex items-center gap-3 px-2 py-2 text-sm rounded border-b border-indigo-600",
         @active && "bg-indigo-600 text-white",

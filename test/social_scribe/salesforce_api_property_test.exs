@@ -30,14 +30,14 @@ defmodule SocialScribe.SalesforceApiPropertyTest do
     property "returns {:ok, :no_updates} when all updates have apply: false", %{
       credential: credential
     } do
-      check all updates <- list_of(update_generator(apply: false), min_length: 1, max_length: 10) do
+      check all(updates <- list_of(update_generator(apply: false), min_length: 1, max_length: 10)) do
         result = SocialScribe.SalesforceApi.apply_updates(credential, "003XXXXXXXXXXXX", updates)
         assert result == {:ok, :no_updates}
       end
     end
 
     property "returns {:ok, :no_updates} for empty updates list", %{credential: credential} do
-      check all contact_id <- salesforce_contact_id_generator() do
+      check all(contact_id <- salesforce_contact_id_generator()) do
         result = SocialScribe.SalesforceApi.apply_updates(credential, contact_id, [])
         assert result == {:ok, :no_updates}
       end
@@ -46,7 +46,7 @@ defmodule SocialScribe.SalesforceApiPropertyTest do
 
   describe "build_updates_map/1 logic properties" do
     property "filtering and mapping only includes apply: true fields" do
-      check all updates <- list_of(update_generator(), min_length: 1, max_length: 10) do
+      check all(updates <- list_of(update_generator(), min_length: 1, max_length: 10)) do
         # Replicate the internal logic of apply_updates
         updates_map =
           updates
@@ -70,7 +70,7 @@ defmodule SocialScribe.SalesforceApiPropertyTest do
     end
 
     property "map values match new_value from the last update for each field" do
-      check all updates <- list_of(update_generator(), min_length: 1, max_length: 10) do
+      check all(updates <- list_of(update_generator(), min_length: 1, max_length: 10)) do
         updates_map =
           updates
           |> Enum.filter(fn update -> update[:apply] == true end)
@@ -91,7 +91,7 @@ defmodule SocialScribe.SalesforceApiPropertyTest do
     end
 
     property "map size is at most the number of unique applied fields" do
-      check all updates <- list_of(update_generator(), min_length: 0, max_length: 10) do
+      check all(updates <- list_of(update_generator(), min_length: 0, max_length: 10)) do
         updates_map =
           updates
           |> Enum.filter(fn update -> update[:apply] == true end)
@@ -111,7 +111,7 @@ defmodule SocialScribe.SalesforceApiPropertyTest do
     end
 
     property "empty result when no updates have apply: true" do
-      check all updates <- list_of(update_generator(apply: false), min_length: 0, max_length: 10) do
+      check all(updates <- list_of(update_generator(apply: false), min_length: 0, max_length: 10)) do
         updates_map =
           updates
           |> Enum.filter(fn update -> update[:apply] == true end)
@@ -129,15 +129,17 @@ defmodule SocialScribe.SalesforceApiPropertyTest do
   defp update_generator(opts \\ []) do
     apply_value = Keyword.get(opts, :apply, :random)
 
-    gen all field <- member_of(@salesforce_fields),
-            new_value <- string(:alphanumeric, min_length: 1, max_length: 50),
-            apply? <- if(apply_value == :random, do: boolean(), else: constant(apply_value)) do
+    gen all(
+          field <- member_of(@salesforce_fields),
+          new_value <- string(:alphanumeric, min_length: 1, max_length: 50),
+          apply? <- if(apply_value == :random, do: boolean(), else: constant(apply_value))
+        ) do
       %{field: field, new_value: new_value, apply: apply?}
     end
   end
 
   defp salesforce_contact_id_generator do
-    gen all suffix <- string(:alphanumeric, length: 15) do
+    gen all(suffix <- string(:alphanumeric, length: 15)) do
       "003#{suffix}"
     end
   end

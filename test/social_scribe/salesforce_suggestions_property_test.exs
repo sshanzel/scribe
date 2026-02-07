@@ -22,8 +22,10 @@ defmodule SocialScribe.SalesforceSuggestionsPropertyTest do
 
   describe "merge_with_contact/2 properties" do
     property "never returns suggestions where new_value equals contact's current value" do
-      check all suggestions <- list_of(suggestion_generator(), min_length: 1, max_length: 5),
-                contact <- contact_generator() do
+      check all(
+              suggestions <- list_of(suggestion_generator(), min_length: 1, max_length: 5),
+              contact <- contact_generator()
+            ) do
         result = SalesforceSuggestions.merge_with_contact(suggestions, contact)
 
         for suggestion <- result do
@@ -37,8 +39,10 @@ defmodule SocialScribe.SalesforceSuggestionsPropertyTest do
     end
 
     property "all returned suggestions have has_change set to true" do
-      check all suggestions <- list_of(suggestion_generator(), min_length: 1, max_length: 5),
-                contact <- contact_generator() do
+      check all(
+              suggestions <- list_of(suggestion_generator(), min_length: 1, max_length: 5),
+              contact <- contact_generator()
+            ) do
         result = SalesforceSuggestions.merge_with_contact(suggestions, contact)
 
         for suggestion <- result do
@@ -49,8 +53,10 @@ defmodule SocialScribe.SalesforceSuggestionsPropertyTest do
     end
 
     property "all returned suggestions have apply set to true" do
-      check all suggestions <- list_of(suggestion_generator(), min_length: 1, max_length: 5),
-                contact <- contact_generator() do
+      check all(
+              suggestions <- list_of(suggestion_generator(), min_length: 1, max_length: 5),
+              contact <- contact_generator()
+            ) do
         result = SalesforceSuggestions.merge_with_contact(suggestions, contact)
 
         for suggestion <- result do
@@ -61,8 +67,10 @@ defmodule SocialScribe.SalesforceSuggestionsPropertyTest do
     end
 
     property "output length is always less than or equal to input length" do
-      check all suggestions <- list_of(suggestion_generator(), min_length: 0, max_length: 10),
-                contact <- contact_generator() do
+      check all(
+              suggestions <- list_of(suggestion_generator(), min_length: 0, max_length: 10),
+              contact <- contact_generator()
+            ) do
         result = SalesforceSuggestions.merge_with_contact(suggestions, contact)
 
         assert length(result) <= length(suggestions),
@@ -71,8 +79,10 @@ defmodule SocialScribe.SalesforceSuggestionsPropertyTest do
     end
 
     property "current_value in result matches the contact's actual value for that field" do
-      check all suggestions <- list_of(suggestion_generator(), min_length: 1, max_length: 5),
-                contact <- contact_generator() do
+      check all(
+              suggestions <- list_of(suggestion_generator(), min_length: 1, max_length: 5),
+              contact <- contact_generator()
+            ) do
         result = SalesforceSuggestions.merge_with_contact(suggestions, contact)
 
         for suggestion <- result do
@@ -86,15 +96,17 @@ defmodule SocialScribe.SalesforceSuggestionsPropertyTest do
     end
 
     property "empty suggestions list returns empty list" do
-      check all contact <- contact_generator() do
+      check all(contact <- contact_generator()) do
         result = SalesforceSuggestions.merge_with_contact([], contact)
         assert result == []
       end
     end
 
     property "preserves suggestion fields (field, label, context) through merge" do
-      check all suggestions <- list_of(suggestion_generator(), min_length: 1, max_length: 5),
-                contact <- contact_generator() do
+      check all(
+              suggestions <- list_of(suggestion_generator(), min_length: 1, max_length: 5),
+              contact <- contact_generator()
+            ) do
         result = SalesforceSuggestions.merge_with_contact(suggestions, contact)
 
         original_fields = MapSet.new(suggestions, & &1.field)
@@ -110,10 +122,12 @@ defmodule SocialScribe.SalesforceSuggestionsPropertyTest do
   # Generators
 
   defp suggestion_generator do
-    gen all field <- member_of(@salesforce_fields),
-            new_value <-
-              one_of([string(:alphanumeric, min_length: 1, max_length: 50), constant(nil)]),
-            context <- string(:alphanumeric, min_length: 5, max_length: 100) do
+    gen all(
+          field <- member_of(@salesforce_fields),
+          new_value <-
+            one_of([string(:alphanumeric, min_length: 1, max_length: 50), constant(nil)]),
+          context <- string(:alphanumeric, min_length: 5, max_length: 100)
+        ) do
       %{
         field: field,
         label: field_to_label(field),
@@ -127,17 +141,19 @@ defmodule SocialScribe.SalesforceSuggestionsPropertyTest do
   end
 
   defp contact_generator do
-    gen all firstname <-
-              one_of([string(:alphanumeric, min_length: 1, max_length: 20), constant(nil)]),
-            lastname <-
-              one_of([string(:alphanumeric, min_length: 1, max_length: 20), constant(nil)]),
-            email <- one_of([email_generator(), constant(nil)]),
-            phone <- one_of([phone_generator(), constant(nil)]),
-            company <-
-              one_of([string(:alphanumeric, min_length: 1, max_length: 30), constant(nil)]),
-            title <- one_of([string(:alphanumeric, min_length: 1, max_length: 30), constant(nil)]),
-            department <-
-              one_of([string(:alphanumeric, min_length: 1, max_length: 30), constant(nil)]) do
+    gen all(
+          firstname <-
+            one_of([string(:alphanumeric, min_length: 1, max_length: 20), constant(nil)]),
+          lastname <-
+            one_of([string(:alphanumeric, min_length: 1, max_length: 20), constant(nil)]),
+          email <- one_of([email_generator(), constant(nil)]),
+          phone <- one_of([phone_generator(), constant(nil)]),
+          company <-
+            one_of([string(:alphanumeric, min_length: 1, max_length: 30), constant(nil)]),
+          title <- one_of([string(:alphanumeric, min_length: 1, max_length: 30), constant(nil)]),
+          department <-
+            one_of([string(:alphanumeric, min_length: 1, max_length: 30), constant(nil)])
+        ) do
       %{
         id: "003#{:rand.uniform(100_000_000_000_000)}",
         firstname: firstname,
@@ -159,14 +175,16 @@ defmodule SocialScribe.SalesforceSuggestionsPropertyTest do
   end
 
   defp email_generator do
-    gen all local <- string(:alphanumeric, min_length: 3, max_length: 10),
-            domain <- string(:alphanumeric, min_length: 3, max_length: 8) do
+    gen all(
+          local <- string(:alphanumeric, min_length: 3, max_length: 10),
+          domain <- string(:alphanumeric, min_length: 3, max_length: 8)
+        ) do
       "#{local}@#{domain}.com"
     end
   end
 
   defp phone_generator do
-    gen all digits <- string(?0..?9, length: 10) do
+    gen all(digits <- string(?0..?9, length: 10)) do
       "#{String.slice(digits, 0, 3)}-#{String.slice(digits, 3, 3)}-#{String.slice(digits, 6, 4)}"
     end
   end

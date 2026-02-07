@@ -2,7 +2,9 @@
 
 Tracked enhancements to implement after core features are complete.
 
-## 1. Extract attendee emails from Google Calendar for CRM auto-matching
+## 1. Extract attendee emails from Google Calendar for CRM auto-matching ✅
+
+> **Status:** Implemented as part of Chat Feature (see `PLAN_CHAT_FEATURE.md` Phase 2)
 
 **Problem:** The Salesforce/HubSpot modal currently searches by participant name only, which is imprecise. Recall.ai only provides participant `name` and `is_host` - no email.
 
@@ -33,13 +35,13 @@ Tracked enhancements to implement after core features are complete.
 **Problem:** When a meeting has multiple participants (e.g., 3 contacts), the user currently has to manually search and update each contact one by one. This is tedious and requires re-opening the modal multiple times.
 
 **Solution:** Allow users to update all meeting participants sequentially without searching:
-1. Pre-match all non-host participants to CRM contacts (using emails from Improvement #1)
+1. Pre-match all non-host participants to CRM contacts (using attendee emails from calendar_events)
 2. Show a list of matched contacts with their suggested updates
 3. Let user step through each contact: review suggestions → apply → next contact
 4. Track which contacts have been updated for this meeting
 
 **Implementation:**
-1. On modal open, match all participants to CRM contacts
+1. On modal open, match all participants to CRM contacts using calendar_event.attendees
 2. Display a contact queue/stepper UI showing all matched contacts
 3. For each contact, show AI suggestions with before/after values
 4. After applying updates, automatically advance to next contact
@@ -113,3 +115,107 @@ This leads to code duplication and maintenance overhead.
 - `lib/social_scribe/contacts.ex`
 
 **Benefit:** Direct CRM lookups are faster and more reliable than email-based search. Enables future features like "open in HubSpot/Salesforce" links.
+
+---
+
+## Minor Fixes
+
+### Double scrollbar in dashboard layout ✅
+
+> **Status:** Resolved
+
+**Problem:** The dashboard had a double scrollbar issue where both the body/html and the content area had scrollbars visible. This was caused by the header being outside the `h-screen` container, so header height + 100vh content exceeded the viewport height.
+
+**Solution:** Restructured `dashboard.html.heex` to use a proper flex column layout:
+- Outer container with `h-screen flex flex-col` takes exactly 100vh
+- Header with `shrink-0` takes only its natural height
+- Inner flex container with `flex-1 min-h-0` fills remaining space without exceeding viewport
+
+**File modified:**
+- `lib/social_scribe_web/components/layouts/dashboard.html.heex`
+
+### Sidebar navigation causing full page reloads ✅
+
+> **Status:** Resolved
+
+**Problem:** Clicking sidebar links (Home, Meetings, Automations, Settings) caused full page reloads instead of LiveView navigation. This broke the chat widget persistence and caused unnecessary re-renders.
+
+**Cause:** The sidebar component used `href={@href}` instead of `navigate={@href}` for links.
+
+**Solution:** Changed sidebar links to use `navigate` attribute for proper LiveView client-side navigation:
+```elixir
+# Before
+<.link href={@href} class={[...]}>
+
+# After
+<.link navigate={@href} class={[...]}>
+```
+
+**File modified:**
+- `lib/social_scribe_web/components/sidebar.ex`
+
+---
+
+## 5. Add pattern matching with guards for type safety
+
+**Problem:** Elixir is dynamically typed, so type mismatches (e.g., passing `user.id` instead of `user` struct) are only caught at runtime, often with cryptic errors like `expected a map, got: 1`.
+
+**Solution:** Add pattern matching with guards in function heads to enforce types at runtime with clear error messages:
+
+```elixir
+# Instead of:
+def get_user_credential(user, provider) do
+  Repo.get_by(UserCredential, user_id: user.id, provider: provider)
+end
+
+# Use:
+def get_user_credential(%User{} = user, provider) when is_binary(provider) do
+  Repo.get_by(UserCredential, user_id: user.id, provider: provider)
+end
+```
+
+**Implementation:**
+1. Audit all context module functions that accept structs
+2. Add struct pattern matching (`%User{}`, `%Contact{}`, etc.) in function heads
+3. Add guards for primitive types (`when is_binary/1`, `when is_integer/1`, etc.)
+4. Ensure typespecs (`@spec`) are added for Dialyzer support
+
+**Priority files:**
+- `lib/social_scribe/accounts.ex`
+- `lib/social_scribe/contacts.ex`
+- `lib/social_scribe/chat.ex`
+- `lib/social_scribe/chat_ai.ex`
+
+**Benefit:** Clearer error messages at runtime, better documentation, and Dialyzer can catch mismatches at compile time.
+
+## 6. Code Formatting Standards
+
+**Problem:** Inconsistent code formatting across the codebase can lead to noisy diffs and style debates during code review.
+
+**Current State:** Elixir's built-in `mix format` is available but formatting rules may not be fully configured or enforced.
+
+**Investigation Needed:**
+1. Check if `.formatter.exs` exists and is properly configured
+2. Review if formatting is enforced in CI/pre-commit hooks
+3. Determine if all files pass `mix format --check-formatted`
+
+**Potential Improvements:**
+- Configure `.formatter.exs` with project-specific rules (line length, import ordering, etc.)
+- Add pre-commit hook to auto-format staged files
+- Add `mix format --check-formatted` to CI pipeline
+- Consider additional tools like `mix credo` for static analysis
+
+**Pre-commit Hook Implementation:**
+```bash
+# .git/hooks/pre-commit (make executable with chmod +x)
+#!/bin/sh
+mix format --check-formatted
+if [ $? -ne 0 ]; then
+  echo "Code is not formatted. Run 'mix format' and try again."
+  exit 1
+fi
+```
+
+Or use a tool like `pre-commit` (Python) or `lefthook` (Go) for more robust hook management.
+
+**Note:** Elixir's upcoming type system may reduce reliance on Dialyzer. Avoid adding explicit `@type t()` definitions to schemas - let the compiler infer types (consistent with current codebase convention).
