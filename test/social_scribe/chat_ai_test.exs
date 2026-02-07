@@ -37,13 +37,12 @@ defmodule SocialScribe.ChatAITest do
       assert resolved.id == contact.id
     end
 
-    test "returns error when no mentions in metadata" do
-      assert {:error, :no_contact_tagged} = ChatAI.resolve_contact_from_metadata(%{})
+    test "returns nil contact when no mentions in metadata" do
+      assert {:ok, nil} = ChatAI.resolve_contact_from_metadata(%{})
     end
 
-    test "returns error when mentions is empty" do
-      assert {:error, :no_contact_tagged} =
-               ChatAI.resolve_contact_from_metadata(%{"mentions" => []})
+    test "returns nil contact when mentions is empty" do
+      assert {:ok, nil} = ChatAI.resolve_contact_from_metadata(%{"mentions" => []})
     end
 
     test "returns error when contact not found" do
@@ -261,6 +260,73 @@ defmodule SocialScribe.ChatAITest do
 
       assert length(user2_meetings) == 1
       assert hd(user2_meetings).title == "User2's Meeting with John"
+    end
+  end
+
+  # =============================================================================
+  # Recent Meetings Tests (No Contact)
+  # =============================================================================
+
+  describe "find_recent_meetings_for_user/1" do
+    test "finds recent meetings for user without contact filter" do
+      user = user_fixture()
+
+      # Create a calendar event and meeting for the user
+      calendar_event = calendar_event_fixture(user_id: user.id)
+      recall_bot = recall_bot_fixture(calendar_event_id: calendar_event.id, user_id: user.id)
+
+      _meeting =
+        meeting_fixture(
+          calendar_event_id: calendar_event.id,
+          recall_bot_id: recall_bot.id,
+          title: "User's Meeting"
+        )
+
+      meetings = ChatAI.find_recent_meetings_for_user(user)
+
+      assert length(meetings) == 1
+      assert hd(meetings).title == "User's Meeting"
+    end
+
+    test "limits to 10 most recent meetings" do
+      user = user_fixture()
+
+      # Create 12 meetings
+      for i <- 1..12 do
+        calendar_event = calendar_event_fixture(user_id: user.id)
+        recall_bot = recall_bot_fixture(calendar_event_id: calendar_event.id, user_id: user.id)
+
+        meeting_fixture(
+          calendar_event_id: calendar_event.id,
+          recall_bot_id: recall_bot.id,
+          title: "Meeting #{i}",
+          recorded_at: DateTime.add(DateTime.utc_now(), -i * 3600, :second)
+        )
+      end
+
+      meetings = ChatAI.find_recent_meetings_for_user(user)
+
+      assert length(meetings) == 10
+    end
+
+    test "does not return meetings from other users" do
+      user1 = user_fixture()
+      user2 = user_fixture()
+
+      # Create meeting for user2
+      calendar_event = calendar_event_fixture(user_id: user2.id)
+      recall_bot = recall_bot_fixture(calendar_event_id: calendar_event.id, user_id: user2.id)
+
+      _meeting =
+        meeting_fixture(
+          calendar_event_id: calendar_event.id,
+          recall_bot_id: recall_bot.id
+        )
+
+      # user1 should not see user2's meetings
+      meetings = ChatAI.find_recent_meetings_for_user(user1)
+
+      assert meetings == []
     end
   end
 

@@ -273,7 +273,7 @@ defmodule SocialScribeWeb.ChatLive do
                       type="button"
                       id="chat-submit-btn"
                       phx-click={JS.dispatch("chat:submit", to: "#mention-input")}
-                      disabled={@mentions == [] || @message_input == ""}
+                      disabled={@message_input == ""}
                       class="w-7 h-7 shrink-0 flex items-center justify-center bg-slate-700 text-white rounded-md hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
                       <.icon name="hero-paper-airplane" class="size-3.5" />
@@ -443,10 +443,10 @@ defmodule SocialScribeWeb.ChatLive do
   end
 
   @impl true
-  def handle_event("send_message", %{"message" => content, "mentions" => mentions_data}, socket) do
+  def handle_event("send_message", %{"message" => content, "mentions" => _mentions_data}, socket) do
     content = String.trim(content)
 
-    if content == "" || mentions_data == [] do
+    if content == "" do
       {:noreply, socket}
     else
       # Create thread if one doesn't exist

@@ -119,9 +119,9 @@ defmodule SocialScribe.ChatAI do
     end
   end
 
-  def resolve_contact_from_metadata(%{"mentions" => []}), do: {:error, :no_contact_tagged}
-  def resolve_contact_from_metadata(%{mentions: []}), do: {:error, :no_contact_tagged}
-  def resolve_contact_from_metadata(_), do: {:error, :no_contact_tagged}
+  def resolve_contact_from_metadata(%{"mentions" => []}), do: {:ok, nil}
+  def resolve_contact_from_metadata(%{mentions: []}), do: {:ok, nil}
+  def resolve_contact_from_metadata(_), do: {:ok, nil}
 
   # =============================================================================
   # Context Gathering
@@ -135,6 +135,17 @@ defmodule SocialScribe.ChatAI do
      %{
        contact: contact,
        crm_data: crm_data,
+       meetings: meetings
+     }}
+  end
+
+  defp gather_context(%User{} = user, nil) do
+    meetings = find_recent_meetings_for_user(user)
+
+    {:ok,
+     %{
+       contact: nil,
+       crm_data: nil,
        meetings: meetings
      }}
   end
@@ -200,6 +211,20 @@ defmodule SocialScribe.ChatAI do
   end
 
   def find_meetings_for_contact(_user, _contact), do: []
+
+  @doc """
+  Finds the most recent meetings for a user when no specific contact is tagged.
+  Returns up to @max_meetings most recent meetings.
+  """
+  def find_recent_meetings_for_user(%User{id: user_id}) do
+    Meeting
+    |> join(:inner, [m], ce in assoc(m, :calendar_event))
+    |> where([m, ce], ce.user_id == ^user_id)
+    |> order_by([m, ce], desc: m.recorded_at)
+    |> limit(@max_meetings)
+    |> preload([:meeting_transcript, :meeting_participants, :calendar_event])
+    |> Repo.all()
+  end
 
   # =============================================================================
   # Gemini API Integration
@@ -293,6 +318,24 @@ defmodule SocialScribe.ChatAI do
     #{format_contact_info(contact, crm_data)}
 
     MEETING HISTORY (most recent first, last #{length(meetings)} meetings):
+    #{format_meetings(meetings)}
+    """
+  end
+
+  defp build_system_context(%{contact: nil, crm_data: nil, meetings: meetings})
+       when is_list(meetings) do
+    """
+    You are a helpful assistant that answers questions about the user's recent meetings.
+
+    RULES:
+    - Be concise and direct
+    - Base your answers ONLY on the context provided below
+    - If information is not in the meeting transcripts, clearly state that you don't have that information
+    - Never guess, infer, or make up information
+    - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
+    - Format responses in markdown
+
+    RECENT MEETING HISTORY (most recent first, last #{length(meetings)} meetings):
     #{format_meetings(meetings)}
     """
   end

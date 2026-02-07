@@ -147,7 +147,7 @@ Hooks.MentionInput = {
 
     submitMessage() {
         const text = this.getTextContent().trim()
-        if (!text || this.mentions.length === 0) return
+        if (!text) return
 
         this.pushEvent('send_message', {
             message: text,
