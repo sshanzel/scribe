@@ -185,4 +185,17 @@ end
 - Add `mix format --check-formatted` to CI pipeline
 - Consider additional tools like `mix credo` for static analysis
 
+**Pre-commit Hook Implementation:**
+```bash
+# .git/hooks/pre-commit (make executable with chmod +x)
+#!/bin/sh
+mix format --check-formatted
+if [ $? -ne 0 ]; then
+  echo "Code is not formatted. Run 'mix format' and try again."
+  exit 1
+fi
+```
+
+Or use a tool like `pre-commit` (Python) or `lefthook` (Go) for more robust hook management.
+
 **Note:** Elixir's upcoming type system may reduce reliance on Dialyzer. Avoid adding explicit `@type t()` definitions to schemas - let the compiler infer types (consistent with current codebase convention).
