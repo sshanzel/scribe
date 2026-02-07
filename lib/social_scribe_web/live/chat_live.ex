@@ -32,7 +32,8 @@ defmodule SocialScribeWeb.ChatLive do
         socket
       end
 
-    {:ok, socket}
+    # No layout for embedded LiveView
+    {:ok, socket, layout: false}
   end
 
   @impl true
