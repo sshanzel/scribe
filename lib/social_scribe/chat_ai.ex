@@ -29,7 +29,7 @@ defmodule SocialScribe.ChatAI do
   require Logger
 
   @gemini_model "gemini-2.0-flash-lite"
-  @gemini_api_base_url "https://generativelanguage.googleapis.com/v1beta/models"
+  @gemini_api_base_url "https://generativelanguage.googleapis.com/v1/models"
   @max_meetings 10
 
   # =============================================================================
