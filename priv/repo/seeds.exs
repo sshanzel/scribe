@@ -37,11 +37,17 @@ defmodule SeedHelpers do
       "data" => [
         %{
           "speaker" => host_name,
-          "words" => words_to_list("Hi #{guest_name}, thanks for joining today's call. I wanted to discuss #{topic}.")
+          "words" =>
+            words_to_list(
+              "Hi #{guest_name}, thanks for joining today's call. I wanted to discuss #{topic}."
+            )
         },
         %{
           "speaker" => guest_name,
-          "words" => words_to_list("Thanks for having me! Yes, I've been looking forward to this discussion.")
+          "words" =>
+            words_to_list(
+              "Thanks for having me! Yes, I've been looking forward to this discussion."
+            )
         },
         %{
           "speaker" => host_name,
@@ -69,7 +75,10 @@ defmodule SeedHelpers do
         },
         %{
           "speaker" => host_name,
-          "words" => words_to_list("Perfect. Let me note down your contact details. What's the best way to reach you?")
+          "words" =>
+            words_to_list(
+              "Perfect. Let me note down your contact details. What's the best way to reach you?"
+            )
         },
         %{
           "speaker" => guest_name,
@@ -77,7 +86,10 @@ defmodule SeedHelpers do
         },
         %{
           "speaker" => host_name,
-          "words" => words_to_list("Got it. Thanks so much for your time today, #{guest_name}. I'll follow up with next steps.")
+          "words" =>
+            words_to_list(
+              "Got it. Thanks so much for your time today, #{guest_name}. I'll follow up with next steps."
+            )
         },
         %{
           "speaker" => guest_name,
@@ -104,10 +116,12 @@ user =
   case Repo.get_by(User, email: user_email) do
     nil ->
       IO.puts("⚠️  User not found. Creating a test user...")
+
       {:ok, user} =
         %User{}
         |> User.registration_changeset(%{email: user_email, password: "password123456"})
         |> Repo.insert()
+
       user
 
     existing_user ->
@@ -123,6 +137,7 @@ google_credential =
   case Repo.get_by(UserCredential, user_id: user.id, provider: "google") do
     nil ->
       IO.puts("📝 Creating Google credential for user...")
+
       {:ok, cred} =
         %UserCredential{}
         |> UserCredential.changeset(%{
@@ -135,6 +150,7 @@ google_credential =
           email: user_email
         })
         |> Repo.insert()
+
       cred
 
     existing ->
@@ -156,6 +172,7 @@ contacts =
           %Contact{}
           |> Contact.changeset(Map.put(contact_attrs, :user_id, user.id))
           |> Repo.insert()
+
         IO.puts("  ✅ Created contact: #{contact.name} <#{contact.email}>")
         contact
 
@@ -171,93 +188,124 @@ contacts =
 
 meetings_data = [
   %{
-    contact: Enum.at(contacts, 0),  # Sarah Chen
+    # Sarah Chen
+    contact: Enum.at(contacts, 0),
     title: "Q1 Product Roadmap Review",
     days_ago: 3,
     duration: 45,
     transcript_details: %{
       question: "Can you walk me through the key features you're planning for Q1?",
-      answer: "Absolutely. We're focusing on three main areas: improving our API performance, launching the new dashboard redesign, and rolling out the mobile app beta. The API improvements should give us about 40% faster response times.",
+      answer:
+        "Absolutely. We're focusing on three main areas: improving our API performance, launching the new dashboard redesign, and rolling out the mobile app beta. The API improvements should give us about 40% faster response times.",
       followup: "That sounds ambitious. What's the timeline looking like?",
-      response: "We're aiming to have the API updates done by end of January, dashboard by mid-February, and mobile beta by March 15th. We've already completed about 60% of the API work.",
+      response:
+        "We're aiming to have the API updates done by end of January, dashboard by mid-February, and mobile beta by March 15th. We've already completed about 60% of the API work.",
       topic2: "the team structure for this",
-      topic2_response: "We've got 3 engineers on the API team, 2 on dashboard, and 4 on mobile. I'm leading the mobile effort directly. We also brought in a new UX designer, Jennifer, specifically for the dashboard project.",
-      contact_info: "Best to reach me on my cell at 415-555-0123, or you can email me at sarah.chen@techcorp.io. I usually respond within a few hours during business hours."
+      topic2_response:
+        "We've got 3 engineers on the API team, 2 on dashboard, and 4 on mobile. I'm leading the mobile effort directly. We also brought in a new UX designer, Jennifer, specifically for the dashboard project.",
+      contact_info:
+        "Best to reach me on my cell at 415-555-0123, or you can email me at sarah.chen@techcorp.io. I usually respond within a few hours during business hours."
     }
   },
   %{
-    contact: Enum.at(contacts, 1),  # Marcus Johnson
+    # Marcus Johnson
+    contact: Enum.at(contacts, 1),
     title: "Partnership Discussion - Innovate Co",
     days_ago: 7,
     duration: 60,
     transcript_details: %{
       question: "What kind of partnership are you envisioning between our companies?",
-      answer: "We see a strategic integration opportunity. Our analytics platform could plug directly into your workflow tools. We've done similar integrations with Acme Corp and saw their user engagement increase by 35%.",
+      answer:
+        "We see a strategic integration opportunity. Our analytics platform could plug directly into your workflow tools. We've done similar integrations with Acme Corp and saw their user engagement increase by 35%.",
       followup: "Interesting. What would the technical integration look like?",
-      response: "We'd use your REST API to sync data in real-time. Our team has already reviewed your documentation. We estimate about 3 weeks for a basic integration, 6 weeks for the full feature set.",
+      response:
+        "We'd use your REST API to sync data in real-time. Our team has already reviewed your documentation. We estimate about 3 weeks for a basic integration, 6 weeks for the full feature set.",
       topic2: "the commercial terms",
-      topic2_response: "We're thinking a revenue share model - 15% of any upsells that come through the integration. We'd also co-market the solution. Our marketing budget for partnerships is around $50,000 per quarter.",
-      contact_info: "My direct line is 628-555-0456. I'm also on LinkedIn - just search Marcus Johnson Innovate. My assistant Rachel can also help schedule follow-ups, she's at rachel@innovate.co."
+      topic2_response:
+        "We're thinking a revenue share model - 15% of any upsells that come through the integration. We'd also co-market the solution. Our marketing budget for partnerships is around $50,000 per quarter.",
+      contact_info:
+        "My direct line is 628-555-0456. I'm also on LinkedIn - just search Marcus Johnson Innovate. My assistant Rachel can also help schedule follow-ups, she's at rachel@innovate.co."
     }
   },
   %{
-    contact: Enum.at(contacts, 2),  # Emily Rodriguez
+    # Emily Rodriguez
+    contact: Enum.at(contacts, 2),
     title: "Technical Architecture Review",
     days_ago: 14,
     duration: 90,
     transcript_details: %{
       question: "Can you explain the current pain points with your architecture?",
-      answer: "Our biggest issue is scalability. We're hitting database bottlenecks at around 10,000 concurrent users. We're on PostgreSQL but haven't implemented proper connection pooling or read replicas yet.",
+      answer:
+        "Our biggest issue is scalability. We're hitting database bottlenecks at around 10,000 concurrent users. We're on PostgreSQL but haven't implemented proper connection pooling or read replicas yet.",
       followup: "Have you considered any specific solutions?",
-      response: "We've looked at PgBouncer for connection pooling and potentially moving to a distributed database like CockroachDB for the long term. Short term, we need to optimize our queries - some are taking 5+ seconds.",
+      response:
+        "We've looked at PgBouncer for connection pooling and potentially moving to a distributed database like CockroachDB for the long term. Short term, we need to optimize our queries - some are taking 5+ seconds.",
       topic2: "your deployment infrastructure",
-      topic2_response: "We're on AWS, using ECS for containers. We've got about 15 microservices, but honestly, we probably over-engineered it. Thinking of consolidating to maybe 5-6 services. Our AWS bill is around $25,000/month.",
-      contact_info: "You can reach me at emily.r@startup.dev or on my cell 510-555-0789. I'm usually in meetings from 10am to 2pm Pacific, so mornings are best for calls."
+      topic2_response:
+        "We're on AWS, using ECS for containers. We've got about 15 microservices, but honestly, we probably over-engineered it. Thinking of consolidating to maybe 5-6 services. Our AWS bill is around $25,000/month.",
+      contact_info:
+        "You can reach me at emily.r@startup.dev or on my cell 510-555-0789. I'm usually in meetings from 10am to 2pm Pacific, so mornings are best for calls."
     }
   },
   %{
-    contact: Enum.at(contacts, 3),  # David Kim
+    # David Kim
+    contact: Enum.at(contacts, 3),
     title: "Enterprise Security Assessment",
     days_ago: 21,
     duration: 75,
     transcript_details: %{
       question: "What are your primary security concerns for this deployment?",
-      answer: "We need SOC 2 Type II compliance before we can proceed. Our security team also requires SSO integration with Okta and detailed audit logging for all data access.",
-      followup: "We can definitely support those requirements. What's the timeline for your security review?",
-      response: "Our CISO needs to sign off, which typically takes 4-6 weeks. We'll need your security questionnaire completed and a penetration test report from the last 12 months.",
+      answer:
+        "We need SOC 2 Type II compliance before we can proceed. Our security team also requires SSO integration with Okta and detailed audit logging for all data access.",
+      followup:
+        "We can definitely support those requirements. What's the timeline for your security review?",
+      response:
+        "Our CISO needs to sign off, which typically takes 4-6 weeks. We'll need your security questionnaire completed and a penetration test report from the last 12 months.",
       topic2: "data residency requirements",
-      topic2_response: "All data must stay within US data centers. We have customers in regulated industries - healthcare and finance - so HIPAA and SOX compliance documentation would be helpful too.",
-      contact_info: "Best to go through our procurement team for official communications - procurement@enterprise.com. But you can reach me directly at david.kim@enterprise.com or 408-555-0234 for technical questions."
+      topic2_response:
+        "All data must stay within US data centers. We have customers in regulated industries - healthcare and finance - so HIPAA and SOX compliance documentation would be helpful too.",
+      contact_info:
+        "Best to go through our procurement team for official communications - procurement@enterprise.com. But you can reach me directly at david.kim@enterprise.com or 408-555-0234 for technical questions."
     }
   },
   %{
-    contact: Enum.at(contacts, 4),  # Lisa Thompson
+    # Lisa Thompson
+    contact: Enum.at(contacts, 4),
     title: "Consulting Engagement Kickoff",
     days_ago: 5,
     duration: 30,
     transcript_details: %{
       question: "What are the main goals for this consulting engagement?",
-      answer: "We need help with our go-to-market strategy for the European expansion. Specifically, localization, compliance with GDPR, and building partnerships with local resellers in Germany and France.",
+      answer:
+        "We need help with our go-to-market strategy for the European expansion. Specifically, localization, compliance with GDPR, and building partnerships with local resellers in Germany and France.",
       followup: "What's your current presence in Europe?",
-      response: "Minimal right now - about 50 customers, mostly in the UK. We've got a small sales team in London but no dedicated European operations. Revenue from Europe is about $200K ARR.",
+      response:
+        "Minimal right now - about 50 customers, mostly in the UK. We've got a small sales team in London but no dedicated European operations. Revenue from Europe is about $200K ARR.",
       topic2: "the budget and timeline",
-      topic2_response: "We've allocated $150,000 for the consulting engagement over 6 months. We want to have our German entity set up by Q2 and first local hires by Q3.",
-      contact_info: "My office number is 212-555-0567, but I travel a lot. Best to text my mobile at 917-555-0890 or email lisa.t@consulting.biz. I check emails even on weekends."
+      topic2_response:
+        "We've allocated $150,000 for the consulting engagement over 6 months. We want to have our German entity set up by Q2 and first local hires by Q3.",
+      contact_info:
+        "My office number is 212-555-0567, but I travel a lot. Best to text my mobile at 917-555-0890 or email lisa.t@consulting.biz. I check emails even on weekends."
     }
   },
   %{
-    contact: Enum.at(contacts, 0),  # Sarah Chen - Second meeting
+    # Sarah Chen - Second meeting
+    contact: Enum.at(contacts, 0),
     title: "Follow-up: Mobile App Beta Feedback",
     days_ago: 1,
     duration: 30,
     transcript_details: %{
       question: "How's the beta testing going so far?",
-      answer: "Really well! We've got 500 beta users now and the feedback is mostly positive. Main complaints are around the onboarding flow - it's too long. We're cutting it from 8 screens to 4.",
+      answer:
+        "Really well! We've got 500 beta users now and the feedback is mostly positive. Main complaints are around the onboarding flow - it's too long. We're cutting it from 8 screens to 4.",
       followup: "Any critical bugs?",
-      response: "A few crashes on older Android devices, specifically Samsung Galaxy S9 and earlier. We're prioritizing those fixes. iOS has been rock solid.",
+      response:
+        "A few crashes on older Android devices, specifically Samsung Galaxy S9 and earlier. We're prioritizing those fixes. iOS has been rock solid.",
       topic2: "the launch timeline",
-      topic2_response: "Still on track for March 15th. We'll do a soft launch first - 10% of users - then ramp up over 2 weeks. Marketing has prepared the app store assets and press release.",
-      contact_info: "Same as before - 415-555-0123. Oh, and I changed my email to sarah@techcorp.io - dropped the dot in the middle. Either one works though."
+      topic2_response:
+        "Still on track for March 15th. We'll do a soft launch first - 10% of users - then ramp up over 2 weeks. Marketing has prepared the app store assets and press release.",
+      contact_info:
+        "Same as before - 415-555-0123. Oh, and I changed my email to sarah@techcorp.io - dropped the dot in the middle. Either one works though."
     }
   }
 ]
@@ -320,12 +368,13 @@ Enum.each(meetings_data, fn meeting_data ->
     |> Repo.insert()
 
   # Create Meeting Transcript
-  transcript_content = SeedHelpers.generate_transcript(
-    "You",
-    contact.name,
-    meeting_data.title,
-    meeting_data.transcript_details
-  )
+  transcript_content =
+    SeedHelpers.generate_transcript(
+      "You",
+      contact.name,
+      meeting_data.title,
+      meeting_data.transcript_details
+    )
 
   {:ok, _transcript} =
     %MeetingTranscript{}

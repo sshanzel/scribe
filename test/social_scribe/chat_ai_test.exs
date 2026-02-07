@@ -43,7 +43,8 @@ defmodule SocialScribe.ChatAITest do
     end
 
     test "returns error when mentions is empty" do
-      assert {:error, :no_contact_tagged} = ChatAI.resolve_contact_from_metadata(%{"mentions" => []})
+      assert {:error, :no_contact_tagged} =
+               ChatAI.resolve_contact_from_metadata(%{"mentions" => []})
     end
 
     test "returns error when contact not found" do
@@ -63,18 +64,20 @@ defmodule SocialScribe.ChatAITest do
       contact = contact_fixture(user: user, email: "john@example.com")
 
       # Create a calendar event with attendees that include the contact
-      calendar_event = calendar_event_fixture(
-        user_id: user.id,
-        attendees: [%{"email" => "john@example.com", "name" => "John Doe"}]
-      )
+      calendar_event =
+        calendar_event_fixture(
+          user_id: user.id,
+          attendees: [%{"email" => "john@example.com", "name" => "John Doe"}]
+        )
 
       recall_bot = recall_bot_fixture(calendar_event_id: calendar_event.id, user_id: user.id)
 
-      _meeting = meeting_fixture(
-        calendar_event_id: calendar_event.id,
-        recall_bot_id: recall_bot.id,
-        title: "Meeting with John"
-      )
+      _meeting =
+        meeting_fixture(
+          calendar_event_id: calendar_event.id,
+          recall_bot_id: recall_bot.id,
+          title: "Meeting with John"
+        )
 
       meetings = ChatAI.find_meetings_for_contact(user, contact)
 
@@ -97,11 +100,14 @@ defmodule SocialScribe.ChatAITest do
 
       # Create 12 meetings
       for i <- 1..12 do
-        calendar_event = calendar_event_fixture(
-          user_id: user.id,
-          attendees: [%{"email" => "john@example.com", "name" => "John"}]
-        )
+        calendar_event =
+          calendar_event_fixture(
+            user_id: user.id,
+            attendees: [%{"email" => "john@example.com", "name" => "John"}]
+          )
+
         recall_bot = recall_bot_fixture(calendar_event_id: calendar_event.id, user_id: user.id)
+
         meeting_fixture(
           calendar_event_id: calendar_event.id,
           recall_bot_id: recall_bot.id,
@@ -120,30 +126,38 @@ defmodule SocialScribe.ChatAITest do
       contact = contact_fixture(user: user, email: "john@example.com")
 
       # Create older meeting
-      old_event = calendar_event_fixture(
-        user_id: user.id,
-        attendees: [%{"email" => "john@example.com"}]
-      )
+      old_event =
+        calendar_event_fixture(
+          user_id: user.id,
+          attendees: [%{"email" => "john@example.com"}]
+        )
+
       old_bot = recall_bot_fixture(calendar_event_id: old_event.id, user_id: user.id)
-      _old_meeting = meeting_fixture(
-        calendar_event_id: old_event.id,
-        recall_bot_id: old_bot.id,
-        title: "Old Meeting",
-        recorded_at: DateTime.add(DateTime.utc_now(), -86400, :second)
-      )
+
+      _old_meeting =
+        meeting_fixture(
+          calendar_event_id: old_event.id,
+          recall_bot_id: old_bot.id,
+          title: "Old Meeting",
+          recorded_at: DateTime.add(DateTime.utc_now(), -86400, :second)
+        )
 
       # Create newer meeting
-      new_event = calendar_event_fixture(
-        user_id: user.id,
-        attendees: [%{"email" => "john@example.com"}]
-      )
+      new_event =
+        calendar_event_fixture(
+          user_id: user.id,
+          attendees: [%{"email" => "john@example.com"}]
+        )
+
       new_bot = recall_bot_fixture(calendar_event_id: new_event.id, user_id: user.id)
-      _new_meeting = meeting_fixture(
-        calendar_event_id: new_event.id,
-        recall_bot_id: new_bot.id,
-        title: "New Meeting",
-        recorded_at: DateTime.utc_now()
-      )
+
+      _new_meeting =
+        meeting_fixture(
+          calendar_event_id: new_event.id,
+          recall_bot_id: new_bot.id,
+          title: "New Meeting",
+          recorded_at: DateTime.utc_now()
+        )
 
       meetings = ChatAI.find_meetings_for_contact(user, contact)
 
@@ -157,15 +171,19 @@ defmodule SocialScribe.ChatAITest do
       contact = contact_fixture(user: user1, email: "john@example.com")
 
       # Create meeting for user2
-      calendar_event = calendar_event_fixture(
-        user_id: user2.id,
-        attendees: [%{"email" => "john@example.com"}]
-      )
+      calendar_event =
+        calendar_event_fixture(
+          user_id: user2.id,
+          attendees: [%{"email" => "john@example.com"}]
+        )
+
       recall_bot = recall_bot_fixture(calendar_event_id: calendar_event.id, user_id: user2.id)
-      _meeting = meeting_fixture(
-        calendar_event_id: calendar_event.id,
-        recall_bot_id: recall_bot.id
-      )
+
+      _meeting =
+        meeting_fixture(
+          calendar_event_id: calendar_event.id,
+          recall_bot_id: recall_bot.id
+        )
 
       meetings = ChatAI.find_meetings_for_contact(user1, contact)
 
@@ -190,11 +208,12 @@ defmodule SocialScribe.ChatAITest do
       thread = chat_thread_fixture(user: user)
 
       # Create a user message
-      _msg = chat_message_fixture(
-        thread: thread,
-        role: "user",
-        content: "What did John say about the Q1 budget proposal?"
-      )
+      _msg =
+        chat_message_fixture(
+          thread: thread,
+          role: "user",
+          content: "What did John say about the Q1 budget proposal?"
+        )
 
       # Should return truncated content since no API key configured in test
       assert {:ok, title} = ChatAI.generate_thread_title(thread)

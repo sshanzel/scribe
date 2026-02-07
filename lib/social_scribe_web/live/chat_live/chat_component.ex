@@ -55,8 +55,8 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
       >
         <.icon name="hero-chat-bubble-left-right" class="size-6 text-white" />
       </button>
-
-      <!-- Chat Panel -->
+      
+    <!-- Chat Panel -->
       <div
         :if={@open}
         class="w-96 h-[32rem] bg-white rounded-lg shadow-xl flex flex-col border border-gray-200"
@@ -73,27 +73,19 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
               <.icon name="hero-arrow-left" class="size-5" />
             </button>
             <h3 class="font-semibold text-white">
-              <%= if @current_thread, do: @current_thread.title || "New Chat", else: "Chat" %>
+              {if @current_thread, do: @current_thread.title || "New Chat", else: "Chat"}
             </h3>
           </div>
-          <button
-            phx-click="toggle_chat"
-            phx-target={@myself}
-            class="text-white hover:text-gray-200"
-          >
+          <button phx-click="toggle_chat" phx-target={@myself} class="text-white hover:text-gray-200">
             <.icon name="hero-x-mark" class="size-5" />
           </button>
         </div>
-
-        <!-- Content Area -->
+        
+    <!-- Content Area -->
         <div class="flex-1 overflow-hidden flex flex-col">
           <%= if @current_thread do %>
             <!-- Messages View -->
-            <.messages_view
-              messages={@messages}
-              loading={@loading}
-              myself={@myself}
-            />
+            <.messages_view messages={@messages} loading={@loading} myself={@myself} />
             <!-- Message Input -->
             <.message_input
               message_input={@message_input}
@@ -126,8 +118,8 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
         <.icon name="hero-plus-circle" class="size-5" />
         <span>New Chat</span>
       </button>
-
-      <!-- Thread Items -->
+      
+    <!-- Thread Items -->
       <div :for={thread <- @threads} class="border-b border-gray-100">
         <button
           phx-click="select_thread"
@@ -136,10 +128,10 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
           class="w-full p-4 text-left hover:bg-gray-50"
         >
           <div class="font-medium text-gray-900 truncate">
-            <%= thread.title || "New Chat" %>
+            {thread.title || "New Chat"}
           </div>
           <div class="text-sm text-gray-500">
-            <%= Calendar.strftime(thread.updated_at, "%b %d, %Y") %>
+            {Calendar.strftime(thread.updated_at, "%b %d, %Y")}
           </div>
         </button>
       </div>
@@ -162,10 +154,10 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
       <div :for={message <- @messages} class={message_class(message.role)}>
         <div class={message_bubble_class(message.role)}>
           <div class="prose prose-sm max-w-none">
-            <%= raw(render_markdown(message.content)) %>
+            {raw(render_markdown(message.content))}
           </div>
           <div class="text-xs text-gray-400 mt-1">
-            <%= Calendar.strftime(message.inserted_at, "%H:%M") %>
+            {Calendar.strftime(message.inserted_at, "%H:%M")}
           </div>
         </div>
       </div>
@@ -187,18 +179,14 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
       <div :if={@selected_contact} class="mb-2 flex items-center gap-2">
         <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full flex items-center gap-1">
           <.icon name="hero-user" class="size-3" />
-          <%= @selected_contact.name %>
-          <button
-            phx-click="clear_contact"
-            phx-target={@myself}
-            class="hover:text-indigo-900"
-          >
+          {@selected_contact.name}
+          <button phx-click="clear_contact" phx-target={@myself} class="hover:text-indigo-900">
             <.icon name="hero-x-mark" class="size-3" />
           </button>
         </span>
       </div>
-
-      <!-- Input Area -->
+      
+    <!-- Input Area -->
       <div class="relative">
         <form phx-submit="send_message" phx-target={@myself}>
           <div class="flex gap-2">
@@ -209,12 +197,16 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
                 value={@message_input}
                 phx-keyup="message_input_change"
                 phx-target={@myself}
-                placeholder={if @selected_contact, do: "Ask about #{@selected_contact.name}...", else: "Type @ to mention a contact..."}
+                placeholder={
+                  if @selected_contact,
+                    do: "Ask about #{@selected_contact.name}...",
+                    else: "Type @ to mention a contact..."
+                }
                 class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm"
                 autocomplete="off"
               />
-
-              <!-- Contact Mention Dropdown -->
+              
+    <!-- Contact Mention Dropdown -->
               <div
                 :if={@show_mention_dropdown && length(@contact_results) > 0}
                 class="absolute bottom-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto"
@@ -229,8 +221,8 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
                 >
                   <.icon name="hero-user" class="size-4 text-gray-400" />
                   <div>
-                    <div class="text-sm font-medium text-gray-900"><%= contact.name %></div>
-                    <div class="text-xs text-gray-500"><%= contact.email %></div>
+                    <div class="text-sm font-medium text-gray-900">{contact.name}</div>
+                    <div class="text-xs text-gray-500">{contact.email}</div>
                   </div>
                 </button>
               </div>
@@ -381,7 +373,9 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
           {:ok, _response, _response_metadata} ->
             # Reload messages
             messages = Chat.list_messages(thread)
-            {:ok, updated_thread} = Chat.get_thread_for_user(socket.assigns.current_user, thread.id)
+
+            {:ok, updated_thread} =
+              Chat.get_thread_for_user(socket.assigns.current_user, thread.id)
 
             socket
             |> assign(:messages, messages)

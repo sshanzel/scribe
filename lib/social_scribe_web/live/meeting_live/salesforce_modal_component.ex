@@ -14,10 +14,7 @@ defmodule SocialScribeWeb.MeetingLive.SalesforceModalComponent do
         <h2 id={"#{@modal_id}-title"} class="text-xl font-medium tracking-tight text-slate-900">
           Update in Salesforce
         </h2>
-        <p
-          id={"#{@modal_id}-description"}
-          class="mt-2 text-base font-light leading-7 text-slate-500"
-        >
+        <p id={"#{@modal_id}-description"} class="mt-2 text-base font-light leading-7 text-slate-500">
           Here are suggested updates to sync with your integrations based on this
           <span class="block">meeting</span>
         </p>

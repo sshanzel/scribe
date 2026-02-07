@@ -21,8 +21,16 @@ defmodule SocialScribe.CalendarSyncronizerTest do
       "status" => "confirmed",
       "htmlLink" => "https://calendar.google.com/calendar/event?eid=zoom-event-123",
       "attendees" => [
-        %{"email" => "john@example.com", "displayName" => "John Doe", "responseStatus" => "accepted"},
-        %{"email" => "jane@example.com", "displayName" => "Jane Smith", "responseStatus" => "tentative"}
+        %{
+          "email" => "john@example.com",
+          "displayName" => "John Doe",
+          "responseStatus" => "accepted"
+        },
+        %{
+          "email" => "jane@example.com",
+          "displayName" => "Jane Smith",
+          "responseStatus" => "tentative"
+        }
       ]
     },
     %{
@@ -161,7 +169,11 @@ defmodule SocialScribe.CalendarSyncronizerTest do
         "status" => "confirmed",
         "htmlLink" => "https://calendar.google.com/calendar/event?eid=partial",
         "attendees" => [
-          %{"email" => "valid@example.com", "displayName" => "Valid User", "responseStatus" => "accepted"},
+          %{
+            "email" => "valid@example.com",
+            "displayName" => "Valid User",
+            "responseStatus" => "accepted"
+          },
           %{"displayName" => "No Email User", "responseStatus" => "accepted"},
           %{"email" => nil, "displayName" => "Nil Email User", "responseStatus" => "accepted"}
         ]

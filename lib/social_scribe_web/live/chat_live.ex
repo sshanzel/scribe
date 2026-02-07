@@ -52,8 +52,8 @@ defmodule SocialScribeWeb.ChatLive do
       >
         <.icon name="hero-chat-bubble-left-right" class="size-6 text-white" />
       </button>
-
-      <!-- Chat Panel -->
+      
+    <!-- Chat Panel -->
       <div
         :if={@open}
         class="w-96 h-[32rem] bg-white rounded-lg shadow-xl flex flex-col border border-gray-200"
@@ -69,15 +69,15 @@ defmodule SocialScribeWeb.ChatLive do
               <.icon name="hero-arrow-left" class="size-5" />
             </button>
             <h3 class="font-semibold text-white">
-              <%= if @current_thread, do: @current_thread.title || "New Chat", else: "Chat" %>
+              {if @current_thread, do: @current_thread.title || "New Chat", else: "Chat"}
             </h3>
           </div>
           <button phx-click="toggle_chat" class="text-white hover:text-gray-200">
             <.icon name="hero-x-mark" class="size-5" />
           </button>
         </div>
-
-        <!-- Content Area -->
+        
+    <!-- Content Area -->
         <div class="flex-1 overflow-hidden flex flex-col">
           <%= if @current_thread do %>
             <!-- Messages View -->
@@ -89,10 +89,10 @@ defmodule SocialScribeWeb.ChatLive do
               <div :for={message <- @messages} class={message_class(message.role)}>
                 <div class={message_bubble_class(message.role)}>
                   <div class="prose prose-sm max-w-none">
-                    <%= raw(render_markdown(message.content)) %>
+                    {raw(render_markdown(message.content))}
                   </div>
                   <div class="text-xs mt-1 opacity-70">
-                    <%= Calendar.strftime(message.inserted_at, "%H:%M") %>
+                    {Calendar.strftime(message.inserted_at, "%H:%M")}
                   </div>
                 </div>
               </div>
@@ -103,8 +103,8 @@ defmodule SocialScribeWeb.ChatLive do
                 </div>
               </div>
             </div>
-
-            <!-- Message Input -->
+            
+    <!-- Message Input -->
             <div class="p-4 border-t border-gray-200">
               <div class="flex gap-2">
                 <div class="flex-1 relative">
@@ -117,8 +117,8 @@ defmodule SocialScribeWeb.ChatLive do
                     data-placeholder="Type @ to mention a contact..."
                     class="min-h-[38px] max-h-[120px] overflow-y-auto w-full rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none text-sm px-3 py-2 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
                   ></div>
-
-                  <!-- Contact Mention Dropdown -->
+                  
+    <!-- Contact Mention Dropdown -->
                   <div
                     :if={@show_mention_dropdown && length(@contact_results) > 0}
                     class="absolute bottom-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto z-10"
@@ -131,11 +131,11 @@ defmodule SocialScribeWeb.ChatLive do
                       class="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
                     >
                       <span class="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center text-xs text-indigo-600 font-medium">
-                        <%= String.first(contact.name) %>
+                        {String.first(contact.name)}
                       </span>
                       <div>
-                        <div class="text-sm font-medium text-gray-900"><%= contact.name %></div>
-                        <div class="text-xs text-gray-500"><%= contact.email %></div>
+                        <div class="text-sm font-medium text-gray-900">{contact.name}</div>
+                        <div class="text-xs text-gray-500">{contact.email}</div>
                       </div>
                     </button>
                   </div>
@@ -167,8 +167,8 @@ defmodule SocialScribeWeb.ChatLive do
                 <.icon name="hero-plus-circle" class="size-5" />
                 <span>New Chat</span>
               </button>
-
-              <!-- Thread Items -->
+              
+    <!-- Thread Items -->
               <div :for={thread <- @threads} class="border-b border-gray-100">
                 <button
                   phx-click="select_thread"
@@ -176,10 +176,10 @@ defmodule SocialScribeWeb.ChatLive do
                   class="w-full p-4 text-left hover:bg-gray-50"
                 >
                   <div class="font-medium text-gray-900 truncate">
-                    <%= thread.title || "New Chat" %>
+                    {thread.title || "New Chat"}
                   </div>
                   <div class="text-sm text-gray-500">
-                    <%= Calendar.strftime(thread.updated_at, "%b %d, %Y") %>
+                    {Calendar.strftime(thread.updated_at, "%b %d, %Y")}
                   </div>
                 </button>
               </div>
@@ -332,7 +332,11 @@ defmodule SocialScribeWeb.ChatLive do
   # Fallback for old send_message format (form submission)
   @impl true
   def handle_event("send_message", %{"message" => content}, socket) do
-    handle_event("send_message", %{"message" => content, "mentions" => socket.assigns.mentions}, socket)
+    handle_event(
+      "send_message",
+      %{"message" => content, "mentions" => socket.assigns.mentions},
+      socket
+    )
   end
 
   @impl true

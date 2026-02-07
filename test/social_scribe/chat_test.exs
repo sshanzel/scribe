@@ -21,7 +21,9 @@ defmodule SocialScribe.ChatTest do
     test "creates a thread with title" do
       user = user_fixture()
 
-      assert {:ok, %ChatThread{} = thread} = Chat.create_thread(user, %{title: "Q1 Budget Discussion"})
+      assert {:ok, %ChatThread{} = thread} =
+               Chat.create_thread(user, %{title: "Q1 Budget Discussion"})
+
       assert thread.title == "Q1 Budget Discussion"
     end
   end

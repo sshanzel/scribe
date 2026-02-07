@@ -73,7 +73,10 @@ defmodule SocialScribe.ContactsTest do
   describe "list_contacts/1" do
     test "returns all contacts for a user" do
       user = user_fixture()
-      {:ok, contact1} = Contacts.create_contact(user, %{name: "Alice", email: "alice@example.com"})
+
+      {:ok, contact1} =
+        Contacts.create_contact(user, %{name: "Alice", email: "alice@example.com"})
+
       {:ok, contact2} = Contacts.create_contact(user, %{name: "Bob", email: "bob@example.com"})
 
       contacts = Contacts.list_contacts(user)
@@ -100,7 +103,10 @@ defmodule SocialScribe.ContactsTest do
   describe "search_contacts/2" do
     test "searches by name (case insensitive)" do
       user = user_fixture()
-      {:ok, contact} = Contacts.create_contact(user, %{name: "John Doe", email: "john@example.com"})
+
+      {:ok, contact} =
+        Contacts.create_contact(user, %{name: "John Doe", email: "john@example.com"})
+
       {:ok, _} = Contacts.create_contact(user, %{name: "Jane Smith", email: "jane@example.com"})
 
       results = Contacts.search_contacts(user, "john")
@@ -122,8 +128,12 @@ defmodule SocialScribe.ContactsTest do
 
     test "returns partial matches" do
       user = user_fixture()
-      {:ok, contact1} = Contacts.create_contact(user, %{name: "John Doe", email: "john@example.com"})
-      {:ok, contact2} = Contacts.create_contact(user, %{name: "Johnny Cash", email: "johnny@example.com"})
+
+      {:ok, contact1} =
+        Contacts.create_contact(user, %{name: "John Doe", email: "john@example.com"})
+
+      {:ok, contact2} =
+        Contacts.create_contact(user, %{name: "Johnny Cash", email: "johnny@example.com"})
 
       results = Contacts.search_contacts(user, "john")
 

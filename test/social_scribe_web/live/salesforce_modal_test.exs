@@ -39,7 +39,10 @@ defmodule SocialScribeWeb.SalesforceModalTest do
       assert has_element?(view, "input[placeholder*='Search']")
     end
 
-    test "shows contact search initially without suggestions form", %{conn: conn, meeting: meeting} do
+    test "shows contact search initially without suggestions form", %{
+      conn: conn,
+      meeting: meeting
+    } do
       {:ok, view, _html} = live(conn, ~p"/dashboard/meetings/#{meeting.id}/salesforce")
 
       # Initially, only the contact search is shown, no form for suggestions
