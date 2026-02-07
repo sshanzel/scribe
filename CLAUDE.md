@@ -34,3 +34,61 @@ You are an expert Elixir developer. Below are the guidelines on using Elixir eff
 - Use the pin operator (`^`) to match against existing variable values.
 - Combine pattern matching with recursion for elegant solutions to problems.
 - Test pattern matches thoroughly to ensure correctness.
+
+# Database Migrations
+
+Always use the Ecto generator to create migration files. Never create migration files manually.
+
+```bash
+# Create a new table
+mix ecto.gen.migration create_table_name
+
+# Alter an existing table
+mix ecto.gen.migration add_column_to_table_name
+
+# Remove a column or table
+mix ecto.gen.migration remove_column_from_table_name
+```
+
+**Workflow:**
+1. Run `mix ecto.gen.migration migration_name` to generate the file
+2. Edit the generated file in `priv/repo/migrations/` to add your schema changes
+3. Run `mix ecto.migrate` to apply the migration
+
+**Why use the generator:**
+- Ensures correct timestamp prefix (avoids conflicts)
+- Creates file in the correct location
+- Sets up proper module structure and boilerplate
+
+**For existing databases with data:**
+- Never modify already-applied migrations
+- Generate a NEW migration to alter tables
+- Write `ALTER TABLE` changes to preserve existing data
+
+**Common migration operations:**
+```elixir
+# In the generated migration file:
+
+def change do
+  # Create table
+  create table(:users) do
+    add :name, :string
+    add :email, :string, null: false
+    timestamps()
+  end
+
+  # Add index
+  create unique_index(:users, [:email])
+
+  # Alter table
+  alter table(:users) do
+    add :phone, :string
+    remove :legacy_field
+  end
+
+  # Add foreign key
+  alter table(:posts) do
+    add :user_id, references(:users, on_delete: :delete_all)
+  end
+end
+```
