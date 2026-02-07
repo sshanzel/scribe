@@ -86,13 +86,13 @@ Hooks.MentionInput = {
 
         // Create the mention chip - keep in sync with chat_live.ex mention_chip_html/2
         const chip = document.createElement('span')
-        chip.className = 'mention-chip inline-flex items-center gap-0.5 bg-slate-200 text-slate-700 px-1 py-0.5 rounded-full text-[10px] font-medium mx-0.5'
+        chip.className = 'mention-chip inline-flex items-center gap-1 bg-slate-200 text-slate-700 px-1 py-px rounded-full text-xs font-medium mx-0.5'
         chip.contentEditable = 'false'
         chip.dataset.contactId = contactId
         chip.dataset.name = contactName
         const firstName = contactName.split(' ')[0] || contactName
         chip.innerHTML = `
-            <span class="w-3 h-3 bg-slate-500 rounded-full flex items-center justify-center text-[8px] text-white font-medium">${contactName.charAt(0).toUpperCase()}</span>
+            <span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">${contactName.charAt(0).toUpperCase()}</span>
             <span>${firstName}</span>
         `
 

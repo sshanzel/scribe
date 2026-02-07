@@ -58,7 +58,7 @@ defmodule SocialScribeWeb.ChatLive do
 
       <.drawer id="chat-drawer" open={@open} animate={@animate} on_close="toggle_chat">
         <:header>
-          <h3 class="font-semibold text-slate-800 text-sm">Ask Anything</h3>
+          <h3 class="font-semibold text-slate-800 text-base">Ask Anything</h3>
         </:header>
         <:body>
           <!-- Tab Bar -->
@@ -67,7 +67,7 @@ defmodule SocialScribeWeb.ChatLive do
               <button
                 phx-click="switch_tab"
                 phx-value-tab="chat"
-                class={"px-2.5 py-0.5 text-xs font-medium rounded-full transition-colors " <>
+                class={"px-2.5 py-1 text-sm font-medium rounded-full transition-colors " <>
                   if(@active_tab == :chat,
                     do: "bg-slate-700 text-white",
                     else: "text-slate-600 hover:bg-slate-100"
@@ -78,7 +78,7 @@ defmodule SocialScribeWeb.ChatLive do
               <button
                 phx-click="switch_tab"
                 phx-value-tab="history"
-                class={"px-2.5 py-0.5 text-xs font-medium rounded-full transition-colors " <>
+                class={"px-2.5 py-1 text-sm font-medium rounded-full transition-colors " <>
                   if(@active_tab == :history,
                     do: "bg-slate-700 text-white",
                     else: "text-slate-600 hover:bg-slate-100"
@@ -110,21 +110,21 @@ defmodule SocialScribeWeb.ChatLive do
                   <!-- Welcome message for new/empty threads -->
                   <div :if={@messages == []} class="flex justify-start">
                     <div class="bg-slate-100 text-slate-700 rounded-lg px-3 py-2 max-w-[85%]">
-                      <p class="text-xs">I can answer questions about Jump meetings and data — just ask!</p>
+                      <p class="text-sm">I can answer questions about Jump meetings and data — just ask!</p>
                     </div>
                   </div>
 
                   <!-- Timestamp for first message -->
-                  <div :if={@messages != []} class="text-center text-[10px] text-slate-400 pb-1">
+                  <div :if={@messages != []} class="text-center text-xs text-slate-400 pb-1">
                     {format_thread_timestamp(List.first(@messages).inserted_at)}
                   </div>
 
                   <div :for={message <- @messages} class={message_class(message.role)}>
                     <div class={message_bubble_class(message.role)}>
-                      <div class="text-xs leading-relaxed">
+                      <div class="text-sm leading-relaxed">
                         {raw(render_message_content(message))}
                       </div>
-                      <div class="text-[10px] mt-1 opacity-60">
+                      <div class="text-xs mt-1 opacity-60">
                         {Calendar.strftime(message.inserted_at, "%H:%M")}
                       </div>
                     </div>
@@ -132,7 +132,7 @@ defmodule SocialScribeWeb.ChatLive do
 
                   <div :if={@loading} class="flex justify-start">
                     <div class="bg-slate-100 rounded-lg px-3 py-1.5 text-slate-500">
-                      <span class="animate-pulse text-xs">Thinking...</span>
+                      <span class="animate-pulse text-sm">Thinking...</span>
                     </div>
                   </div>
 
@@ -141,10 +141,10 @@ defmodule SocialScribeWeb.ChatLive do
                       <div class="flex items-start gap-1.5">
                         <.icon name="hero-exclamation-circle" class="size-4 flex-shrink-0 mt-0.5" />
                         <div>
-                          <p class="text-xs">{@error_message}</p>
+                          <p class="text-sm">{@error_message}</p>
                           <button
                             phx-click="dismiss_error"
-                            class="text-[10px] text-red-600 hover:text-red-800 mt-1 underline"
+                            class="text-xs text-red-600 hover:text-red-800 mt-1 underline"
                           >
                             Dismiss
                           </button>
@@ -156,8 +156,8 @@ defmodule SocialScribeWeb.ChatLive do
                   <!-- Empty state when no thread selected -->
                   <div class="flex-1 flex flex-col items-center justify-center text-slate-400 py-6">
                     <.icon name="hero-chat-bubble-left-right" class="size-10 mb-2" />
-                    <p class="text-xs">Start a new conversation</p>
-                    <p class="text-[10px] mt-1">Type @ to mention a contact</p>
+                    <p class="text-sm">Start a new conversation</p>
+                    <p class="text-xs mt-1">Type @ to mention a contact</p>
                   </div>
                 <% end %>
               </div>
@@ -169,9 +169,9 @@ defmodule SocialScribeWeb.ChatLive do
                   <div class="px-2.5 pt-1.5">
                     <button
                       type="button"
-                      class="inline-flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 transition-colors"
+                      class="inline-flex items-center gap-0.5 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 transition-colors"
                     >
-                      <.icon name="hero-at-symbol" class="size-2.5" />
+                      <.icon name="hero-at-symbol" class="size-3" />
                       <span>Add context</span>
                     </button>
                   </div>
@@ -184,29 +184,29 @@ defmodule SocialScribeWeb.ChatLive do
                       phx-update="ignore"
                       contenteditable="true"
                       data-placeholder="Type @ to mention a contact..."
-                      class="min-h-[50px] max-h-[100px] overflow-y-auto w-full focus:outline-none text-xs px-2.5 py-1.5 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
+                      class="min-h-[50px] max-h-[100px] overflow-y-auto w-full focus:outline-none text-sm px-2.5 py-1.5 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
                     ></div>
 
     <!-- Contact Mention Dropdown -->
                     <div
                       :if={@show_mention_dropdown && length(@contact_results) > 0}
-                      class="absolute bottom-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-lg mb-1 max-h-32 overflow-y-auto z-10"
+                      class="absolute bottom-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto z-10"
                     >
                       <button
                         :for={contact <- @contact_results}
                         type="button"
                         phx-click="select_contact"
                         phx-value-id={contact.id}
-                        class="w-full px-2.5 py-1.5 text-left hover:bg-slate-50 flex items-center gap-2"
+                        class="w-full px-2.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2"
                       >
                         <img
-                          src={"https://ui-avatars.com/api/?name=#{URI.encode(contact.name)}&size=20&background=475569&color=fff"}
-                          class="w-5 h-5 rounded-full"
+                          src={"https://ui-avatars.com/api/?name=#{URI.encode(contact.name)}&size=24&background=475569&color=fff"}
+                          class="w-6 h-6 rounded-full"
                           alt={contact.name}
                         />
                         <div>
-                          <div class="text-xs font-medium text-slate-800">{contact.name}</div>
-                          <div class="text-[10px] text-slate-500">{contact.email}</div>
+                          <div class="text-sm font-medium text-slate-800">{contact.name}</div>
+                          <div class="text-xs text-slate-500">{contact.email}</div>
                         </div>
                       </button>
                     </div>
@@ -216,7 +216,7 @@ defmodule SocialScribeWeb.ChatLive do
                   <div class="px-2.5 py-1.5 flex items-center justify-between">
                     <!-- Sources - only show after first AI response -->
                     <div :if={@messages != []} class="flex items-center gap-1.5">
-                      <span class="text-[10px] text-slate-400">Sources</span>
+                      <span class="text-xs text-slate-400">Sources</span>
                       <div class="flex -space-x-1.5">
                         <!-- Jump AI icon -->
                         <div
@@ -271,10 +271,10 @@ defmodule SocialScribeWeb.ChatLive do
                     phx-value-id={thread.id}
                     class="w-full p-3 text-left hover:bg-slate-50 transition-colors"
                   >
-                    <div class="font-medium text-xs text-slate-800 truncate">
+                    <div class="font-medium text-sm text-slate-800 truncate">
                       {thread.title || "New Chat"}
                     </div>
-                    <div class="text-[10px] text-slate-500">
+                    <div class="text-xs text-slate-500">
                       {Calendar.strftime(thread.updated_at, "%b %d, %Y")}
                     </div>
                   </button>
@@ -282,7 +282,7 @@ defmodule SocialScribeWeb.ChatLive do
 
                 <div :if={@threads == []} class="p-6 text-center text-slate-400">
                   <.icon name="hero-inbox" class="size-8 mx-auto mb-2" />
-                  <p class="text-xs">No conversations yet</p>
+                  <p class="text-sm">No conversations yet</p>
                 </div>
               </div>
             <% end %>
@@ -622,7 +622,7 @@ defmodule SocialScribeWeb.ChatLive do
 
   # Shared mention chip HTML - keep in sync with assets/js/hooks.js MentionInput
   defp mention_chip_html(initial, display_name) do
-    ~s(<span class="mention-chip inline-flex items-center gap-0.5 bg-slate-200 text-slate-700 px-1 py-0.5 rounded-full text-[10px] font-medium"><span class="w-3 h-3 bg-slate-500 rounded-full flex items-center justify-center text-[8px] text-white font-medium">#{initial}</span><span>#{display_name}</span></span>)
+    ~s(<span class="mention-chip inline-flex items-center gap-1 bg-slate-200 text-slate-700 px-1 py-px rounded-full text-xs font-medium"><span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">#{initial}</span><span>#{display_name}</span></span>)
   end
 
   defp render_meeting_links(content, []), do: content
