@@ -751,23 +751,16 @@ defmodule SocialScribeWeb.CoreComponents do
         !@full_width && "w-80 max-w-[85vw]"
       ]}>
         <!-- Header -->
-        <div :if={@header != []} class="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
+        <div :if={@header != []} class="flex items-center justify-between px-4 py-3">
           <div class="flex-1">
             {render_slot(@header)}
           </div>
           <button
             phx-click={@on_close}
-            class="text-slate-400 hover:text-slate-600 sm:hidden"
+            class="text-slate-400 hover:text-slate-600"
             title="Close"
           >
             <.icon name="hero-chevron-double-right" class="size-5" />
-          </button>
-          <button
-            phx-click={@on_close}
-            class="hidden sm:block text-slate-400 hover:text-slate-600"
-            title="Close"
-          >
-            <.icon name="hero-x-mark" class="size-5" />
           </button>
         </div>
 
