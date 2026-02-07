@@ -17,7 +17,7 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   alias SocialScribe.Meetings.Meeting
   alias SocialScribe.Calendar.CalendarEventAttendee
 
-  @max_meetings 10
+  @max_meetings Application.compile_env(:social_scribe, :chat_max_meetings, 10)
 
   # =============================================================================
   # Public API

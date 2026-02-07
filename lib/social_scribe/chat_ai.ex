@@ -25,6 +25,18 @@ defmodule SocialScribe.ChatAI do
   @gemini_model "gemini-2.0-flash-lite"
   @gemini_api_base_url "https://generativelanguage.googleapis.com/v1/models"
 
+  # Type definitions
+  @type metadata :: %{optional(String.t()) => term()}
+  @type error_reason ::
+          {:config_error, String.t()}
+          | {:api_error, String.t()}
+          | {:rate_limited, String.t()}
+          | {:service_unavailable, String.t()}
+          | {:http_error, String.t()}
+          | {:parsing_error, String.t(), term()}
+          | :contact_not_found
+          | term()
+
   # =============================================================================
   # Public API
   # =============================================================================
@@ -44,6 +56,8 @@ defmodule SocialScribe.ChatAI do
   Returns {:ok, response_content, response_metadata} or {:error, reason}
   """
   @impl SocialScribe.ChatAIApi
+  @spec generate_response(ChatThread.t(), User.t(), String.t(), metadata()) ::
+          {:ok, String.t(), map()} | {:error, error_reason()}
   def generate_response(%ChatThread{} = thread, %User{} = user, content, metadata)
       when is_binary(content) and is_map(metadata) do
     with {:ok, user_message} <- Chat.create_user_message(thread, content, metadata),
@@ -65,6 +79,7 @@ defmodule SocialScribe.ChatAI do
   Generates a title for a thread based on its messages.
   """
   @impl SocialScribe.ChatAIApi
+  @spec generate_thread_title(ChatThread.t()) :: {:ok, String.t()}
   def generate_thread_title(%ChatThread{} = thread) do
     messages = Chat.list_messages(thread)
 
@@ -94,6 +109,7 @@ defmodule SocialScribe.ChatAI do
 
   Expects metadata with mentions containing contact_id as integer.
   """
+  @spec resolve_contact_from_metadata(map()) :: {:ok, Contact.t() | nil} | {:error, :contact_not_found}
   def resolve_contact_from_metadata(%{"mentions" => [%{"contact_id" => id} | _]})
       when is_integer(id) do
     case Contacts.get_contact(id) do

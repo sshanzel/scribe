@@ -11,7 +11,7 @@ defmodule SocialScribe.SalesforceApi do
 
   require Logger
 
-  @api_version "v59.0"
+  @api_version Application.compile_env(:social_scribe, :salesforce_api_version, "v59.0")
 
   @contact_fields [
     "Id",

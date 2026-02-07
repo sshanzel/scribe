@@ -27,7 +27,11 @@ config :social_scribe, Oban,
 
 config :social_scribe,
   ecto_repos: [SocialScribe.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  # Chat AI settings
+  chat_max_meetings: 10,
+  # Salesforce API settings
+  salesforce_api_version: "v59.0"
 
 # Configures the endpoint
 config :social_scribe, SocialScribeWeb.Endpoint,
