@@ -61,7 +61,7 @@ defmodule SocialScribeWeb.ChatLive do
         </:header>
         <:body>
           <!-- Tab Bar -->
-          <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+          <div class="flex items-center justify-between px-4 py-2">
             <div class="flex gap-1">
               <button
                 phx-click="switch_tab"
@@ -87,6 +87,7 @@ defmodule SocialScribeWeb.ChatLive do
               </button>
             </div>
             <button
+              :if={@messages != []}
               phx-click="new_thread"
               class="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
               title="New chat"
@@ -94,8 +95,8 @@ defmodule SocialScribeWeb.ChatLive do
               <.icon name="hero-plus" class="size-5" />
             </button>
           </div>
-
-          <!-- Content Area -->
+          
+    <!-- Content Area -->
           <div class="flex-1 overflow-hidden flex flex-col">
             <%= if @active_tab == :chat do %>
               <!-- Messages View -->
@@ -105,6 +106,11 @@ defmodule SocialScribeWeb.ChatLive do
                 phx-hook="ScrollToBottom"
               >
                 <%= if @current_thread do %>
+                  <!-- Timestamp for first message -->
+                  <div :if={@messages != []} class="text-center text-xs text-slate-400 pb-2">
+                    {format_thread_timestamp(List.first(@messages).inserted_at)}
+                  </div>
+
                   <div :for={message <- @messages} class={message_class(message.role)}>
                     <div class={message_bubble_class(message.role)}>
                       <div class="prose prose-sm max-w-none prose-slate">
@@ -147,21 +153,33 @@ defmodule SocialScribeWeb.ChatLive do
                   </div>
                 <% end %>
               </div>
-
-              <!-- Message Input -->
-              <div class="p-3 border-t border-slate-100 bg-slate-50">
-                <div class="flex gap-2">
-                  <div class="flex-1 relative">
+              
+              <!-- Message Input Container -->
+              <div class="p-3">
+                <div class="rounded-lg border border-slate-200 bg-white">
+                  <!-- Row 1: Add context button -->
+                  <div class="px-3 pt-2">
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-0.5 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 transition-colors"
+                    >
+                      <.icon name="hero-at-symbol" class="size-3" />
+                      <span>Add context</span>
+                    </button>
+                  </div>
+                  
+    <!-- Row 2: Input field (plain) -->
+                  <div class="relative">
                     <div
                       id="mention-input"
                       phx-hook="MentionInput"
                       phx-update="ignore"
                       contenteditable="true"
                       data-placeholder="Type @ to mention a contact..."
-                      class="min-h-[38px] max-h-[120px] overflow-y-auto w-full rounded-lg border border-slate-200 bg-white focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:outline-none text-sm px-3 py-2 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
+                      class="min-h-[60px] max-h-[120px] overflow-y-auto w-full focus:outline-none text-sm px-3 py-2 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
                     ></div>
-
-                    <!-- Contact Mention Dropdown -->
+                    
+    <!-- Contact Mention Dropdown -->
                     <div
                       :if={@show_mention_dropdown && length(@contact_results) > 0}
                       class="absolute bottom-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto z-10"
@@ -185,16 +203,53 @@ defmodule SocialScribeWeb.ChatLive do
                       </button>
                     </div>
                   </div>
+                  
+                  <!-- Row 3: Sources + Submit button -->
+                  <div class="px-3 py-2 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs text-slate-400">Sources</span>
+                      <div class="flex -space-x-2">
+                        <!-- Jump AI icon -->
+                        <div
+                          class="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center ring-2 ring-white z-40"
+                          title="Jump AI"
+                        >
+                          <.icon name="hero-sparkles" class="size-3 text-white" />
+                        </div>
+                        <!-- Gmail icon -->
+                        <div
+                          class="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center ring-2 ring-white z-30"
+                          title="Gmail"
+                        >
+                          <.icon name="hero-envelope" class="size-3 text-white" />
+                        </div>
+                        <!-- HubSpot icon -->
+                        <div
+                          class="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center ring-2 ring-white z-20"
+                          title="HubSpot"
+                        >
+                          <.icon name="hero-building-office" class="size-3 text-white" />
+                        </div>
+                        <!-- Salesforce icon -->
+                        <div
+                          class="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center ring-2 ring-white z-10"
+                          title="Salesforce"
+                        >
+                          <.icon name="hero-cloud" class="size-3 text-white" />
+                        </div>
+                      </div>
+                    </div>
 
-                  <button
-                    type="button"
-                    id="chat-submit-btn"
-                    phx-click={JS.dispatch("chat:submit", to: "#mention-input")}
-                    disabled={@mentions == [] || @message_input == ""}
-                    class="px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed self-end transition-colors"
-                  >
-                    <.icon name="hero-paper-airplane" class="size-5" />
-                  </button>
+                    <button
+                      type="button"
+                      id="chat-submit-btn"
+                      phx-click={JS.dispatch("chat:submit", to: "#mention-input")}
+                      disabled={@mentions == [] || @message_input == ""}
+                      class="p-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <.icon name="hero-paper-airplane" class="size-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             <% else %>
@@ -475,6 +530,13 @@ defmodule SocialScribeWeb.ChatLive do
 
   defp message_bubble_class(_),
     do: "bg-slate-100 text-slate-800 rounded-lg px-4 py-2 max-w-[80%]"
+
+  defp format_thread_timestamp(datetime) do
+    # Format: "11:17am - November 13, 2025"
+    time = Calendar.strftime(datetime, "%-I:%M%P")
+    date = Calendar.strftime(datetime, "%B %-d, %Y")
+    "#{time} - #{date}"
+  end
 
   defp render_message_content(%{content: content, metadata: metadata, role: "user"}) do
     # For user messages: escape first, then render mentions with avatars
