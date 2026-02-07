@@ -372,15 +372,15 @@ SocialScribeWeb.ChatLive.MessageComponent
   - [x] Auto-create from attendees tests (new contact, existing contact)
 
 ### Step 4: Chat Context
-- [ ] Create Chat context module
-- [ ] Implement thread CRUD
-- [ ] Implement message CRUD with metadata
-- [ ] Add authorization (users own their threads)
-- [ ] **Tests:**
-  - [ ] Thread CRUD tests
-  - [ ] Message CRUD tests with metadata
-  - [ ] Authorization tests (user can only access own threads)
-  - [ ] Cascade delete tests (thread deletion removes messages)
+- [x] Create Chat context module
+- [x] Implement thread CRUD
+- [x] Implement message CRUD with metadata
+- [x] Add authorization (users own their threads)
+- [x] **Tests:**
+  - [x] Thread CRUD tests
+  - [x] Message CRUD tests with metadata
+  - [x] Authorization tests (user can only access own threads)
+  - [x] Cascade delete tests (thread deletion removes messages)
 
 ### Step 5: AI Integration
 - [ ] Create ChatAI module
