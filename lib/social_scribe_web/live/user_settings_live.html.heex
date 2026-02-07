@@ -138,6 +138,59 @@
 
   <div class="bg-white  shadow-xl rounded-lg p-6 md:p-8">
     <h2 class="text-2xl font-semibold mb-6 text-slate-700 ">
+      Connected Salesforce Accounts
+    </h2>
+
+    <%= if not Enum.empty?(@salesforce_accounts) do %>
+      <ul class="space-y-4 mb-8">
+        <li
+          :for={account <- @salesforce_accounts}
+          class="flex justify-between items-center p-4 bg-slate-50  rounded-md shadow"
+        >
+          <div>
+            <p class="font-medium text-slate-700 ">
+              Salesforce Account
+            </p>
+            <p class="text-sm text-slate-500 ">
+              UID: {account.uid}
+              <%= if account.email do %>
+                ({account.email})
+              <% end %>
+            </p>
+          </div>
+        </li>
+      </ul>
+    <% else %>
+      <p class="mb-8 text-slate-600 ">
+        You haven't connected any Salesforce accounts yet.
+      </p>
+    <% end %>
+
+    <div>
+      <.link
+        href={~p"/auth/salesforce"}
+        method="get"
+        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 "
+      >
+        <svg
+          class="-ml-1 mr-3 h-5 w-5"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d="M10.006 5.415a4.195 4.195 0 013.045-1.306c1.56 0 2.954.9 3.69 2.205.63-.3 1.35-.45 2.1-.45 2.85 0 5.159 2.34 5.159 5.22s-2.31 5.22-5.16 5.22h-.195c-.54 1.86-2.235 3.21-4.26 3.21-1.77 0-3.3-1.05-4.005-2.55a4.788 4.788 0 01-.63.045c-2.19 0-3.96-1.8-3.96-4.02 0-.915.3-1.755.81-2.43a4.2 4.2 0 01-.405-1.8c0-2.31 1.845-4.17 4.125-4.17.69 0 1.335.165 1.905.465l-.22.36z"/>
+        </svg>
+        <%= if Enum.empty?(@salesforce_accounts) do %>
+          Connect Salesforce
+        <% else %>
+          Connect another Salesforce Account
+        <% end %>
+      </.link>
+    </div>
+  </div>
+
+  <div class="bg-white  shadow-xl rounded-lg p-6 md:p-8">
+    <h2 class="text-2xl font-semibold mb-6 text-slate-700 ">
       Connected Facebook Account
     </h2>
 
