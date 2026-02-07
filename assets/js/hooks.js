@@ -78,7 +78,6 @@ Hooks.MentionInput = {
     },
 
     insertMentionChip(contactId, contactName) {
-        const selection = window.getSelection()
         const text = this.getTextContent()
 
         // Find the @query to replace (everything from last @ to cursor)
@@ -118,7 +117,6 @@ Hooks.MentionInput = {
             if (atIndex !== -1) {
                 // Split the text node and insert the chip
                 const before = node.textContent.substring(0, atIndex)
-                const after = '' // Remove everything after @ (the query)
 
                 const beforeNode = document.createTextNode(before)
                 const afterNode = document.createTextNode(' ')

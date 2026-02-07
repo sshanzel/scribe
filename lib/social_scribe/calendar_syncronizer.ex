@@ -104,7 +104,12 @@ defmodule SocialScribe.CalendarSyncronizer do
         "response_status" => Map.get(attendee, "responseStatus")
       }
     end)
-    |> Enum.filter(fn attendee -> attendee["email"] != nil end)
+    |> Enum.filter(fn attendee ->
+      case attendee["email"] do
+        email when is_binary(email) -> String.trim(email) != ""
+        _ -> false
+      end
+    end)
   end
 
   defp to_utc_datetime(iso_string) when is_binary(iso_string) do
