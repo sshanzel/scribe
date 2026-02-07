@@ -6,9 +6,16 @@ import Config
 # and secrets from environment variables or elsewhere. Do not define
 # any compile-time configuration in here, as it won't be applied.
 
-# Load .env file in dev/test environments
+# Load .env file in dev/test environments and inject into System env
 if config_env() in [:dev, :test] do
-  Dotenvy.source([".env", ".env.#{config_env()}"])
+  env_files =
+    [".env", ".env.#{config_env()}"]
+    |> Enum.filter(&File.exists?/1)
+
+  if env_files != [] do
+    Dotenvy.source!(env_files)
+    |> Enum.each(fn {key, value} -> System.put_env(key, value) end)
+  end
 end
 
 # ## Using releases
