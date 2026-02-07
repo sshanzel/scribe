@@ -1,4 +1,29 @@
 defmodule SocialScribe.Calendar.CalendarEvent do
+  @moduledoc """
+  Schema for calendar events synced from Google Calendar.
+
+  Represents a calendar event with its metadata including title, description,
+  times, and links. Events are associated with attendees through the
+  `CalendarEventAttendee` join table.
+
+  ## Fields
+
+  - `google_event_id` - The unique identifier from Google Calendar
+  - `summary` - Event title
+  - `description` - Event description
+  - `location` - Event location
+  - `html_link` - Link to view the event in Google Calendar
+  - `hangout_link` - Google Meet link if present
+  - `status` - Event status (confirmed, cancelled, etc.)
+  - `start_time` - Event start time
+  - `end_time` - Event end time
+  - `record_meeting` - Whether to record this meeting
+
+  ## Associations
+
+  - `calendar_event_attendees` - Attendees linked to this event
+  - `contacts` - Contacts attending this event (through attendees)
+  """
   use Ecto.Schema
   import Ecto.Changeset
 

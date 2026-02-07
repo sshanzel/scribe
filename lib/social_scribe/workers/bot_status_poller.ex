@@ -1,4 +1,28 @@
 defmodule SocialScribe.Workers.BotStatusPoller do
+  @moduledoc """
+  Oban worker for polling Recall.ai bot status updates.
+
+  This worker periodically checks the status of pending bots and processes
+  completed recordings. When a bot finishes recording, it fetches the
+  transcript and participants, creates a meeting record, and triggers
+  AI content generation.
+
+  ## Queue Configuration
+
+  - Queue: `:polling`
+  - Max attempts: 3
+
+  ## Processing Flow
+
+  1. List all pending bots from the database
+  2. Poll Recall.ai API for each bot's current status
+  3. Update local bot status if changed
+  4. For completed bots:
+     - Fetch transcript data
+     - Fetch participant data
+     - Create meeting record
+     - Enqueue AI content generation
+  """
   use Oban.Worker, queue: :polling, max_attempts: 3
 
   alias SocialScribe.Bots

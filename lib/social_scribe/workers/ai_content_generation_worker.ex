@@ -1,4 +1,27 @@
 defmodule SocialScribe.Workers.AIContentGenerationWorker do
+  @moduledoc """
+  Oban worker for generating AI content from meeting transcripts.
+
+  This worker processes completed meetings to generate follow-up emails
+  and run user-defined automations. It's triggered by the `BotStatusPoller`
+  when a meeting recording is complete.
+
+  ## Queue Configuration
+
+  - Queue: `:ai_content`
+  - Max attempts: 3
+
+  ## Job Arguments
+
+  - `meeting_id` - The ID of the meeting to process
+
+  ## Processing Steps
+
+  1. Fetch meeting with details (transcript, participants)
+  2. Generate follow-up email using AI
+  3. Process all active user automations
+  4. Store generated content as automation results
+  """
   alias SocialScribe.Meetings.Meeting
   use Oban.Worker, queue: :ai_content, max_attempts: 3
 

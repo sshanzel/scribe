@@ -1,4 +1,21 @@
 defmodule SocialScribe.Automations.AutomationResult do
+  @moduledoc """
+  Schema for storing results of automation execution.
+
+  When an automation is triggered for a meeting, the generated content
+  and status are stored here for review and publishing.
+
+  ## Fields
+
+  - `status` - Current status (e.g., "draft", "published", "generation_failed")
+  - `generated_content` - The AI-generated content
+  - `error_message` - Error details if generation failed
+
+  ## Associations
+
+  - `automation` - The automation that generated this result
+  - `meeting` - The meeting that triggered this result
+  """
   use Ecto.Schema
   import Ecto.Changeset
 

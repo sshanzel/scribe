@@ -1,4 +1,23 @@
 defmodule SocialScribe.Chat.ChatMessage do
+  @moduledoc """
+  Schema for individual messages within a chat thread.
+
+  Messages can be from the user or the AI assistant. They store content
+  and metadata including contact mentions and meeting references.
+
+  ## Fields
+
+  - `role` - Either "user" or "assistant"
+  - `content` - The message text content
+  - `metadata` - JSON field containing mentions and meeting references
+  - `thread_id` - The chat thread this message belongs to
+
+  ## Metadata Structure
+
+  The metadata field can contain:
+  - `mentions` - List of contact mentions with `contact_id`, `name`, `email`
+  - `meeting_refs` - List of meeting references used in the response
+  """
   use Ecto.Schema
   import Ecto.Changeset
 

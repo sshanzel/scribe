@@ -1,4 +1,19 @@
 defmodule SocialScribe.Bots.RecallBot do
+  @moduledoc """
+  Schema for tracking Recall.ai bot instances.
+
+  A RecallBot represents a bot that joins a meeting to record and transcribe it.
+  It tracks the bot's status, the Recall.ai bot ID, and links to the user and
+  calendar event.
+
+  ## Fields
+
+  - `recall_bot_id` - The unique identifier from Recall.ai
+  - `status` - Current bot status (e.g., "pending", "in_meeting", "done")
+  - `meeting_url` - The meeting URL the bot joined
+  - `user_id` - The user who initiated the recording
+  - `calendar_event_id` - The associated calendar event
+  """
   use Ecto.Schema
   import Ecto.Changeset
 
