@@ -2,7 +2,9 @@
 
 Tracked enhancements to implement after core features are complete.
 
-## 1. Extract attendee emails from Google Calendar for CRM auto-matching
+## 1. Extract attendee emails from Google Calendar for CRM auto-matching ✅
+
+> **Status:** Implemented as part of Chat Feature (see `PLAN_CHAT_FEATURE.md` Phase 2)
 
 **Problem:** The Salesforce/HubSpot modal currently searches by participant name only, which is imprecise. Recall.ai only provides participant `name` and `is_host` - no email.
 
@@ -33,13 +35,13 @@ Tracked enhancements to implement after core features are complete.
 **Problem:** When a meeting has multiple participants (e.g., 3 contacts), the user currently has to manually search and update each contact one by one. This is tedious and requires re-opening the modal multiple times.
 
 **Solution:** Allow users to update all meeting participants sequentially without searching:
-1. Pre-match all non-host participants to CRM contacts (using emails from Improvement #1)
+1. Pre-match all non-host participants to CRM contacts (using attendee emails from calendar_events)
 2. Show a list of matched contacts with their suggested updates
 3. Let user step through each contact: review suggestions → apply → next contact
 4. Track which contacts have been updated for this meeting
 
 **Implementation:**
-1. On modal open, match all participants to CRM contacts
+1. On modal open, match all participants to CRM contacts using calendar_event.attendees
 2. Display a contact queue/stepper UI showing all matched contacts
 3. For each contact, show AI suggestions with before/after values
 4. After applying updates, automatically advance to next contact
