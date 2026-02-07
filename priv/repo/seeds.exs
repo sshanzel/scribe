@@ -7,20 +7,8 @@
 
 # Load .env file if it exists (for SEED_USER_EMAIL)
 if File.exists?(".env") do
-  ".env"
-  |> File.read!()
-  |> String.split("\n")
-  |> Enum.each(fn line ->
-    case String.split(line, "=", parts: 2) do
-      [key, value] ->
-        key = key |> String.trim() |> String.replace(~r/^export\s+/, "")
-        value = value |> String.trim() |> String.replace(~r/^["']|["']$/, "")
-        System.put_env(key, value)
-
-      _ ->
-        :ok
-    end
-  end)
+  {:ok, envs} = Dotenvy.source(".env")
+  Enum.each(envs, fn {key, value} -> System.put_env(key, value) end)
 end
 
 alias SocialScribe.Repo
