@@ -64,4 +64,9 @@
       {@inner_content}
     </main>
   </div>
+
+  <!-- Chat Widget -->
+  <%= if assigns[:current_user] do %>
+    <%= live_render(@socket, SocialScribeWeb.ChatLive, id: "chat-widget", sticky: true) %>
+  <% end %>
 </div>

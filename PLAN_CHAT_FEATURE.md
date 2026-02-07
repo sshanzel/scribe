@@ -398,17 +398,17 @@ SocialScribeWeb.ChatLive.MessageComponent
   - [x] generate_thread_title tests
 
 ### Step 6: Basic UI
-- [ ] Create chat bubble component
-- [ ] Create chat panel layout
-- [ ] Create thread list view
-- [ ] Create message list view
-- [ ] Create message input with @mention detection
-- [ ] Wire up to Chat context
-- [ ] **Tests:**
-  - [ ] LiveView mount tests
-  - [ ] Thread list rendering tests
-  - [ ] Message list rendering tests
-  - [ ] Send message event tests
+- [x] Create chat bubble component
+- [x] Create chat panel layout
+- [x] Create thread list view
+- [x] Create message list view
+- [x] Create message input with @mention detection
+- [x] Wire up to Chat context
+- [x] **Tests:**
+  - [x] LiveView mount tests
+  - [x] Thread list rendering tests
+  - [x] Message list rendering tests
+  - [x] Send message event tests
 
 ### Step 7: Contact Mention UX
 - [ ] Create mention dropdown component
