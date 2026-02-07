@@ -134,6 +134,26 @@ This leads to code duplication and maintenance overhead.
 **File modified:**
 - `lib/social_scribe_web/components/layouts/dashboard.html.heex`
 
+### Sidebar navigation causing full page reloads ✅
+
+> **Status:** Resolved
+
+**Problem:** Clicking sidebar links (Home, Meetings, Automations, Settings) caused full page reloads instead of LiveView navigation. This broke the chat widget persistence and caused unnecessary re-renders.
+
+**Cause:** The sidebar component used `href={@href}` instead of `navigate={@href}` for links.
+
+**Solution:** Changed sidebar links to use `navigate` attribute for proper LiveView client-side navigation:
+```elixir
+# Before
+<.link href={@href} class={[...]}>
+
+# After
+<.link navigate={@href} class={[...]}>
+```
+
+**File modified:**
+- `lib/social_scribe_web/components/sidebar.ex`
+
 ---
 
 ## 5. Add pattern matching with guards for type safety
