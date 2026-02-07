@@ -88,9 +88,23 @@ defmodule SocialScribe.CalendarSyncronizer do
       status: Map.get(item, "status"),
       start_time: to_utc_datetime(start_time_str),
       end_time: to_utc_datetime(end_time_str),
+      attendees: parse_attendees(item),
       user_id: user_id,
       user_credential_id: credential_id
     }
+  end
+
+  defp parse_attendees(item) do
+    item
+    |> Map.get("attendees", [])
+    |> Enum.map(fn attendee ->
+      %{
+        "email" => Map.get(attendee, "email"),
+        "name" => Map.get(attendee, "displayName"),
+        "response_status" => Map.get(attendee, "responseStatus")
+      }
+    end)
+    |> Enum.filter(fn attendee -> attendee["email"] != nil end)
   end
 
   defp to_utc_datetime(iso_string) when is_binary(iso_string) do

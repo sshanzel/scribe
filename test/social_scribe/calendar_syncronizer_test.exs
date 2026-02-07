@@ -19,7 +19,11 @@ defmodule SocialScribe.CalendarSyncronizerTest do
       "start" => %{"dateTime" => "2025-05-25T10:00:00-03:00"},
       "end" => %{"dateTime" => "2025-05-25T11:00:00-03:00"},
       "status" => "confirmed",
-      "htmlLink" => "https://calendar.google.com/calendar/event?eid=zoom-event-123"
+      "htmlLink" => "https://calendar.google.com/calendar/event?eid=zoom-event-123",
+      "attendees" => [
+        %{"email" => "john@example.com", "displayName" => "John Doe", "responseStatus" => "accepted"},
+        %{"email" => "jane@example.com", "displayName" => "Jane Smith", "responseStatus" => "tentative"}
+      ]
     },
     %{
       "id" => "meet-event-456",
@@ -102,6 +106,76 @@ defmodule SocialScribe.CalendarSyncronizerTest do
 
       assert Repo.aggregate(CalendarEvent, :count, :id) == 1
       assert Repo.get_by!(CalendarEvent, google_event_id: "zoom-event-123")
+    end
+
+    test "extracts attendees from Google Calendar events" do
+      user = user_fixture()
+
+      _credential =
+        user_credential_fixture(%{
+          provider: "google",
+          user_id: user.id,
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+
+      expect(GoogleApiMock, :list_events, fn _token, _start_time, _end_time, _calendar_id ->
+        {:ok, %{"items" => @mock_google_events}}
+      end)
+
+      assert {:ok, :sync_complete} = CalendarSyncronizer.sync_events_for_user(user)
+
+      # Event with attendees
+      zoom_event = Repo.get_by!(CalendarEvent, google_event_id: "zoom-event-123")
+      assert length(zoom_event.attendees) == 2
+
+      [first_attendee, second_attendee] = zoom_event.attendees
+      assert first_attendee["email"] == "john@example.com"
+      assert first_attendee["name"] == "John Doe"
+      assert first_attendee["response_status"] == "accepted"
+
+      assert second_attendee["email"] == "jane@example.com"
+      assert second_attendee["name"] == "Jane Smith"
+      assert second_attendee["response_status"] == "tentative"
+
+      # Event without attendees
+      meet_event = Repo.get_by!(CalendarEvent, google_event_id: "meet-event-456")
+      assert meet_event.attendees == []
+    end
+
+    test "filters out attendees without email" do
+      user = user_fixture()
+
+      _credential =
+        user_credential_fixture(%{
+          provider: "google",
+          user_id: user.id,
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+
+      event_with_partial_attendees = %{
+        "id" => "partial-attendees-event",
+        "summary" => "Partial Attendees Meeting",
+        "location" => "https://us05web.zoom.us/j/12345",
+        "start" => %{"dateTime" => "2025-05-25T10:00:00-03:00"},
+        "end" => %{"dateTime" => "2025-05-25T11:00:00-03:00"},
+        "status" => "confirmed",
+        "htmlLink" => "https://calendar.google.com/calendar/event?eid=partial",
+        "attendees" => [
+          %{"email" => "valid@example.com", "displayName" => "Valid User", "responseStatus" => "accepted"},
+          %{"displayName" => "No Email User", "responseStatus" => "accepted"},
+          %{"email" => nil, "displayName" => "Nil Email User", "responseStatus" => "accepted"}
+        ]
+      }
+
+      expect(GoogleApiMock, :list_events, fn _token, _start_time, _end_time, _calendar_id ->
+        {:ok, %{"items" => [event_with_partial_attendees]}}
+      end)
+
+      assert {:ok, :sync_complete} = CalendarSyncronizer.sync_events_for_user(user)
+
+      event = Repo.get_by!(CalendarEvent, google_event_id: "partial-attendees-event")
+      assert length(event.attendees) == 1
+      assert Enum.at(event.attendees, 0)["email"] == "valid@example.com"
     end
   end
 end

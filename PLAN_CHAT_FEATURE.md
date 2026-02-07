@@ -341,13 +341,13 @@ SocialScribeWeb.ChatLive.MessageComponent
 > **Note:** Each step includes test coverage. Tests are written alongside implementation, not deferred.
 
 ### Step 1: Calendar Attendees Extraction
-- [ ] Add `attendees` field migration to calendar_events
-- [ ] Update CalendarEvent schema
-- [ ] Update CalendarSyncronizer.parse_google_event/3 to extract attendees
-- [ ] **Tests:**
-  - [ ] CalendarEvent changeset tests for attendees field
-  - [ ] CalendarSyncronizer tests for attendee extraction
-  - [ ] Integration test with mock Google Calendar response
+- [x] Add `attendees` field migration to calendar_events
+- [x] Update CalendarEvent schema
+- [x] Update CalendarSyncronizer.parse_google_event/3 to extract attendees
+- [x] **Tests:**
+  - [x] CalendarEvent changeset tests for attendees field
+  - [x] CalendarSyncronizer tests for attendee extraction
+  - [x] Integration test with mock Google Calendar response
 
 ### Step 2: Database & Schemas
 - [ ] Create contacts migration (lean: id, user_id, name, email)
