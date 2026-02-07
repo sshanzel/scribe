@@ -3,6 +3,7 @@
 #     mix run priv/repo/seeds.exs
 #
 # This seeds realistic meeting data for testing the chat feature.
+# Flow: Salesforce contacts → Calendar events with attendees → Local contacts
 
 alias SocialScribe.Repo
 alias SocialScribe.Accounts.{User, UserCredential}
@@ -10,6 +11,7 @@ alias SocialScribe.Calendar.CalendarEvent
 alias SocialScribe.Bots.RecallBot
 alias SocialScribe.Meetings.{Meeting, MeetingTranscript, MeetingParticipant}
 alias SocialScribe.Contacts.Contact
+alias SocialScribe.SalesforceApi
 
 # =============================================================================
 # Configuration - Update these to match your test environment
@@ -18,13 +20,43 @@ alias SocialScribe.Contacts.Contact
 # The email of the user you're logged in as (check your Google login)
 user_email = System.get_env("SEED_USER_EMAIL") || "test@example.com"
 
-# Sample contacts - these should match emails in your Salesforce/HubSpot
+# Sample contacts - will be created in Salesforce first, then locally
 contacts_data = [
-  %{name: "Sarah Chen", email: "sarah.chen@techcorp.io"},
-  %{name: "Marcus Johnson", email: "marcus.j@innovate.co"},
-  %{name: "Emily Rodriguez", email: "emily.r@startup.dev"},
-  %{name: "David Kim", email: "david.kim@enterprise.com"},
-  %{name: "Lisa Thompson", email: "lisa.t@consulting.biz"}
+  %{
+    first_name: "Sarah",
+    last_name: "Chen",
+    email: "sarah.chen@techcorp.io",
+    phone: "415-555-0123",
+    title: "Head of Product"
+  },
+  %{
+    first_name: "Marcus",
+    last_name: "Johnson",
+    email: "marcus.j@innovate.co",
+    phone: "628-555-0456",
+    title: "VP of Partnerships"
+  },
+  %{
+    first_name: "Emily",
+    last_name: "Rodriguez",
+    email: "emily.r@startup.dev",
+    phone: "510-555-0789",
+    title: "CTO"
+  },
+  %{
+    first_name: "David",
+    last_name: "Kim",
+    email: "david.kim@enterprise.com",
+    phone: "408-555-0234",
+    title: "Security Director"
+  },
+  %{
+    first_name: "Lisa",
+    last_name: "Thompson",
+    email: "lisa.t@consulting.biz",
+    phone: "917-555-0890",
+    title: "Managing Partner"
+  }
 ]
 
 # =============================================================================
@@ -159,31 +191,73 @@ google_credential =
   end
 
 # =============================================================================
-# Create Contacts
+# Find Salesforce Credential
 # =============================================================================
 
-IO.puts("\n📇 Creating contacts...")
+salesforce_credential =
+  case Repo.get_by(UserCredential, user_id: user.id, provider: "salesforce") do
+    nil ->
+      IO.puts("\n⚠️  No Salesforce credential found for user.")
+      IO.puts("   Please connect Salesforce in Settings first, then re-run seeds.")
+      IO.puts("   Skipping Salesforce contact creation...")
+      nil
+
+    cred ->
+      IO.puts("✅ Found Salesforce credential")
+      cred
+  end
+
+# =============================================================================
+# Create Contacts in Salesforce (Source of Truth)
+# =============================================================================
 
 contacts =
-  Enum.map(contacts_data, fn contact_attrs ->
-    case Repo.get_by(Contact, user_id: user.id, email: contact_attrs.email) do
-      nil ->
-        {:ok, contact} =
-          %Contact{}
-          |> Contact.changeset(Map.put(contact_attrs, :user_id, user.id))
-          |> Repo.insert()
+  if salesforce_credential do
+    IO.puts("\n☁️  Creating contacts in Salesforce...")
 
-        IO.puts("  ✅ Created contact: #{contact.name} <#{contact.email}>")
-        contact
+    Enum.map(contacts_data, fn contact_attrs ->
+      full_name = "#{contact_attrs.first_name} #{contact_attrs.last_name}"
 
-      existing ->
-        IO.puts("  ⏭️  Contact exists: #{existing.name} <#{existing.email}>")
-        existing
-    end
-  end)
+      # First check if contact already exists by email
+      case SalesforceApi.search_contacts(salesforce_credential, contact_attrs.email) do
+        {:ok, [existing | _]} ->
+          IO.puts("  ⏭️  Already exists in Salesforce: #{full_name} <#{contact_attrs.email}>")
+          Map.merge(contact_attrs, %{name: full_name, salesforce_id: existing.id})
+
+        {:ok, []} ->
+          # Contact doesn't exist, create it
+          salesforce_data = %{
+            "FirstName" => contact_attrs.first_name,
+            "LastName" => contact_attrs.last_name,
+            "Email" => contact_attrs.email,
+            "Phone" => contact_attrs.phone,
+            "Title" => contact_attrs.title
+          }
+
+          case SalesforceApi.create_contact(salesforce_credential, salesforce_data) do
+            {:ok, sf_contact} ->
+              IO.puts("  ✅ Created in Salesforce: #{full_name} <#{contact_attrs.email}>")
+              Map.merge(contact_attrs, %{name: full_name, salesforce_id: sf_contact.id})
+
+            {:error, reason} ->
+              IO.puts("  ❌ Failed to create in Salesforce: #{full_name} - #{inspect(reason)}")
+              Map.put(contact_attrs, :name, full_name)
+          end
+
+        {:error, reason} ->
+          IO.puts("  ⚠️  Could not search Salesforce: #{inspect(reason)}")
+          Map.put(contact_attrs, :name, full_name)
+      end
+    end)
+  else
+    # No Salesforce credential - just use local data
+    Enum.map(contacts_data, fn contact_attrs ->
+      Map.put(contact_attrs, :name, "#{contact_attrs.first_name} #{contact_attrs.last_name}")
+    end)
+  end
 
 # =============================================================================
-# Meeting Data
+# Meeting Data (references Salesforce contacts by index)
 # =============================================================================
 
 meetings_data = [
@@ -318,6 +392,8 @@ IO.puts("\n📅 Creating meetings with transcripts...")
 
 Enum.each(meetings_data, fn meeting_data ->
   contact = meeting_data.contact
+  contact_name = contact[:name]
+  contact_email = contact[:email]
   start_time = DateTime.add(DateTime.utc_now(), -meeting_data.days_ago, :day)
   end_time = DateTime.add(start_time, meeting_data.duration, :minute)
 
@@ -327,7 +403,7 @@ Enum.each(meetings_data, fn meeting_data ->
     |> CalendarEvent.changeset(%{
       google_event_id: "seed_event_#{:rand.uniform(1_000_000)}",
       summary: meeting_data.title,
-      description: "Meeting with #{contact.name}",
+      description: "Meeting with #{contact_name}",
       html_link: "https://calendar.google.com/calendar/event?eid=seed",
       hangout_link: "https://meet.google.com/abc-defg-hij",
       status: "confirmed",
@@ -336,7 +412,7 @@ Enum.each(meetings_data, fn meeting_data ->
       record_meeting: true,
       attendees: [
         %{"email" => user_email, "displayName" => "You", "responseStatus" => "accepted"},
-        %{"email" => contact.email, "displayName" => contact.name, "responseStatus" => "accepted"}
+        %{"email" => contact_email, "displayName" => contact_name, "responseStatus" => "accepted"}
       ],
       user_id: user.id,
       user_credential_id: google_credential.id
@@ -371,7 +447,7 @@ Enum.each(meetings_data, fn meeting_data ->
   transcript_content =
     SeedHelpers.generate_transcript(
       "You",
-      contact.name,
+      contact_name,
       meeting_data.title,
       meeting_data.transcript_details
     )
@@ -400,7 +476,7 @@ Enum.each(meetings_data, fn meeting_data ->
     %MeetingParticipant{}
     |> MeetingParticipant.changeset(%{
       recall_participant_id: "seed_participant_guest_#{:rand.uniform(1_000_000)}",
-      name: contact.name,
+      name: contact_name,
       is_host: false,
       meeting_id: meeting.id
     })
@@ -410,6 +486,35 @@ Enum.each(meetings_data, fn meeting_data ->
 end)
 
 # =============================================================================
+# Create Local Contacts (from Salesforce data)
+# =============================================================================
+
+IO.puts("\n👥 Creating local contacts...")
+
+local_contacts =
+  Enum.map(contacts, fn contact ->
+    # Check if contact already exists locally
+    case Repo.get_by(Contact, email: contact[:email], user_id: user.id) do
+      nil ->
+        {:ok, local_contact} =
+          %Contact{}
+          |> Contact.changeset(%{
+            name: contact[:name],
+            email: contact[:email],
+            user_id: user.id
+          })
+          |> Repo.insert()
+
+        IO.puts("  ✅ Created local contact: #{contact[:name]}")
+        local_contact
+
+      existing ->
+        IO.puts("  ⏭️  Already exists locally: #{contact[:name]}")
+        existing
+    end
+  end)
+
+# =============================================================================
 # Summary
 # =============================================================================
 
@@ -417,8 +522,10 @@ IO.puts("\n" <> String.duplicate("=", 60))
 IO.puts("🎉 Seed data created successfully!")
 IO.puts(String.duplicate("=", 60))
 IO.puts("\nCreated:")
-IO.puts("  • #{length(contacts)} contacts")
+IO.puts("  • #{length(contacts)} contacts in Salesforce")
 IO.puts("  • #{length(meetings_data)} meetings with transcripts")
+IO.puts("  • #{length(local_contacts)} local contacts")
+
 IO.puts("\nTo test the chat feature:")
 IO.puts("  1. Open the chat bubble in the dashboard")
 IO.puts("  2. Start a new chat")
