@@ -2,6 +2,8 @@ defmodule SocialScribe.Calendar.CalendarEvent do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias SocialScribe.Calendar.CalendarEventAttendee
+
   schema "calendar_events" do
     field :status, :string
     field :description, :string
@@ -13,9 +15,11 @@ defmodule SocialScribe.Calendar.CalendarEvent do
     field :start_time, :utc_datetime
     field :end_time, :utc_datetime
     field :record_meeting, :boolean, default: false
-    field :attendees, {:array, :map}, default: []
     field :user_id, :id
     field :user_credential_id, :id
+
+    has_many :calendar_event_attendees, CalendarEventAttendee
+    has_many :contacts, through: [:calendar_event_attendees, :contact]
 
     timestamps(type: :utc_datetime)
   end
@@ -34,7 +38,6 @@ defmodule SocialScribe.Calendar.CalendarEvent do
       :start_time,
       :end_time,
       :record_meeting,
-      :attendees,
       :user_id,
       :user_credential_id
     ])

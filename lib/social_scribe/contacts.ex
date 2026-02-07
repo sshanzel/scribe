@@ -1,28 +1,26 @@
 defmodule SocialScribe.Contacts do
   @moduledoc """
-  The Contacts context for managing user contacts.
+  The Contacts context for managing contacts.
 
-  Contacts are used for tagging in chat messages and matching with CRM data.
+  Contacts are shared globally (one record per email) and are linked to users
+  through their calendar events. A user can only see contacts that appear in
+  their calendar events.
   """
 
   import Ecto.Query, warn: false
 
   alias SocialScribe.Repo
   alias SocialScribe.Contacts.Contact
+  alias SocialScribe.Calendar.CalendarEvent
+  alias SocialScribe.Calendar.CalendarEventAttendee
   alias SocialScribe.Accounts.User
 
   @doc """
-  Creates a new contact for a user.
+  Creates a new contact or returns existing one if email already exists.
   """
-  def create_contact(%User{} = user, attrs) do
+  def create_contact(attrs) do
     %Contact{}
-    |> Contact.changeset(Map.put(attrs, :user_id, user.id))
-    |> Repo.insert()
-  end
-
-  def create_contact(user_id, attrs) when is_integer(user_id) do
-    %Contact{}
-    |> Contact.changeset(Map.put(attrs, :user_id, user_id))
+    |> Contact.changeset(attrs)
     |> Repo.insert()
   end
 
@@ -55,79 +53,114 @@ defmodule SocialScribe.Contacts do
   def get_contact(id), do: Repo.get(Contact, id)
 
   @doc """
-  Lists all contacts for a user.
+  Gets a contact by email.
+
+  Returns nil if not found.
+  """
+  def get_contact_by_email(email) when is_binary(email) do
+    email = String.downcase(email)
+
+    Contact
+    |> where([c], c.email == ^email)
+    |> Repo.one()
+  end
+
+  def get_contact_by_email(_), do: nil
+
+  @doc """
+  Lists all contacts visible to a user.
+
+  A user can only see contacts that appear in their calendar events.
   """
   def list_contacts(%User{id: user_id}), do: list_contacts(user_id)
 
   def list_contacts(user_id) when is_integer(user_id) do
-    Contact
-    |> where([c], c.user_id == ^user_id)
-    |> order_by([c], asc: c.name)
+    from(c in Contact,
+      join: cea in CalendarEventAttendee, on: cea.contact_id == c.id,
+      join: ce in CalendarEvent, on: ce.id == cea.calendar_event_id,
+      where: ce.user_id == ^user_id,
+      distinct: c.id,
+      order_by: [asc: c.name]
+    )
     |> Repo.all()
   end
 
   @doc """
   Searches contacts by name or email for autocomplete.
 
-  Returns contacts matching the query string (case-insensitive).
+  Returns contacts matching the query string (case-insensitive) that appear
+  in the user's calendar events.
   """
   def search_contacts(%User{id: user_id}, query), do: search_contacts(user_id, query)
 
   def search_contacts(user_id, query) when is_integer(user_id) and is_binary(query) do
     search_term = "%#{query}%"
 
-    Contact
-    |> where([c], c.user_id == ^user_id)
-    |> where([c], ilike(c.name, ^search_term) or ilike(c.email, ^search_term))
-    |> order_by([c], asc: c.name)
-    |> limit(10)
+    from(c in Contact,
+      join: cea in CalendarEventAttendee, on: cea.contact_id == c.id,
+      join: ce in CalendarEvent, on: ce.id == cea.calendar_event_id,
+      where: ce.user_id == ^user_id,
+      where: ilike(c.name, ^search_term) or ilike(c.email, ^search_term),
+      distinct: c.id,
+      order_by: [asc: c.name],
+      limit: 10
+    )
     |> Repo.all()
   end
 
   def search_contacts(_user_id, _query), do: []
 
   @doc """
-  Gets a contact by email for a specific user.
+  Finds or creates a contact by email.
 
-  Returns nil if not found.
-  """
-  def get_contact_by_email(%User{id: user_id}, email), do: get_contact_by_email(user_id, email)
-
-  def get_contact_by_email(user_id, email) when is_integer(user_id) and is_binary(email) do
-    Contact
-    |> where([c], c.user_id == ^user_id and c.email == ^email)
-    |> Repo.one()
-  end
-
-  def get_contact_by_email(_user_id, _email), do: nil
-
-  @doc """
-  Finds or creates a contact by email for a user.
-
-  If a contact with the email exists, returns it.
+  If a contact with the email exists, returns it (optionally updating the name).
   Otherwise, creates a new contact with the given attributes.
   """
-  def find_or_create_contact(%User{} = user, %{email: email} = attrs) when is_binary(email) do
-    case get_contact_by_email(user, email) do
-      nil -> create_contact(user, attrs)
-      contact -> {:ok, contact}
+  def find_or_create_contact(%{email: email} = attrs) when is_binary(email) do
+    email = String.downcase(email)
+
+    case get_contact_by_email(email) do
+      nil ->
+        create_contact(attrs)
+
+      %Contact{} = contact ->
+        # Optionally update name if provided and current name is empty
+        if attrs[:name] && (is_nil(contact.name) || contact.name == "") do
+          update_contact(contact, %{name: attrs[:name]})
+        else
+          {:ok, contact}
+        end
     end
   end
 
-  def find_or_create_contact(%User{} = user, %{"email" => email} = attrs) when is_binary(email) do
-    find_or_create_contact(user, %{
+  def find_or_create_contact(%{"email" => email} = attrs) when is_binary(email) do
+    find_or_create_contact(%{
       email: email,
       name: Map.get(attrs, "name")
     })
   end
 
-  @doc """
-  Creates contacts from calendar event attendees.
+  def find_or_create_contact(_), do: {:error, :invalid_attrs}
 
-  For each attendee with an email, finds or creates a contact.
-  Returns a list of contacts.
+  @doc """
+  Creates a calendar event attendee record linking a contact to an event.
   """
-  def create_contacts_from_attendees(%User{} = user, attendees) when is_list(attendees) do
+  def create_calendar_event_attendee(attrs) do
+    %CalendarEventAttendee{}
+    |> CalendarEventAttendee.changeset(attrs)
+    |> Repo.insert(on_conflict: :nothing)
+  end
+
+  @doc """
+  Creates contacts and attendee records from calendar event attendees data.
+
+  For each attendee with an email:
+  1. Find or create a contact
+  2. Create a calendar_event_attendee record linking them
+
+  Returns a list of created attendee records.
+  """
+  def create_attendees_from_event_data(calendar_event_id, attendees) when is_list(attendees) do
     attendees
     |> Enum.filter(fn attendee ->
       email = Map.get(attendee, "email") || Map.get(attendee, :email)
@@ -135,15 +168,26 @@ defmodule SocialScribe.Contacts do
     end)
     |> Enum.map(fn attendee ->
       email = Map.get(attendee, "email") || Map.get(attendee, :email)
-      name = Map.get(attendee, "name") || Map.get(attendee, :name)
+      display_name = Map.get(attendee, "displayName") || Map.get(attendee, :displayName)
+      response_status = Map.get(attendee, "responseStatus") || Map.get(attendee, :responseStatus)
+      is_organizer = Map.get(attendee, "organizer") == true || Map.get(attendee, :organizer) == true
 
-      case find_or_create_contact(user, %{email: email, name: name}) do
-        {:ok, contact} -> contact
+      with {:ok, contact} <- find_or_create_contact(%{email: email, name: display_name}),
+           {:ok, attendee_record} <-
+             create_calendar_event_attendee(%{
+               calendar_event_id: calendar_event_id,
+               contact_id: contact.id,
+               display_name: display_name,
+               response_status: response_status,
+               is_organizer: is_organizer
+             }) do
+        attendee_record
+      else
         {:error, _} -> nil
       end
     end)
     |> Enum.reject(&is_nil/1)
   end
 
-  def create_contacts_from_attendees(_user, _attendees), do: []
+  def create_attendees_from_event_data(_calendar_event_id, _attendees), do: []
 end

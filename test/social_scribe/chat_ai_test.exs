@@ -10,6 +10,7 @@ defmodule SocialScribe.ChatAITest do
   import SocialScribe.BotsFixtures
 
   alias SocialScribe.ChatAI
+  alias SocialScribe.Contacts
 
   setup :verify_on_exit!
 
@@ -19,8 +20,7 @@ defmodule SocialScribe.ChatAITest do
 
   describe "resolve_contact_from_metadata/1" do
     test "resolves contact from metadata with string keys" do
-      user = user_fixture()
-      contact = contact_fixture(user: user)
+      contact = contact_fixture()
 
       metadata = %{"mentions" => [%{"contact_id" => contact.id, "name" => contact.name}]}
 
@@ -29,8 +29,7 @@ defmodule SocialScribe.ChatAITest do
     end
 
     test "resolves contact from metadata with atom keys" do
-      user = user_fixture()
-      contact = contact_fixture(user: user)
+      contact = contact_fixture()
 
       metadata = %{mentions: [%{contact_id: contact.id, name: contact.name}]}
 
@@ -59,17 +58,24 @@ defmodule SocialScribe.ChatAITest do
   # =============================================================================
 
   describe "find_meetings_for_contact/2" do
-    test "finds meetings where contact email is in attendees" do
+    test "finds meetings where contact is linked via calendar event attendee" do
       user = user_fixture()
-      contact = contact_fixture(user: user, email: "john@example.com")
 
-      # Create a calendar event with attendees that include the contact
-      calendar_event =
-        calendar_event_fixture(
-          user_id: user.id,
-          attendees: [%{"email" => "john@example.com", "name" => "John Doe"}]
-        )
+      # Create a contact
+      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: "john@example.com"})
 
+      # Create a calendar event for the user
+      calendar_event = calendar_event_fixture(user_id: user.id)
+
+      # Link the contact to the calendar event
+      {:ok, _attendee} =
+        Contacts.create_calendar_event_attendee(%{
+          calendar_event_id: calendar_event.id,
+          contact_id: contact.id,
+          display_name: "John Doe"
+        })
+
+      # Create a meeting for that calendar event
       recall_bot = recall_bot_fixture(calendar_event_id: calendar_event.id, user_id: user.id)
 
       _meeting =
@@ -87,7 +93,7 @@ defmodule SocialScribe.ChatAITest do
 
     test "returns empty list when no meetings with contact" do
       user = user_fixture()
-      contact = contact_fixture(user: user, email: "unknown@example.com")
+      contact = contact_fixture(email: "unknown@example.com")
 
       meetings = ChatAI.find_meetings_for_contact(user, contact)
 
@@ -96,15 +102,18 @@ defmodule SocialScribe.ChatAITest do
 
     test "limits to 10 most recent meetings" do
       user = user_fixture()
-      contact = contact_fixture(user: user, email: "john@example.com")
+      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: "john@example.com"})
 
       # Create 12 meetings
       for i <- 1..12 do
-        calendar_event =
-          calendar_event_fixture(
-            user_id: user.id,
-            attendees: [%{"email" => "john@example.com", "name" => "John"}]
-          )
+        calendar_event = calendar_event_fixture(user_id: user.id)
+
+        {:ok, _attendee} =
+          Contacts.create_calendar_event_attendee(%{
+            calendar_event_id: calendar_event.id,
+            contact_id: contact.id,
+            display_name: "John Doe"
+          })
 
         recall_bot = recall_bot_fixture(calendar_event_id: calendar_event.id, user_id: user.id)
 
@@ -123,14 +132,17 @@ defmodule SocialScribe.ChatAITest do
 
     test "orders meetings by most recent first" do
       user = user_fixture()
-      contact = contact_fixture(user: user, email: "john@example.com")
+      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: "john@example.com"})
 
       # Create older meeting
-      old_event =
-        calendar_event_fixture(
-          user_id: user.id,
-          attendees: [%{"email" => "john@example.com"}]
-        )
+      old_event = calendar_event_fixture(user_id: user.id)
+
+      {:ok, _} =
+        Contacts.create_calendar_event_attendee(%{
+          calendar_event_id: old_event.id,
+          contact_id: contact.id,
+          display_name: "John Doe"
+        })
 
       old_bot = recall_bot_fixture(calendar_event_id: old_event.id, user_id: user.id)
 
@@ -143,11 +155,14 @@ defmodule SocialScribe.ChatAITest do
         )
 
       # Create newer meeting
-      new_event =
-        calendar_event_fixture(
-          user_id: user.id,
-          attendees: [%{"email" => "john@example.com"}]
-        )
+      new_event = calendar_event_fixture(user_id: user.id)
+
+      {:ok, _} =
+        Contacts.create_calendar_event_attendee(%{
+          calendar_event_id: new_event.id,
+          contact_id: contact.id,
+          display_name: "John Doe"
+        })
 
       new_bot = recall_bot_fixture(calendar_event_id: new_event.id, user_id: user.id)
 
@@ -168,14 +183,17 @@ defmodule SocialScribe.ChatAITest do
     test "does not return meetings from other users" do
       user1 = user_fixture()
       user2 = user_fixture()
-      contact = contact_fixture(user: user1, email: "john@example.com")
+      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: "john@example.com"})
 
-      # Create meeting for user2
-      calendar_event =
-        calendar_event_fixture(
-          user_id: user2.id,
-          attendees: [%{"email" => "john@example.com"}]
-        )
+      # Create meeting for user2 with the same contact
+      calendar_event = calendar_event_fixture(user_id: user2.id)
+
+      {:ok, _} =
+        Contacts.create_calendar_event_attendee(%{
+          calendar_event_id: calendar_event.id,
+          contact_id: contact.id,
+          display_name: "John Doe"
+        })
 
       recall_bot = recall_bot_fixture(calendar_event_id: calendar_event.id, user_id: user2.id)
 
@@ -185,9 +203,64 @@ defmodule SocialScribe.ChatAITest do
           recall_bot_id: recall_bot.id
         )
 
+      # user1 should not see user2's meetings
       meetings = ChatAI.find_meetings_for_contact(user1, contact)
 
       assert meetings == []
+    end
+
+    test "both users see only their own meetings with shared contact" do
+      user1 = user_fixture()
+      user2 = user_fixture()
+      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: "john@example.com"})
+
+      # User1's meeting with John
+      event1 = calendar_event_fixture(user_id: user1.id)
+
+      {:ok, _} =
+        Contacts.create_calendar_event_attendee(%{
+          calendar_event_id: event1.id,
+          contact_id: contact.id,
+          display_name: "John Doe"
+        })
+
+      bot1 = recall_bot_fixture(calendar_event_id: event1.id, user_id: user1.id)
+
+      _meeting1 =
+        meeting_fixture(
+          calendar_event_id: event1.id,
+          recall_bot_id: bot1.id,
+          title: "User1's Meeting with John"
+        )
+
+      # User2's meeting with the same contact
+      event2 = calendar_event_fixture(user_id: user2.id)
+
+      {:ok, _} =
+        Contacts.create_calendar_event_attendee(%{
+          calendar_event_id: event2.id,
+          contact_id: contact.id,
+          display_name: "John Doe"
+        })
+
+      bot2 = recall_bot_fixture(calendar_event_id: event2.id, user_id: user2.id)
+
+      _meeting2 =
+        meeting_fixture(
+          calendar_event_id: event2.id,
+          recall_bot_id: bot2.id,
+          title: "User2's Meeting with John"
+        )
+
+      # Each user should only see their own meeting
+      user1_meetings = ChatAI.find_meetings_for_contact(user1, contact)
+      user2_meetings = ChatAI.find_meetings_for_contact(user2, contact)
+
+      assert length(user1_meetings) == 1
+      assert hd(user1_meetings).title == "User1's Meeting with John"
+
+      assert length(user2_meetings) == 1
+      assert hd(user2_meetings).title == "User2's Meeting with John"
     end
   end
 

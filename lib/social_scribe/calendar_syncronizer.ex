@@ -7,6 +7,7 @@ defmodule SocialScribe.CalendarSyncronizer do
 
   alias SocialScribe.GoogleCalendarApi
   alias SocialScribe.Calendar
+  alias SocialScribe.Contacts
   alias SocialScribe.Accounts
   alias SocialScribe.Accounts.UserCredential
   alias SocialScribe.TokenRefresherApi
@@ -67,7 +68,16 @@ defmodule SocialScribe.CalendarSyncronizer do
     Enum.each(items, fn item ->
       # We only sync meetings that have a zoom or google meet link for now
       if String.contains?(Map.get(item, "location", ""), ".zoom.") || Map.get(item, "hangoutLink") do
-        Calendar.create_or_update_calendar_event(parse_google_event(item, user_id, credential_id))
+        {event_attrs, attendees} = parse_google_event(item, user_id, credential_id)
+
+        case Calendar.create_or_update_calendar_event(event_attrs) do
+          {:ok, calendar_event} ->
+            # Create attendee records linking contacts to this event
+            Contacts.create_attendees_from_event_data(calendar_event.id, attendees)
+
+          {:error, reason} ->
+            Logger.warning("Failed to create/update event #{item["id"]}: #{inspect(reason)}")
+        end
       end
     end)
 
@@ -78,7 +88,7 @@ defmodule SocialScribe.CalendarSyncronizer do
     start_time_str = Map.get(item["start"], "dateTime", Map.get(item["start"], "date"))
     end_time_str = Map.get(item["end"], "dateTime", Map.get(item["end"], "date"))
 
-    %{
+    event_attrs = %{
       google_event_id: item["id"],
       summary: Map.get(item, "summary", "No Title"),
       description: Map.get(item, "description"),
@@ -88,10 +98,13 @@ defmodule SocialScribe.CalendarSyncronizer do
       status: Map.get(item, "status"),
       start_time: to_utc_datetime(start_time_str),
       end_time: to_utc_datetime(end_time_str),
-      attendees: parse_attendees(item),
       user_id: user_id,
       user_credential_id: credential_id
     }
+
+    attendees = parse_attendees(item)
+
+    {event_attrs, attendees}
   end
 
   defp parse_attendees(item) do
@@ -100,8 +113,9 @@ defmodule SocialScribe.CalendarSyncronizer do
     |> Enum.map(fn attendee ->
       %{
         "email" => Map.get(attendee, "email"),
-        "name" => Map.get(attendee, "displayName"),
-        "response_status" => Map.get(attendee, "responseStatus")
+        "displayName" => Map.get(attendee, "displayName"),
+        "responseStatus" => Map.get(attendee, "responseStatus"),
+        "organizer" => Map.get(attendee, "organizer", false)
       }
     end)
     |> Enum.filter(fn attendee ->

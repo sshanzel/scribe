@@ -190,54 +190,5 @@ defmodule SocialScribe.CalendarTest do
       assert Calendar.get_calendar_event!(calendar_event.id).summary == "some updated summary"
     end
 
-    test "create_calendar_event/1 with attendees stores the attendees list" do
-      user = user_fixture()
-      user_credential = user_credential_fixture(%{user_id: user.id})
-
-      attendees = [
-        %{"email" => "john@example.com", "name" => "John Doe", "response_status" => "accepted"},
-        %{"email" => "jane@example.com", "name" => "Jane Smith", "response_status" => "tentative"}
-      ]
-
-      valid_attrs = %{
-        status: "confirmed",
-        google_event_id: "event-with-attendees",
-        summary: "Team Meeting",
-        html_link: "https://calendar.google.com/event",
-        start_time: ~U[2025-05-23 19:00:00Z],
-        end_time: ~U[2025-05-23 20:00:00Z],
-        attendees: attendees,
-        user_id: user.id,
-        user_credential_id: user_credential.id
-      }
-
-      assert {:ok, %CalendarEvent{} = calendar_event} =
-               Calendar.create_calendar_event(valid_attrs)
-
-      assert length(calendar_event.attendees) == 2
-      assert Enum.at(calendar_event.attendees, 0)["email"] == "john@example.com"
-      assert Enum.at(calendar_event.attendees, 1)["name"] == "Jane Smith"
-    end
-
-    test "create_calendar_event/1 without attendees defaults to empty list" do
-      user = user_fixture()
-      user_credential = user_credential_fixture(%{user_id: user.id})
-
-      valid_attrs = %{
-        status: "confirmed",
-        google_event_id: "event-no-attendees",
-        summary: "Solo Meeting",
-        html_link: "https://calendar.google.com/event",
-        start_time: ~U[2025-05-23 19:00:00Z],
-        end_time: ~U[2025-05-23 20:00:00Z],
-        user_id: user.id,
-        user_credential_id: user_credential.id
-      }
-
-      assert {:ok, %CalendarEvent{} = calendar_event} =
-               Calendar.create_calendar_event(valid_attrs)
-
-      assert calendar_event.attendees == []
-    end
   end
 end

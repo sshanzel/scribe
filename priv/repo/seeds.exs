@@ -10,7 +10,7 @@ alias SocialScribe.Accounts.{User, UserCredential}
 alias SocialScribe.Calendar.CalendarEvent
 alias SocialScribe.Bots.RecallBot
 alias SocialScribe.Meetings.{Meeting, MeetingTranscript, MeetingParticipant}
-alias SocialScribe.Contacts.Contact
+alias SocialScribe.Contacts
 alias SocialScribe.SalesforceApi
 
 # =============================================================================
@@ -370,7 +370,7 @@ Enum.each(meetings_data, fn meeting_data ->
   start_time = DateTime.add(DateTime.utc_now(), -meeting_data.days_ago, :day)
   end_time = DateTime.add(start_time, meeting_data.duration, :minute)
 
-  # Create Calendar Event
+  # Create Calendar Event (without attendees field - it's now a join table)
   {:ok, calendar_event} =
     %CalendarEvent{}
     |> CalendarEvent.changeset(%{
@@ -383,14 +383,18 @@ Enum.each(meetings_data, fn meeting_data ->
       start_time: start_time,
       end_time: end_time,
       record_meeting: true,
-      attendees: [
-        %{"email" => user_email, "displayName" => "You", "responseStatus" => "accepted"},
-        %{"email" => contact_email, "displayName" => contact_name, "responseStatus" => "accepted"}
-      ],
       user_id: user.id,
       user_credential_id: google_credential.id
     })
     |> Repo.insert()
+
+  # Create attendee records (links contacts to calendar events)
+  attendees_data = [
+    %{"email" => user_email, "displayName" => "You", "responseStatus" => "accepted", "organizer" => true},
+    %{"email" => contact_email, "displayName" => contact_name, "responseStatus" => "accepted"}
+  ]
+
+  Contacts.create_attendees_from_event_data(calendar_event.id, attendees_data)
 
   # Create Recall Bot
   {:ok, recall_bot} =
@@ -459,45 +463,19 @@ Enum.each(meetings_data, fn meeting_data ->
 end)
 
 # =============================================================================
-# Create Local Contacts (from Salesforce data)
-# =============================================================================
-
-IO.puts("\n👥 Creating local contacts...")
-
-local_contacts =
-  Enum.map(contacts, fn contact ->
-    # Check if contact already exists locally
-    case Repo.get_by(Contact, email: contact[:email], user_id: user.id) do
-      nil ->
-        {:ok, local_contact} =
-          %Contact{}
-          |> Contact.changeset(%{
-            name: contact[:name],
-            email: contact[:email],
-            user_id: user.id
-          })
-          |> Repo.insert()
-
-        IO.puts("  ✅ Created local contact: #{contact[:name]}")
-        local_contact
-
-      existing ->
-        IO.puts("  ⏭️  Already exists locally: #{contact[:name]}")
-        existing
-    end
-  end)
-
-# =============================================================================
 # Summary
 # =============================================================================
+
+# Count contacts created through attendee records
+contact_count = Repo.aggregate(SocialScribe.Contacts.Contact, :count, :id)
 
 IO.puts("\n" <> String.duplicate("=", 60))
 IO.puts("🎉 Seed data created successfully!")
 IO.puts(String.duplicate("=", 60))
 IO.puts("\nCreated:")
-IO.puts("  • #{length(contacts)} contacts in Salesforce")
+IO.puts("  • #{length(contacts)} contacts in Salesforce (if credential exists)")
 IO.puts("  • #{length(meetings_data)} meetings with transcripts")
-IO.puts("  • #{length(local_contacts)} local contacts")
+IO.puts("  • #{contact_count} contacts (from calendar attendees)")
 
 IO.puts("\nTo test the chat feature:")
 IO.puts("  1. Open the chat bubble in the dashboard")

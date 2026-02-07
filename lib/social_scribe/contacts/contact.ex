@@ -1,16 +1,22 @@
 defmodule SocialScribe.Contacts.Contact do
+  @moduledoc """
+  Schema for contacts.
+
+  Contacts are shared globally (one record per email) and linked to
+  calendar events through the calendar_event_attendees join table.
+  """
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias SocialScribe.Accounts.User
+  alias SocialScribe.Calendar.CalendarEventAttendee
 
   schema "contacts" do
     field :name, :string
     field :email, :string
 
-    belongs_to :user, User
+    has_many :calendar_event_attendees, CalendarEventAttendee
 
-    timestamps()
+    timestamps(type: :utc_datetime)
   end
 
   @doc """
@@ -18,12 +24,13 @@ defmodule SocialScribe.Contacts.Contact do
   """
   def changeset(contact, attrs) do
     contact
-    |> cast(attrs, [:user_id, :name, :email])
-    |> validate_required([:user_id, :email])
+    |> cast(attrs, [:name, :email])
+    |> validate_required([:email])
     |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must be a valid email")
-    |> unique_constraint([:user_id, :email],
-      name: :contacts_user_id_email_index,
-      message: "contact already exists for this user"
+    |> update_change(:email, &String.downcase/1)
+    |> unique_constraint(:email,
+      name: :contacts_email_index,
+      message: "contact with this email already exists"
     )
   end
 

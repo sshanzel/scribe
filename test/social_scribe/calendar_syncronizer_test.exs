@@ -7,6 +7,7 @@ defmodule SocialScribe.CalendarSyncronizerTest do
   # The context containing the sync logic
   alias SocialScribe.CalendarSyncronizer
   alias SocialScribe.Calendar.CalendarEvent
+  alias SocialScribe.Contacts
   alias SocialScribe.TokenRefresherMock
   alias SocialScribe.GoogleCalendarApiMock, as: GoogleApiMock
 
@@ -76,14 +77,16 @@ defmodule SocialScribe.CalendarSyncronizerTest do
 
       assert {:ok, :sync_complete} = CalendarSyncronizer.sync_events_for_user(user)
 
-      assert Repo.aggregate(CalendarEvent, :count, :id) == 2
+      # Only events with meeting links should be synced
+      events = Repo.all(from e in CalendarEvent, where: e.user_id == ^user.id)
+      assert length(events) == 2
 
-      zoom_event = Repo.get_by!(CalendarEvent, google_event_id: "zoom-event-123")
+      zoom_event = Repo.get_by!(CalendarEvent, google_event_id: "zoom-event-123", user_id: user.id)
       assert zoom_event.summary == "Zoom Meeting"
       assert zoom_event.user_id == user.id
       assert zoom_event.user_credential_id == credential.id
 
-      meet_event = Repo.get_by!(CalendarEvent, google_event_id: "meet-event-456")
+      meet_event = Repo.get_by!(CalendarEvent, google_event_id: "meet-event-456", user_id: user.id)
       assert meet_event.summary == "Google Meet Call"
 
       assert Repo.get_by(CalendarEvent, google_event_id: "no-link-event-789") == nil
@@ -112,11 +115,12 @@ defmodule SocialScribe.CalendarSyncronizerTest do
 
       assert {:ok, :sync_complete} = CalendarSyncronizer.sync_events_for_user(user)
 
-      assert Repo.aggregate(CalendarEvent, :count, :id) == 1
-      assert Repo.get_by!(CalendarEvent, google_event_id: "zoom-event-123")
+      events = Repo.all(from e in CalendarEvent, where: e.user_id == ^user.id)
+      assert length(events) == 1
+      assert Repo.get_by!(CalendarEvent, google_event_id: "zoom-event-123", user_id: user.id)
     end
 
-    test "extracts attendees from Google Calendar events" do
+    test "creates attendee records from Google Calendar events" do
       user = user_fixture()
 
       _credential =
@@ -132,22 +136,13 @@ defmodule SocialScribe.CalendarSyncronizerTest do
 
       assert {:ok, :sync_complete} = CalendarSyncronizer.sync_events_for_user(user)
 
-      # Event with attendees
-      zoom_event = Repo.get_by!(CalendarEvent, google_event_id: "zoom-event-123")
-      assert length(zoom_event.attendees) == 2
+      # Event with attendees - should have 2 contacts visible to user
+      contacts = Contacts.list_contacts(user)
+      assert length(contacts) == 2
 
-      [first_attendee, second_attendee] = zoom_event.attendees
-      assert first_attendee["email"] == "john@example.com"
-      assert first_attendee["name"] == "John Doe"
-      assert first_attendee["response_status"] == "accepted"
-
-      assert second_attendee["email"] == "jane@example.com"
-      assert second_attendee["name"] == "Jane Smith"
-      assert second_attendee["response_status"] == "tentative"
-
-      # Event without attendees
-      meet_event = Repo.get_by!(CalendarEvent, google_event_id: "meet-event-456")
-      assert meet_event.attendees == []
+      emails = Enum.map(contacts, & &1.email)
+      assert "john@example.com" in emails
+      assert "jane@example.com" in emails
     end
 
     test "filters out attendees without email" do
@@ -185,9 +180,10 @@ defmodule SocialScribe.CalendarSyncronizerTest do
 
       assert {:ok, :sync_complete} = CalendarSyncronizer.sync_events_for_user(user)
 
-      event = Repo.get_by!(CalendarEvent, google_event_id: "partial-attendees-event")
-      assert length(event.attendees) == 1
-      assert Enum.at(event.attendees, 0)["email"] == "valid@example.com"
+      # Only one valid contact should be created
+      contacts = Contacts.list_contacts(user)
+      assert length(contacts) == 1
+      assert hd(contacts).email == "valid@example.com"
     end
   end
 end

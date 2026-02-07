@@ -25,6 +25,7 @@ defmodule SocialScribe.ChatAI do
   alias SocialScribe.Meetings.Meeting
   alias SocialScribe.Meetings.MeetingTranscript
   alias SocialScribe.Meetings.MeetingParticipant
+  alias SocialScribe.Calendar.CalendarEventAttendee
   alias SocialScribe.TranscriptParser
 
   require Logger
@@ -183,23 +184,16 @@ defmodule SocialScribe.ChatAI do
   end
 
   @doc """
-  Finds meetings where a contact (by email) was an attendee.
+  Finds meetings where a contact was an attendee.
   Returns up to @max_meetings most recent meetings.
   """
-  def find_meetings_for_contact(user, %Contact{email: email}) when is_binary(email) do
-    # Get meetings from calendar events where the contact's email is in attendees
+  def find_meetings_for_contact(user, %Contact{id: contact_id}) do
     Meeting
     |> join(:inner, [m], ce in assoc(m, :calendar_event))
-    |> where([m, ce], ce.user_id == ^user.id)
-    |> where(
-      [m, ce],
-      fragment(
-        "EXISTS (SELECT 1 FROM unnest(?) AS a WHERE a->>'email' = ?)",
-        ce.attendees,
-        ^email
-      )
-    )
-    |> order_by([m, ce], desc: m.recorded_at)
+    |> join(:inner, [m, ce], cea in CalendarEventAttendee, on: cea.calendar_event_id == ce.id)
+    |> where([m, ce, cea], ce.user_id == ^user.id)
+    |> where([m, ce, cea], cea.contact_id == ^contact_id)
+    |> order_by([m, ce, cea], desc: m.recorded_at)
     |> limit(@max_meetings)
     |> preload([:meeting_transcript, :meeting_participants, :calendar_event])
     |> Repo.all()
