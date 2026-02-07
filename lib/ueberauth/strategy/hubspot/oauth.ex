@@ -64,9 +64,6 @@ defmodule Ueberauth.Strategy.Hubspot.OAuth do
       {:ok, %OAuth2.Client{token: %OAuth2.AccessToken{} = token}} ->
         {:ok, token}
 
-      {:ok, %OAuth2.Client{token: nil}} ->
-        {:error, {"no_token", "No token returned from HubSpot"}}
-
       {:error, %OAuth2.Response{body: %{"error" => error, "error_description" => description}}} ->
         {:error, {error, description}}
 

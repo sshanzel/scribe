@@ -6,21 +6,21 @@ defmodule SocialScribe.HubspotApiBehaviour do
 
   alias SocialScribe.Accounts.UserCredential
 
-  @callback search_contacts(credential :: UserCredential.t(), query :: String.t()) ::
+  @callback search_contacts(credential :: %UserCredential{}, query :: String.t()) ::
               {:ok, list(map())} | {:error, any()}
 
-  @callback get_contact(credential :: UserCredential.t(), contact_id :: String.t()) ::
+  @callback get_contact(credential :: %UserCredential{}, contact_id :: String.t()) ::
               {:ok, map()} | {:error, any()}
 
   @callback update_contact(
-              credential :: UserCredential.t(),
+              credential :: %UserCredential{},
               contact_id :: String.t(),
               updates :: map()
             ) ::
               {:ok, map()} | {:error, any()}
 
   @callback apply_updates(
-              credential :: UserCredential.t(),
+              credential :: %UserCredential{},
               contact_id :: String.t(),
               updates_list :: list(map())
             ) ::

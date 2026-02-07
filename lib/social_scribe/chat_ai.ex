@@ -54,7 +54,8 @@ defmodule SocialScribe.ChatAI do
          messages <- Chat.list_messages(thread),
          {:ok, response} <- call_gemini_chat(context, messages, content),
          response_metadata <- build_response_metadata(context),
-         {:ok, _assistant_message} <- Chat.create_assistant_message(thread, response, response_metadata) do
+         {:ok, _assistant_message} <-
+           Chat.create_assistant_message(thread, response, response_metadata) do
       # Generate title if this is the first user message
       maybe_generate_title(thread, user_message)
 
@@ -178,7 +179,14 @@ defmodule SocialScribe.ChatAI do
     Meeting
     |> join(:inner, [m], ce in assoc(m, :calendar_event))
     |> where([m, ce], ce.user_id == ^user.id)
-    |> where([m, ce], fragment("EXISTS (SELECT 1 FROM unnest(?) AS a WHERE a->>'email' = ?)", ce.attendees, ^email))
+    |> where(
+      [m, ce],
+      fragment(
+        "EXISTS (SELECT 1 FROM unnest(?) AS a WHERE a->>'email' = ?)",
+        ce.attendees,
+        ^email
+      )
+    )
     |> order_by([m, ce], desc: m.recorded_at)
     |> limit(@max_meetings)
     |> preload([:meeting_transcript, :meeting_participants, :calendar_event])
@@ -221,7 +229,15 @@ defmodule SocialScribe.ChatAI do
     # Start with system context injection
     contents = [
       %{role: "user", parts: [%{text: system_context}]},
-      %{role: "model", parts: [%{text: "I understand. I'll answer questions based only on the provided context about this contact."}]}
+      %{
+        role: "model",
+        parts: [
+          %{
+            text:
+              "I understand. I'll answer questions based only on the provided context about this contact."
+          }
+        ]
+      }
     ]
 
     # Add thread history (excluding the current message which was just saved)
@@ -300,14 +316,21 @@ defmodule SocialScribe.ChatAI do
 
     participants =
       case meeting.meeting_participants do
-        nil -> ""
-        [] -> ""
+        nil ->
+          ""
+
+        [] ->
+          ""
+
         participants ->
           names = Enum.map(participants, & &1.name) |> Enum.join(", ")
           "Participants: #{names}"
       end
 
-    date = if meeting.recorded_at, do: Calendar.strftime(meeting.recorded_at, "%Y-%m-%d"), else: "Unknown date"
+    date =
+      if meeting.recorded_at,
+        do: Calendar.strftime(meeting.recorded_at, "%Y-%m-%d"),
+        else: "Unknown date"
 
     """
     ### Meeting: #{meeting.title || "Untitled Meeting"}
@@ -322,10 +345,12 @@ defmodule SocialScribe.ChatAI do
   end
 
   defp format_duration(nil), do: "Unknown"
+
   defp format_duration(seconds) when is_integer(seconds) do
     minutes = div(seconds, 60)
     "#{minutes} minutes"
   end
+
   defp format_duration(_), do: "Unknown"
 
   defp extract_gemini_response(body) do
@@ -351,7 +376,11 @@ defmodule SocialScribe.ChatAI do
         %{
           "meeting_id" => meeting.id,
           "title" => meeting.title,
-          "date" => if(meeting.recorded_at, do: Calendar.strftime(meeting.recorded_at, "%Y-%m-%d"), else: nil)
+          "date" =>
+            if(meeting.recorded_at,
+              do: Calendar.strftime(meeting.recorded_at, "%Y-%m-%d"),
+              else: nil
+            )
         }
       end)
 
@@ -369,11 +398,11 @@ defmodule SocialScribe.ChatAI do
         %{id: id} when id == user_message.id ->
           # This is the first user message, generate title after response
           Task.start(fn ->
-            Process.sleep(500) # Small delay to ensure response is saved
-            case generate_thread_title(thread) do
-              {:ok, title} -> Chat.update_thread(thread, %{title: title})
-              _ -> :ok
-            end
+            # Small delay to ensure response is saved
+            Process.sleep(500)
+
+            {:ok, title} = generate_thread_title(thread)
+            Chat.update_thread(thread, %{title: title})
           end)
 
         _ ->

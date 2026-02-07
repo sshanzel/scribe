@@ -7,10 +7,10 @@ defmodule SocialScribe.ChatAIApi do
   alias SocialScribe.Chat.ChatThread
   alias SocialScribe.Accounts.User
 
-  @callback generate_response(ChatThread.t(), User.t(), String.t(), map()) ::
+  @callback generate_response(%ChatThread{}, %User{}, String.t(), map()) ::
               {:ok, String.t(), map()} | {:error, any()}
 
-  @callback generate_thread_title(ChatThread.t()) ::
+  @callback generate_thread_title(%ChatThread{}) ::
               {:ok, String.t()} | {:error, any()}
 
   def generate_response(thread, user, content, metadata) do
