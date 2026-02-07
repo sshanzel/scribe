@@ -133,3 +133,56 @@ This leads to code duplication and maintenance overhead.
 
 **File modified:**
 - `lib/social_scribe_web/components/layouts/dashboard.html.heex`
+
+---
+
+## 5. Add pattern matching with guards for type safety
+
+**Problem:** Elixir is dynamically typed, so type mismatches (e.g., passing `user.id` instead of `user` struct) are only caught at runtime, often with cryptic errors like `expected a map, got: 1`.
+
+**Solution:** Add pattern matching with guards in function heads to enforce types at runtime with clear error messages:
+
+```elixir
+# Instead of:
+def get_user_credential(user, provider) do
+  Repo.get_by(UserCredential, user_id: user.id, provider: provider)
+end
+
+# Use:
+def get_user_credential(%User{} = user, provider) when is_binary(provider) do
+  Repo.get_by(UserCredential, user_id: user.id, provider: provider)
+end
+```
+
+**Implementation:**
+1. Audit all context module functions that accept structs
+2. Add struct pattern matching (`%User{}`, `%Contact{}`, etc.) in function heads
+3. Add guards for primitive types (`when is_binary/1`, `when is_integer/1`, etc.)
+4. Ensure typespecs (`@spec`) are added for Dialyzer support
+
+**Priority files:**
+- `lib/social_scribe/accounts.ex`
+- `lib/social_scribe/contacts.ex`
+- `lib/social_scribe/chat.ex`
+- `lib/social_scribe/chat_ai.ex`
+
+**Benefit:** Clearer error messages at runtime, better documentation, and Dialyzer can catch mismatches at compile time.
+
+## 6. Code Formatting Standards
+
+**Problem:** Inconsistent code formatting across the codebase can lead to noisy diffs and style debates during code review.
+
+**Current State:** Elixir's built-in `mix format` is available but formatting rules may not be fully configured or enforced.
+
+**Investigation Needed:**
+1. Check if `.formatter.exs` exists and is properly configured
+2. Review if formatting is enforced in CI/pre-commit hooks
+3. Determine if all files pass `mix format --check-formatted`
+
+**Potential Improvements:**
+- Configure `.formatter.exs` with project-specific rules (line length, import ordering, etc.)
+- Add pre-commit hook to auto-format staged files
+- Add `mix format --check-formatted` to CI pipeline
+- Consider additional tools like `mix credo` for static analysis
+
+**Note:** Elixir's upcoming type system may reduce reliance on Dialyzer. Avoid adding explicit `@type t()` definitions to schemas - let the compiler infer types (consistent with current codebase convention).
