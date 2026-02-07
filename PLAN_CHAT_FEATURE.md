@@ -411,23 +411,23 @@ SocialScribeWeb.ChatLive.MessageComponent
   - [x] Send message event tests
 
 ### Step 7: Contact Mention UX
-- [ ] Create mention dropdown component
-- [ ] Wire up search to Contacts.search_contacts
-- [ ] Handle contact selection → store in metadata
-- [ ] Add keyboard navigation
-- [ ] **Tests:**
-  - [ ] Mention trigger tests (@ detection)
-  - [ ] Dropdown search tests
-  - [ ] Contact selection tests (metadata populated correctly)
-  - [ ] Keyboard navigation tests
+- [x] Create mention dropdown component
+- [x] Wire up search to Contacts.search_contacts
+- [x] Handle contact selection → store in metadata
+- [ ] Add keyboard navigation (deferred)
+- [x] **Tests:**
+  - [x] Mention trigger tests (@ detection)
+  - [x] Dropdown search tests
+  - [x] Contact selection tests (metadata populated correctly)
+  - [ ] Keyboard navigation tests (deferred)
 
 ### Step 8: Polish & Integration Testing
-- [ ] Add loading states (typing indicator)
-- [ ] Add error handling (API failures, no meetings found)
-- [ ] **Tests:**
-  - [ ] Error state rendering tests
-  - [ ] Loading state tests
-  - [ ] End-to-end flow tests (create thread → send message → receive response)
+- [x] Add loading states (typing indicator)
+- [x] Add error handling (API failures, no meetings found)
+- [x] **Tests:**
+  - [x] Error state rendering tests
+  - [x] Loading state tests
+  - [ ] End-to-end flow tests (deferred - requires more complex test setup)
 
 ---
 
