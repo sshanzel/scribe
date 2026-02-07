@@ -21,6 +21,7 @@ defmodule SocialScribeWeb.ChatLive do
       |> assign(:current_thread, nil)
       |> assign(:messages, [])
       |> assign(:loading, false)
+      |> assign(:error_message, nil)
       |> assign(:message_input, "")
       |> assign(:contact_results, [])
       |> assign(:mentions, [])
@@ -100,6 +101,23 @@ defmodule SocialScribeWeb.ChatLive do
               <div :if={@loading} class="flex justify-start">
                 <div class="bg-gray-100 rounded-lg px-4 py-2 text-gray-500">
                   <span class="animate-pulse">Thinking...</span>
+                </div>
+              </div>
+
+              <div :if={@error_message} class="flex justify-start">
+                <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700 max-w-[85%]">
+                  <div class="flex items-start gap-2">
+                    <.icon name="hero-exclamation-circle" class="size-5 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p class="text-sm">{@error_message}</p>
+                      <button
+                        phx-click="dismiss_error"
+                        class="text-xs text-red-600 hover:text-red-800 mt-1 underline"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -252,9 +270,15 @@ defmodule SocialScribeWeb.ChatLive do
       |> assign(:mentions, [])
       |> assign(:message_input, "")
       |> assign(:show_mention_dropdown, false)
+      |> assign(:error_message, nil)
       |> push_event("clear_input", %{})
 
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("dismiss_error", _params, socket) do
+    {:noreply, assign(socket, :error_message, nil)}
   end
 
   @impl true
@@ -314,10 +338,11 @@ defmodule SocialScribeWeb.ChatLive do
           end)
       }
 
-      # Show loading state and clear input
+      # Show loading state, clear input and any previous error
       socket =
         socket
         |> assign(:loading, true)
+        |> assign(:error_message, nil)
         |> assign(:message_input, "")
         |> assign(:mentions, [])
         |> push_event("clear_input", %{})
@@ -352,11 +377,19 @@ defmodule SocialScribeWeb.ChatLive do
           |> assign(:messages, messages)
           |> assign(:current_thread, updated_thread)
           |> assign(:loading, false)
+          |> assign(:error_message, nil)
 
-        {:error, reason} ->
+        {:error, {_error_type, message}} when is_binary(message) ->
+          # Display friendly error message in the chat area
           socket
           |> assign(:loading, false)
-          |> put_flash(:error, "Failed to generate response: #{inspect(reason)}")
+          |> assign(:error_message, message)
+
+        {:error, reason} ->
+          # Fallback for unexpected error formats
+          socket
+          |> assign(:loading, false)
+          |> assign(:error_message, "Something went wrong: #{inspect(reason)}")
       end
 
     {:noreply, socket}

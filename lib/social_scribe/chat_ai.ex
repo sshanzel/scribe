@@ -223,13 +223,21 @@ defmodule SocialScribe.ChatAI do
         {:ok, %Tesla.Env{status: 200, body: body}} ->
           extract_gemini_response(body)
 
+        {:ok, %Tesla.Env{status: 429, body: _error_body}} ->
+          Logger.warning("Gemini API rate limited")
+          {:error, {:rate_limited, "I'm receiving too many requests right now. Please wait a moment and try again."}}
+
+        {:ok, %Tesla.Env{status: 503, body: _error_body}} ->
+          Logger.warning("Gemini API service unavailable")
+          {:error, {:service_unavailable, "The AI service is temporarily unavailable. Please try again in a few moments."}}
+
         {:ok, %Tesla.Env{status: status, body: error_body}} ->
           Logger.error("Gemini API error: #{status} - #{inspect(error_body)}")
-          {:error, {:api_error, status, error_body}}
+          {:error, {:api_error, "Something went wrong while generating a response. Please try again."}}
 
         {:error, reason} ->
           Logger.error("Gemini HTTP error: #{inspect(reason)}")
-          {:error, {:http_error, reason}}
+          {:error, {:http_error, "Unable to connect to the AI service. Please check your connection and try again."}}
       end
     end
   end
