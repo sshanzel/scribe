@@ -341,6 +341,16 @@ defmodule SocialScribe.Accounts do
     Repo.get_by(UserCredential, user_id: user_id, provider: "salesforce")
   end
 
+  @doc """
+  Updates a Salesforce credential using the salesforce_changeset.
+  This ensures instance_url and other Salesforce-specific fields are properly cast.
+  """
+  def update_salesforce_credential(%UserCredential{} = credential, attrs) do
+    credential
+    |> UserCredential.salesforce_changeset(attrs)
+    |> Repo.update()
+  end
+
   defp get_user_by_oauth_uid(provider, uid) do
     from(c in UserCredential,
       where: c.provider == ^provider and c.uid == ^uid,
