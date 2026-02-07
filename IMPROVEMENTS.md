@@ -115,3 +115,21 @@ This leads to code duplication and maintenance overhead.
 - `lib/social_scribe/contacts.ex`
 
 **Benefit:** Direct CRM lookups are faster and more reliable than email-based search. Enables future features like "open in HubSpot/Salesforce" links.
+
+---
+
+## Minor Fixes
+
+### Double scrollbar in dashboard layout ✅
+
+> **Status:** Resolved
+
+**Problem:** The dashboard had a double scrollbar issue where both the body/html and the content area had scrollbars visible. This was caused by the header being outside the `h-screen` container, so header height + 100vh content exceeded the viewport height.
+
+**Solution:** Restructured `dashboard.html.heex` to use a proper flex column layout:
+- Outer container with `h-screen flex flex-col` takes exactly 100vh
+- Header with `shrink-0` takes only its natural height
+- Inner flex container with `flex-1 min-h-0` fills remaining space without exceeding viewport
+
+**File modified:**
+- `lib/social_scribe_web/components/layouts/dashboard.html.heex`
