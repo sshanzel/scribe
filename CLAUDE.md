@@ -34,3 +34,133 @@ You are an expert Elixir developer. Below are the guidelines on using Elixir eff
 - Use the pin operator (`^`) to match against existing variable values.
 - Combine pattern matching with recursion for elegant solutions to problems.
 - Test pattern matches thoroughly to ensure correctness.
+
+# Database Migrations
+
+Always use the Ecto generator to create migration files. Never create migration files manually.
+
+```bash
+# Create a new table
+mix ecto.gen.migration create_table_name
+
+# Alter an existing table
+mix ecto.gen.migration add_column_to_table_name
+
+# Remove a column or table
+mix ecto.gen.migration remove_column_from_table_name
+```
+
+**Workflow:**
+1. Run `mix ecto.gen.migration migration_name` to generate the file
+2. Edit the generated file in `priv/repo/migrations/` to add your schema changes
+3. Run `mix ecto.migrate` to apply the migration
+
+**Why use the generator:**
+- Ensures correct timestamp prefix (avoids conflicts)
+- Creates file in the correct location
+- Sets up proper module structure and boilerplate
+
+**For existing databases with data:**
+- Never modify already-applied migrations
+- Generate a NEW migration to alter tables
+- Write `ALTER TABLE` changes to preserve existing data
+
+**Common migration operations:**
+```elixir
+# In the generated migration file:
+
+def change do
+  # Create table
+  create table(:users) do
+    add :name, :string
+    add :email, :string, null: false
+    timestamps()
+  end
+
+  # Add index
+  create unique_index(:users, [:email])
+
+  # Alter table
+  alter table(:users) do
+    add :phone, :string
+    remove :legacy_field
+  end
+
+  # Add foreign key
+  alter table(:posts) do
+    add :user_id, references(:users, on_delete: :delete_all)
+  end
+end
+```
+
+# Testing Guidelines
+
+Write tests that cover ALL edge cases, not just the happy path. Bugs often slip through when tests only cover basic scenarios.
+
+## List Return Edge Cases
+
+When a function returns a list, always test:
+
+- **Uniqueness**: If results should be unique, test with data that would produce duplicates without proper handling
+  ```elixir
+  # BAD: Only tests 1 item → 1 result
+  test "returns contacts" do
+    contact = contact_fixture()
+    assert [contact] == list_contacts(user)
+  end
+
+  # GOOD: Tests that duplicates are eliminated
+  test "does not return duplicates when contact appears in multiple events" do
+    # Link same contact to 2 events
+    # Assert list returns 1 contact, not 2
+  end
+  ```
+
+- **Ordering**: If results should be ordered, test with multiple items in non-sorted order
+  ```elixir
+  test "returns contacts ordered by name" do
+    contact_b = contact_fixture(name: "Bob")
+    contact_a = contact_fixture(name: "Alice")
+
+    contacts = list_contacts(user)
+    assert [contact_a, contact_b] == contacts  # Not insertion order
+  end
+  ```
+
+- **Empty list**: Test the empty case
+- **Limit/pagination**: If there's a limit, test with more items than the limit
+
+## Database Operation Edge Cases
+
+- **Upserts**: When using `on_conflict`, test that the returned record has valid IDs
+  ```elixir
+  test "returns existing record when conflict occurs" do
+    {:ok, first} = create_record(attrs)
+    {:ok, second} = create_record(attrs)  # Same unique key
+
+    assert first.id == second.id
+    assert second.id != nil  # on_conflict: :nothing can return nil id!
+  end
+  ```
+
+- **Concurrent access**: Consider race conditions in critical paths
+
+## Join/Association Edge Cases
+
+- **Multiple associations**: Test when entity is linked to multiple related records
+- **Cross-user isolation**: Always test that user A cannot see user B's data
+  ```elixir
+  test "user cannot see other user's data" do
+    user1_data = create_data_for(user1)
+    user2_data = create_data_for(user2)
+
+    assert list_data(user1) == [user1_data]
+    assert list_data(user2) == [user2_data]
+  end
+  ```
+
+## General Principles
+
+- If a function has a `DISTINCT`, `ORDER BY`, `LIMIT`, or `WHERE` clause, write tests that specifically exercise those constraints
+- Test with realistic data volumes (e.g., if limit is 10, create 12 records)
+- When fixing a bug, always add a test that would have caught it

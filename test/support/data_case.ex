@@ -42,6 +42,14 @@ defmodule SocialScribe.DataCase do
   end
 
   @doc """
+  Generates a unique email address for testing.
+  Use this instead of hardcoded emails in async tests to avoid unique constraint conflicts.
+  """
+  def unique_email(prefix \\ "test") do
+    "#{prefix}#{System.unique_integer([:positive])}@example.com"
+  end
+
+  @doc """
   A helper that transforms changeset errors into a map of messages.
 
       assert {:error, changeset} = Accounts.create_user(%{password: "short"})

@@ -25,26 +25,79 @@ A contact-aware AI chat interface that allows users to ask questions about conta
 
 ---
 
-## Phase 1: Database Schema
+## Why Contacts Are Essential
 
-### 1.1 Contacts Table (Lean)
+The contacts table provides a **unique identifier** (email address) that ensures accurate meeting retrieval. Without it, name-based matching would be unreliable and could cause the AI to hallucinate.
 
-Minimal table for tagging/autocomplete. A contact must always exist here to be tagged.
-
-```elixir
-# contacts
-- id
-- user_id (belongs_to users)
-- name
-- email
-- inserted_at, updated_at
-
-# Unique constraint: user_id + email
+**Problem without contacts table:**
+```
+User asks: "What did John say about pricing?"
+                    ↓
+Search by name: WHERE participant.name ILIKE '%John%'
+                    ↓
+Returns meetings for:
+  - John Doe (john.doe@company.com)     ← User meant this one
+  - John Smith (john.smith@other.com)   ← Wrong person!
+  - Johnny Appleseed (johnny@fruit.com) ← Wrong person!
+                    ↓
+AI sees mixed transcripts → Could hallucinate or give wrong answers
 ```
 
+**Solution with contacts table:**
+```
+User clicks "@John Doe" in dropdown
+                    ↓
+Selects contact with id=123, email=john.doe@company.com
+                    ↓
+metadata = { "mentions": [{ "contact_id": 123, ... }] }
+                    ↓
+ChatAI.find_meetings_for_contact uses contact_id in query:
+  Meeting → CalendarEvent → CalendarEventAttendee WHERE contact_id = 123
+                    ↓
+Returns ONLY meetings where john.doe@company.com was an attendee
+                    ↓
+AI sees correct transcripts → Accurate answers
+```
+
+**Meeting Isolation Between Users:**
+- User A and User B may both have meetings with the same contact (e.g., john@example.com)
+- Each user should ONLY see their own meetings with that contact
+- The query filters by `calendar_event.user_id` to ensure isolation
+- Test coverage: `test "both users see only their own meetings with shared contact"`
+
+---
+
+## Phase 1: Database Schema
+
+### 1.1 Contacts Table (Global, Normalized)
+
+Contacts are global (one per email) and linked to users through calendar events.
+
+```elixir
+# contacts (shared, no user_id)
+- id
+- email (unique)
+- name
+- inserted_at, updated_at
+
+# calendar_event_attendees (join table)
+- id
+- calendar_event_id (belongs_to calendar_events)
+- contact_id (belongs_to contacts)
+- display_name (name from this specific invite)
+- response_status (accepted, declined, tentative)
+- is_organizer (boolean)
+- inserted_at
+```
+
+**Why Global Contacts:**
+- Single source of truth per email address
+- No duplicate contact records across users
+- Users see only contacts from their calendar events (via join)
+
 **Contact Creation:**
-- Contacts are auto-created when a meeting is created (from calendar attendees)
-- User can also manually add contacts
+- Contacts are auto-created during calendar sync (from attendees)
+- `CalendarSyncronizer` creates attendee records linking contacts to events
 
 ### 1.2 Chat Threads Table
 
@@ -95,44 +148,64 @@ The `start` and `end` positions allow rendering mentions with styling/icons in t
 
 ---
 
-## Phase 2: Calendar Attendees Extraction
+## Phase 2: Calendar Attendees as Join Table
 
-Extract attendee emails from Google Calendar for accurate contact matching.
+Attendees are stored in a normalized join table, not JSON.
 
-### 2.1 Schema Update
+### 2.1 Schema (Implemented)
 
 ```elixir
-# calendar_events (add field)
-- attendees (map/jsonb) - stores array of attendee objects
+# calendar_event_attendees
+- id
+- calendar_event_id (FK to calendar_events)
+- contact_id (FK to contacts)
+- display_name
+- response_status
+- is_organizer
+- inserted_at
 ```
 
 ### 2.2 Sync Update
 
-Update `CalendarSyncronizer.parse_google_event/3` to extract:
+`CalendarSyncronizer` extracts attendees and creates records:
+
 ```elixir
-%{
-  # ... existing fields ...
-  attendees: [
-    %{email: "john@example.com", name: "John Doe", response_status: "accepted"},
-    %{email: "jane@example.com", name: "Jane Smith", response_status: "tentative"}
-  ]
-}
+defp sync_items(items, user_id, credential_id) do
+  Enum.each(items, fn item ->
+    {event_attrs, attendees} = parse_google_event(item, user_id, credential_id)
+
+    case Calendar.create_or_update_calendar_event(event_attrs) do
+      {:ok, calendar_event} ->
+        # Create attendee records linking contacts to this event
+        Contacts.create_attendees_from_event_data(calendar_event.id, attendees)
+      {:error, reason} ->
+        Logger.warning("Failed to create/update event: #{inspect(reason)}")
+    end
+  end)
+end
 ```
 
 ### 2.3 Auto-Create Contacts
 
-When a meeting is created:
-1. Get calendar_event.attendees
-2. For each attendee with email:
-   - Find or create contact with that email
-   - Update name if provided
+When calendar syncs, contacts are created/linked automatically:
 
 ```elixir
-def create_contacts_from_attendees(user, attendees) do
-  Enum.each(attendees, fn attendee ->
-    case get_contact_by_email(user, attendee.email) do
-      nil -> create_contact(user, %{name: attendee.name, email: attendee.email})
-      contact -> contact  # Already exists
+def create_attendees_from_event_data(calendar_event_id, attendees) do
+  attendees
+  |> Enum.filter(fn a -> a["email"] != nil && a["email"] != "" end)
+  |> Enum.map(fn attendee ->
+    email = attendee["email"]
+    display_name = attendee["displayName"]
+
+    with {:ok, contact} <- find_or_create_contact(%{email: email, name: display_name}),
+         {:ok, attendee_record} <- create_calendar_event_attendee(%{
+           calendar_event_id: calendar_event_id,
+           contact_id: contact.id,
+           display_name: display_name,
+           response_status: attendee["responseStatus"],
+           is_organizer: attendee["organizer"] == true
+         }) do
+      attendee_record
     end
   end)
 end
@@ -142,18 +215,24 @@ end
 
 ## Phase 3: Contacts Module
 
-### 3.1 Contact Management
+### 3.1 Contact Management (Updated for Global Contacts)
 
 ```elixir
 SocialScribe.Contacts
-- create_contact(user, attrs)        # Create new contact
-- update_contact(contact, attrs)     # Update contact
-- delete_contact(contact)            # Delete contact
-- list_contacts(user)                # List all user's contacts
-- search_contacts(user, query)       # Search by name/email for autocomplete
-- get_contact!(id)                   # Get single contact
-- get_contact_by_email(user, email)  # Find by email (for deduplication)
+- create_contact(attrs)                    # Create global contact (no user)
+- update_contact(contact, attrs)           # Update contact
+- delete_contact(contact)                  # Delete contact
+- find_or_create_contact(attrs)            # Find by email or create new
+- list_contacts(user)                      # Contacts visible via user's calendar events
+- search_contacts(user, query)             # Search contacts in user's events
+- get_contact!(id)                         # Get single contact
+- get_contact(id)                          # Get or nil
+- get_contact_by_email(email)              # Find by email (global)
+- create_calendar_event_attendee(attrs)    # Link contact to calendar event
+- create_attendees_from_event_data(event_id, attendees)  # Bulk create from sync
 ```
+
+**Key Change:** Contacts are global (no user_id). Users see contacts through their calendar events.
 
 ---
 
@@ -487,26 +566,30 @@ User creates new thread
 
 ## Meeting Matching Strategy
 
-Match meetings to a contact using calendar attendee emails:
+Match meetings to a contact using the calendar_event_attendees join table:
 
 ```elixir
-def find_meetings_for_contact(user, contact) do
-  # 1. Get all user's meetings with calendar_events preloaded
-  # 2. Filter where calendar_event.attendees contains contact.email
-  # 3. Order by recorded_at DESC
-  # 4. Limit 10
+def find_meetings_for_contact(user, %Contact{id: contact_id}) do
+  # Uses contact_id (not name!) to ensure accurate matching
+  # Filters by user_id to ensure meeting isolation between users
 
   from(m in Meeting,
     join: ce in assoc(m, :calendar_event),
-    where: ce.user_id == ^user.id,
-    where: fragment("? @> ?", ce.attendees, ^[%{email: contact.email}]),
+    join: cea in CalendarEventAttendee, on: cea.calendar_event_id == ce.id,
+    where: ce.user_id == ^user.id,           # User's meetings only
+    where: cea.contact_id == ^contact_id,    # This specific contact
     order_by: [desc: m.recorded_at],
     limit: 10,
-    preload: [:meeting_transcript, :meeting_participants]
+    preload: [:meeting_transcript, :meeting_participants, :calendar_event]
   )
   |> Repo.all()
 end
 ```
+
+**Key Design Decisions:**
+1. **Uses `contact_id`, not name** - Avoids "two Johns" problem
+2. **Filters by `user_id`** - User A can't see User B's meetings with same contact
+3. **Join through attendees** - Only returns meetings where contact was actually present
 
 ---
 

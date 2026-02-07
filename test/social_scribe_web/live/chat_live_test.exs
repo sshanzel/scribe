@@ -4,9 +4,9 @@ defmodule SocialScribeWeb.ChatLiveTest do
   import Phoenix.LiveViewTest
   import Mox
   import SocialScribe.AccountsFixtures
+  import SocialScribe.ContactsFixtures
 
   alias SocialScribe.Chat
-  alias SocialScribe.Contacts
 
   setup :verify_on_exit!
 
@@ -62,8 +62,9 @@ defmodule SocialScribeWeb.ChatLiveTest do
         {:ok, []}
       end)
 
-      user = user_fixture()
-      {:ok, contact} = Contacts.create_contact(user, %{name: "Test Contact", email: "test@example.com"})
+      # Create contact linked to user via calendar event
+      %{contact: contact, user: user} =
+        contact_with_event_fixture(%{name: "Test Contact", email: "test@example.com"})
 
       %{
         conn: log_in_user(conn, user),

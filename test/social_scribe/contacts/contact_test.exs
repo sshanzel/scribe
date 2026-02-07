@@ -2,14 +2,10 @@ defmodule SocialScribe.Contacts.ContactTest do
   use SocialScribe.DataCase, async: true
 
   alias SocialScribe.Contacts.Contact
-  import SocialScribe.AccountsFixtures
 
   describe "changeset/2" do
     test "valid changeset with all fields" do
-      user = user_fixture()
-
       attrs = %{
-        user_id: user.id,
         name: "John Doe",
         email: "john@example.com"
       }
@@ -19,10 +15,7 @@ defmodule SocialScribe.Contacts.ContactTest do
     end
 
     test "valid changeset without name" do
-      user = user_fixture()
-
       attrs = %{
-        user_id: user.id,
         email: "john@example.com"
       }
 
@@ -30,22 +23,8 @@ defmodule SocialScribe.Contacts.ContactTest do
       assert changeset.valid?
     end
 
-    test "invalid changeset without user_id" do
-      attrs = %{
-        name: "John Doe",
-        email: "john@example.com"
-      }
-
-      changeset = Contact.changeset(%Contact{}, attrs)
-      refute changeset.valid?
-      assert "can't be blank" in errors_on(changeset).user_id
-    end
-
     test "invalid changeset without email" do
-      user = user_fixture()
-
       attrs = %{
-        user_id: user.id,
         name: "John Doe"
       }
 
@@ -55,10 +34,7 @@ defmodule SocialScribe.Contacts.ContactTest do
     end
 
     test "invalid changeset with malformed email" do
-      user = user_fixture()
-
       attrs = %{
-        user_id: user.id,
         name: "John Doe",
         email: "not-an-email"
       }
@@ -68,13 +44,23 @@ defmodule SocialScribe.Contacts.ContactTest do
       assert "must be a valid email" in errors_on(changeset).email
     end
 
-    test "enforces unique constraint on user_id + email" do
-      user = user_fixture()
+    test "downcases email" do
+      attrs = %{
+        name: "John Doe",
+        email: "JOHN@EXAMPLE.COM"
+      }
+
+      changeset = Contact.changeset(%Contact{}, attrs)
+      assert changeset.valid?
+      assert Ecto.Changeset.get_change(changeset, :email) == "john@example.com"
+    end
+
+    test "enforces unique constraint on email" do
+      email = unique_email("unique")
 
       attrs = %{
-        user_id: user.id,
         name: "John Doe",
-        email: "john@example.com"
+        email: email
       }
 
       {:ok, _contact} =
@@ -87,7 +73,7 @@ defmodule SocialScribe.Contacts.ContactTest do
         |> Contact.changeset(attrs)
         |> Repo.insert()
 
-      assert "contact already exists for this user" in errors_on(changeset).user_id
+      assert "contact with this email already exists" in errors_on(changeset).email
     end
   end
 

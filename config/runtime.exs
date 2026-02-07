@@ -5,8 +5,11 @@ import Config
 # system starts, so it is typically used to load production configuration
 # and secrets from environment variables or elsewhere. Do not define
 # any compile-time configuration in here, as it won't be applied.
-#
-# For dev: run `source .env && mix phx.server`
+
+# Load .env file in dev/test environments
+if config_env() in [:dev, :test] do
+  Dotenvy.source([".env", ".env.#{config_env()}"])
+end
 
 # ## Using releases
 #
