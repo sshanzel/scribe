@@ -716,6 +716,7 @@ defmodule SocialScribeWeb.CoreComponents do
   """
   attr :id, :string, required: true
   attr :open, :boolean, default: false
+  attr :animate, :boolean, default: true
   attr :on_close, :string, required: true
   attr :side, :atom, default: :right, values: [:left, :right]
   attr :full_width, :boolean, default: true
@@ -727,9 +728,10 @@ defmodule SocialScribeWeb.CoreComponents do
 
   def drawer(assigns) do
     ~H"""
-    <div :if={@open} id={@id} class="fixed inset-0 z-50 sm:relative sm:inset-auto">
+    <div id={@id} class={["fixed inset-0 z-50 sm:relative sm:inset-auto", !@open && "hidden"]}>
       <!-- Backdrop (mobile only) -->
       <div
+        :if={@open}
         class="fixed inset-0 bg-black/20 sm:hidden transition-opacity"
         phx-click={@on_close}
         aria-hidden="true"
@@ -741,8 +743,10 @@ defmodule SocialScribeWeb.CoreComponents do
         "sm:relative sm:inset-auto sm:rounded-xl sm:border sm:border-slate-200",
         @desktop_width,
         @desktop_height,
-        @side == :right && "right-0 animate-slide-in-right",
-        @side == :left && "left-0 animate-slide-in-left",
+        @side == :right && "right-0",
+        @side == :left && "left-0",
+        @side == :right && @animate && "animate-slide-in-right",
+        @side == :left && @animate && "animate-slide-in-left",
         @full_width && "w-full",
         !@full_width && "w-80 max-w-[85vw]"
       ]}>

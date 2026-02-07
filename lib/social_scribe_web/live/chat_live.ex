@@ -17,6 +17,7 @@ defmodule SocialScribeWeb.ChatLive do
     socket =
       socket
       |> assign(:open, false)
+      |> assign(:animate, true)
       |> assign(:threads, [])
       |> assign(:current_thread, nil)
       |> assign(:messages, [])
@@ -55,7 +56,7 @@ defmodule SocialScribeWeb.ChatLive do
         <.icon name="hero-chat-bubble-left-right" class="size-6 text-white" />
       </button>
 
-      <.drawer id="chat-drawer" open={@open} on_close="toggle_chat">
+      <.drawer id="chat-drawer" open={@open} animate={@animate} on_close="toggle_chat">
         <:header>
           <h3 class="font-semibold text-slate-800">Ask Anything</h3>
         </:header>
@@ -289,11 +290,15 @@ defmodule SocialScribeWeb.ChatLive do
 
   @impl true
   def handle_event("toggle_chat", _params, socket) do
+    new_open = !socket.assigns.open
+
     socket =
-      if !socket.assigns.open do
-        # Load threads when opening
+      if new_open do
+        # Load threads when opening - animate the opening
         threads = Chat.list_threads(socket.assigns.current_user)
-        assign(socket, threads: threads, open: true)
+        # Clear animation flag after render to prevent re-animation on navigation
+        Process.send_after(self(), :clear_animate, 300)
+        assign(socket, threads: threads, open: true, animate: true)
       else
         assign(socket, open: false)
       end
@@ -487,6 +492,11 @@ defmodule SocialScribeWeb.ChatLive do
     {:noreply, socket}
   end
 
+  @impl true
+  def handle_info(:clear_animate, socket) do
+    {:noreply, assign(socket, :animate, false)}
+  end
+
   # =============================================================================
   # Private Helpers
   # =============================================================================
@@ -580,11 +590,11 @@ defmodule SocialScribeWeb.ChatLive do
 
   defp render_meeting_links(content, _meeting_refs) do
     # Convert [Meeting: title (date)](meeting:123) to clickable links
-    # Note: brackets and parens are not escaped by our escape_html
+    # Use data-phx-link="redirect" for LiveView navigation (no full page reload)
     Regex.replace(
       ~r/\[Meeting:\s*(.+?)\]\(meeting:(\d+)\)/,
       content,
-      ~s(<a href="/dashboard/meetings/\\2" class="text-slate-600 hover:text-slate-800 underline font-medium">\\1</a>)
+      ~s(<a href="/dashboard/meetings/\\2" data-phx-link="redirect" data-phx-link-state="push" class="text-slate-600 hover:text-slate-800 underline font-medium">\\1</a>)
     )
   end
 
