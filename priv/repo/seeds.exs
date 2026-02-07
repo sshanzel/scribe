@@ -65,76 +65,49 @@ contacts_data = [
 
 defmodule SeedHelpers do
   def generate_transcript(host_name, guest_name, topic, details) do
-    %{
-      "data" => [
-        %{
-          "speaker" => host_name,
-          "words" =>
-            words_to_list(
-              "Hi #{guest_name}, thanks for joining today's call. I wanted to discuss #{topic}."
-            )
-        },
-        %{
-          "speaker" => guest_name,
-          "words" =>
-            words_to_list(
-              "Thanks for having me! Yes, I've been looking forward to this discussion."
-            )
-        },
-        %{
-          "speaker" => host_name,
-          "words" => words_to_list("Great. So let's dive in. #{details[:question]}")
-        },
-        %{
-          "speaker" => guest_name,
-          "words" => words_to_list(details[:answer])
-        },
-        %{
-          "speaker" => host_name,
-          "words" => words_to_list(details[:followup])
-        },
-        %{
-          "speaker" => guest_name,
-          "words" => words_to_list(details[:response])
-        },
-        %{
-          "speaker" => host_name,
-          "words" => words_to_list("That's really helpful. What about #{details[:topic2]}?")
-        },
-        %{
-          "speaker" => guest_name,
-          "words" => words_to_list(details[:topic2_response])
-        },
-        %{
-          "speaker" => host_name,
-          "words" =>
-            words_to_list(
-              "Perfect. Let me note down your contact details. What's the best way to reach you?"
-            )
-        },
-        %{
-          "speaker" => guest_name,
-          "words" => words_to_list(details[:contact_info])
-        },
-        %{
-          "speaker" => host_name,
-          "words" =>
-            words_to_list(
-              "Got it. Thanks so much for your time today, #{guest_name}. I'll follow up with next steps."
-            )
-        },
-        %{
-          "speaker" => guest_name,
-          "words" => words_to_list("Sounds great! Looking forward to it. Have a great day!")
-        }
-      ]
-    }
+    segments = [
+      {host_name, "Hi #{guest_name}, thanks for joining today's call. I wanted to discuss #{topic}."},
+      {guest_name, "Thanks for having me! Yes, I've been looking forward to this discussion."},
+      {host_name, "Great. So let's dive in. #{details[:question]}"},
+      {guest_name, details[:answer]},
+      {host_name, details[:followup]},
+      {guest_name, details[:response]},
+      {host_name, "That's really helpful. What about #{details[:topic2]}?"},
+      {guest_name, details[:topic2_response]},
+      {host_name, "Perfect. Let me note down your contact details. What's the best way to reach you?"},
+      {guest_name, details[:contact_info]},
+      {host_name, "Got it. Thanks so much for your time today, #{guest_name}. I'll follow up with next steps."},
+      {guest_name, "Sounds great! Looking forward to it. Have a great day!"}
+    ]
+
+    {data, _final_time} =
+      Enum.map_reduce(segments, 0.0, fn {speaker, text}, current_time ->
+        {words, end_time} = words_to_list_with_timestamps(text, current_time)
+        segment = %{"speaker" => speaker, "words" => words}
+        # Add 2 seconds gap between segments
+        {segment, end_time + 2.0}
+      end)
+
+    %{"data" => data}
   end
 
-  defp words_to_list(sentence) do
-    sentence
-    |> String.split(" ")
-    |> Enum.map(&%{"text" => &1})
+  defp words_to_list_with_timestamps(sentence, start_time) do
+    words = String.split(sentence, " ")
+    # Average speaking rate: ~2.5 words per second
+    word_duration = 0.4
+
+    {word_list, end_time} =
+      Enum.map_reduce(words, start_time, fn word, current_time ->
+        word_map = %{
+          "text" => word,
+          "start_timestamp" => current_time,
+          "end_timestamp" => current_time + word_duration
+        }
+
+        {word_map, current_time + word_duration}
+      end)
+
+    {word_list, end_time}
   end
 end
 

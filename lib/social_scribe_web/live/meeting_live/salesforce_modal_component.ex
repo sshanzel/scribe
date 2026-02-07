@@ -98,7 +98,9 @@ defmodule SocialScribeWeb.MeetingLive.SalesforceModalComponent do
        searching: false,
        dropdown_open: false,
        error: nil,
-       auto_searched: false
+       auto_searched: false,
+       auto_select_single: false,
+       auto_select_query: nil
      )}
   end
 
@@ -109,6 +111,7 @@ defmodule SocialScribeWeb.MeetingLive.SalesforceModalComponent do
       |> assign(assigns)
       |> maybe_select_all_suggestions(assigns)
       |> maybe_auto_search_participant(assigns)
+      |> maybe_auto_select_single_contact(assigns)
 
     {:ok, socket}
   end
@@ -120,21 +123,104 @@ defmodule SocialScribeWeb.MeetingLive.SalesforceModalComponent do
 
   defp maybe_select_all_suggestions(socket, _assigns), do: socket
 
-  # Auto-search for the first non-host participant when modal opens
+  # Auto-select contact when:
+  # 1. auto_select_single is true (only one non-host participant)
+  # 2. Contacts just came in from search
+  # 3. No contact is currently selected
+  defp maybe_auto_select_single_contact(socket, %{contacts: contacts})
+       when is_list(contacts) and length(contacts) > 0 do
+    if socket.assigns.auto_select_single and is_nil(socket.assigns.selected_contact) do
+      query = socket.assigns.auto_select_query || socket.assigns.query
+      contact = find_best_matching_contact(contacts, query)
+
+      if contact do
+        socket =
+          assign(socket,
+            loading: true,
+            selected_contact: contact,
+            error: nil,
+            dropdown_open: false,
+            query: "",
+            suggestions: [],
+            auto_select_single: false
+          )
+
+        send(
+          self(),
+          {:generate_salesforce_suggestions, contact, socket.assigns.meeting,
+           socket.assigns.credential}
+        )
+
+        socket
+      else
+        socket
+      end
+    else
+      socket
+    end
+  end
+
+  defp maybe_auto_select_single_contact(socket, _assigns), do: socket
+
+  # Find the best matching contact - prioritize exact name match, otherwise take first result
+  defp find_best_matching_contact(contacts, query) when is_binary(query) do
+    query_lower = String.downcase(query)
+
+    # First try exact match
+    exact_match =
+      Enum.find(contacts, fn contact ->
+        full_name = "#{contact.firstname} #{contact.lastname}"
+        String.downcase(full_name) == query_lower
+      end)
+
+    # If no exact match, take first result
+    exact_match || List.first(contacts)
+  end
+
+  defp find_best_matching_contact(contacts, _query), do: List.first(contacts)
+
+  # Auto-search for non-host participants when modal opens
+  # If only one non-host participant: auto-fill search AND auto-select when results come back
+  # If multiple non-host participants: search first one, show dropdown for user to select
   defp maybe_auto_search_participant(socket, assigns) do
     if not socket.assigns.auto_searched and is_nil(socket.assigns.selected_contact) do
       meeting = assigns[:meeting] || socket.assigns[:meeting]
 
       if meeting && is_list(meeting.meeting_participants) do
-        non_host_participant =
-          Enum.find(meeting.meeting_participants, fn p -> not p.is_host end)
+        non_host_participants =
+          Enum.filter(meeting.meeting_participants, fn p -> not p.is_host end)
 
-        if non_host_participant do
-          socket = assign(socket, searching: true, auto_searched: true, dropdown_open: true)
-          send(self(), {:salesforce_search, non_host_participant.name, socket.assigns.credential})
-          socket
-        else
-          assign(socket, auto_searched: true)
+        case non_host_participants do
+          [single_participant] ->
+            # Single attendee - auto-fill and mark for auto-select
+            socket =
+              assign(socket,
+                searching: true,
+                auto_searched: true,
+                dropdown_open: false,
+                query: single_participant.name,
+                auto_select_single: true,
+                auto_select_query: single_participant.name
+              )
+
+            send(self(), {:salesforce_search, single_participant.name, socket.assigns.credential})
+            socket
+
+          [first | _rest] ->
+            # Multiple attendees - search first one, show dropdown
+            socket =
+              assign(socket,
+                searching: true,
+                auto_searched: true,
+                dropdown_open: true,
+                query: first.name
+              )
+
+            send(self(), {:salesforce_search, first.name, socket.assigns.credential})
+            socket
+
+          [] ->
+            assign(socket, auto_searched: true)
         end
       else
         socket

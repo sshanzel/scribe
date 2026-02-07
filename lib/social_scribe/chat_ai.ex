@@ -25,6 +25,7 @@ defmodule SocialScribe.ChatAI do
   alias SocialScribe.Meetings.Meeting
   alias SocialScribe.Meetings.MeetingTranscript
   alias SocialScribe.Meetings.MeetingParticipant
+  alias SocialScribe.TranscriptParser
 
   require Logger
 
@@ -367,20 +368,11 @@ defmodule SocialScribe.ChatAI do
   end
 
   defp format_transcript_content(nil), do: "No transcript available"
+
   defp format_transcript_content(%{"data" => data}) when is_list(data) do
-    data
-    |> Enum.map(fn segment ->
-      speaker = segment["speaker"] || "Unknown"
-      words = segment["words"] || []
-      text = words |> Enum.map(& &1["text"]) |> Enum.join(" ")
-      "#{speaker}: #{text}"
-    end)
-    |> Enum.join("\n")
-    |> case do
-      "" -> "No transcript available"
-      text -> text
-    end
+    TranscriptParser.format_segments_for_display(data)
   end
+
   defp format_transcript_content(_), do: "No transcript available"
 
   defp format_duration(nil), do: "Unknown"
