@@ -55,193 +55,175 @@ defmodule SocialScribeWeb.ChatLive do
         <.icon name="hero-chat-bubble-left-right" class="size-6 text-white" />
       </button>
 
-      <!-- Chat Panel -->
-      <div
-        :if={@open}
-        class="fixed inset-0 sm:relative sm:inset-auto sm:w-96 sm:h-[32rem] bg-white sm:rounded-xl shadow-2xl flex flex-col sm:border border-slate-200 overflow-hidden"
-      >
-        <!-- Header -->
-        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
-          <div class="flex items-center gap-2">
-            <!-- Mobile: double chevron to close -->
+      <.drawer id="chat-drawer" open={@open} on_close="toggle_chat">
+        <:header>
+          <h3 class="font-semibold text-slate-800">Ask Anything</h3>
+        </:header>
+        <:body>
+          <!-- Tab Bar -->
+          <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+            <div class="flex gap-1">
+              <button
+                phx-click="switch_tab"
+                phx-value-tab="chat"
+                class={"px-3 py-1 text-sm font-medium rounded-full transition-colors " <>
+                  if(@active_tab == :chat,
+                    do: "bg-slate-700 text-white",
+                    else: "text-slate-600 hover:bg-slate-100"
+                  )}
+              >
+                Chat
+              </button>
+              <button
+                phx-click="switch_tab"
+                phx-value-tab="history"
+                class={"px-3 py-1 text-sm font-medium rounded-full transition-colors " <>
+                  if(@active_tab == :history,
+                    do: "bg-slate-700 text-white",
+                    else: "text-slate-600 hover:bg-slate-100"
+                  )}
+              >
+                History
+              </button>
+            </div>
             <button
-              phx-click="toggle_chat"
-              class="sm:hidden text-slate-400 hover:text-slate-600"
-              title="Close"
+              phx-click="new_thread"
+              class="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+              title="New chat"
             >
-              <.icon name="hero-chevron-double-right" class="size-5" />
-            </button>
-            <h3 class="font-semibold text-slate-800">Ask Anything</h3>
-          </div>
-          <!-- Desktop: X button to close -->
-          <button phx-click="toggle_chat" class="hidden sm:block text-slate-400 hover:text-slate-600">
-            <.icon name="hero-x-mark" class="size-5" />
-          </button>
-        </div>
-
-        <!-- Tab Bar -->
-        <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100">
-          <div class="flex gap-1">
-            <button
-              phx-click="switch_tab"
-              phx-value-tab="chat"
-              class={"px-3 py-1 text-sm font-medium rounded-full transition-colors " <>
-                if(@active_tab == :chat,
-                  do: "bg-slate-700 text-white",
-                  else: "text-slate-600 hover:bg-slate-100"
-                )}
-            >
-              Chat
-            </button>
-            <button
-              phx-click="switch_tab"
-              phx-value-tab="history"
-              class={"px-3 py-1 text-sm font-medium rounded-full transition-colors " <>
-                if(@active_tab == :history,
-                  do: "bg-slate-700 text-white",
-                  else: "text-slate-600 hover:bg-slate-100"
-                )}
-            >
-              History
+              <.icon name="hero-plus" class="size-5" />
             </button>
           </div>
-          <button
-            phx-click="new_thread"
-            class="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
-            title="New chat"
-          >
-            <.icon name="hero-plus" class="size-5" />
-          </button>
-        </div>
 
-        <!-- Content Area -->
-        <div class="flex-1 overflow-hidden flex flex-col">
-          <%= if @active_tab == :chat do %>
-            <!-- Messages View -->
-            <div
-              id="messages-container"
-              class="flex-1 overflow-y-auto p-4 space-y-4"
-              phx-hook="ScrollToBottom"
-            >
-              <%= if @current_thread do %>
-                <div :for={message <- @messages} class={message_class(message.role)}>
-                  <div class={message_bubble_class(message.role)}>
-                    <div class="prose prose-sm max-w-none prose-slate">
-                      {raw(render_message_content(message))}
-                    </div>
-                    <div class="text-xs mt-1 opacity-60">
-                      {Calendar.strftime(message.inserted_at, "%H:%M")}
-                    </div>
-                  </div>
-                </div>
-
-                <div :if={@loading} class="flex justify-start">
-                  <div class="bg-slate-100 rounded-lg px-4 py-2 text-slate-500">
-                    <span class="animate-pulse">Thinking...</span>
-                  </div>
-                </div>
-
-                <div :if={@error_message} class="flex justify-start">
-                  <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700 max-w-[85%]">
-                    <div class="flex items-start gap-2">
-                      <.icon name="hero-exclamation-circle" class="size-5 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p class="text-sm">{@error_message}</p>
-                        <button
-                          phx-click="dismiss_error"
-                          class="text-xs text-red-600 hover:text-red-800 mt-1 underline"
-                        >
-                          Dismiss
-                        </button>
+          <!-- Content Area -->
+          <div class="flex-1 overflow-hidden flex flex-col">
+            <%= if @active_tab == :chat do %>
+              <!-- Messages View -->
+              <div
+                id="messages-container"
+                class="flex-1 overflow-y-auto p-4 space-y-4"
+                phx-hook="ScrollToBottom"
+              >
+                <%= if @current_thread do %>
+                  <div :for={message <- @messages} class={message_class(message.role)}>
+                    <div class={message_bubble_class(message.role)}>
+                      <div class="prose prose-sm max-w-none prose-slate">
+                        {raw(render_message_content(message))}
+                      </div>
+                      <div class="text-xs mt-1 opacity-60">
+                        {Calendar.strftime(message.inserted_at, "%H:%M")}
                       </div>
                     </div>
                   </div>
-                </div>
-              <% else %>
-                <!-- Empty state when no thread selected -->
-                <div class="flex-1 flex flex-col items-center justify-center text-slate-400 py-8">
-                  <.icon name="hero-chat-bubble-left-right" class="size-12 mb-3" />
-                  <p class="text-sm">Start a new conversation</p>
-                  <p class="text-xs mt-1">Type @ to mention a contact</p>
-                </div>
-              <% end %>
-            </div>
 
-            <!-- Message Input -->
-            <div class="p-3 border-t border-slate-100 bg-slate-50">
-              <div class="flex gap-2">
-                <div class="flex-1 relative">
-                  <div
-                    id="mention-input"
-                    phx-hook="MentionInput"
-                    phx-update="ignore"
-                    contenteditable="true"
-                    data-placeholder="Type @ to mention a contact..."
-                    class="min-h-[38px] max-h-[120px] overflow-y-auto w-full rounded-lg border border-slate-200 bg-white focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:outline-none text-sm px-3 py-2 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
-                  ></div>
+                  <div :if={@loading} class="flex justify-start">
+                    <div class="bg-slate-100 rounded-lg px-4 py-2 text-slate-500">
+                      <span class="animate-pulse">Thinking...</span>
+                    </div>
+                  </div>
 
-                  <!-- Contact Mention Dropdown -->
-                  <div
-                    :if={@show_mention_dropdown && length(@contact_results) > 0}
-                    class="absolute bottom-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto z-10"
-                  >
-                    <button
-                      :for={contact <- @contact_results}
-                      type="button"
-                      phx-click="select_contact"
-                      phx-value-id={contact.id}
-                      class="w-full px-3 py-2 text-left hover:bg-slate-50 flex items-center gap-2"
+                  <div :if={@error_message} class="flex justify-start">
+                    <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700 max-w-[85%]">
+                      <div class="flex items-start gap-2">
+                        <.icon name="hero-exclamation-circle" class="size-5 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p class="text-sm">{@error_message}</p>
+                          <button
+                            phx-click="dismiss_error"
+                            class="text-xs text-red-600 hover:text-red-800 mt-1 underline"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% else %>
+                  <!-- Empty state when no thread selected -->
+                  <div class="flex-1 flex flex-col items-center justify-center text-slate-400 py-8">
+                    <.icon name="hero-chat-bubble-left-right" class="size-12 mb-3" />
+                    <p class="text-sm">Start a new conversation</p>
+                    <p class="text-xs mt-1">Type @ to mention a contact</p>
+                  </div>
+                <% end %>
+              </div>
+
+              <!-- Message Input -->
+              <div class="p-3 border-t border-slate-100 bg-slate-50">
+                <div class="flex gap-2">
+                  <div class="flex-1 relative">
+                    <div
+                      id="mention-input"
+                      phx-hook="MentionInput"
+                      phx-update="ignore"
+                      contenteditable="true"
+                      data-placeholder="Type @ to mention a contact..."
+                      class="min-h-[38px] max-h-[120px] overflow-y-auto w-full rounded-lg border border-slate-200 bg-white focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:outline-none text-sm px-3 py-2 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
+                    ></div>
+
+                    <!-- Contact Mention Dropdown -->
+                    <div
+                      :if={@show_mention_dropdown && length(@contact_results) > 0}
+                      class="absolute bottom-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto z-10"
                     >
-                      <img
-                        src={"https://ui-avatars.com/api/?name=#{URI.encode(contact.name)}&size=24&background=475569&color=fff"}
-                        class="w-6 h-6 rounded-full"
-                        alt={contact.name}
-                      />
-                      <div>
-                        <div class="text-sm font-medium text-slate-800">{contact.name}</div>
-                        <div class="text-xs text-slate-500">{contact.email}</div>
-                      </div>
-                    </button>
+                      <button
+                        :for={contact <- @contact_results}
+                        type="button"
+                        phx-click="select_contact"
+                        phx-value-id={contact.id}
+                        class="w-full px-3 py-2 text-left hover:bg-slate-50 flex items-center gap-2"
+                      >
+                        <img
+                          src={"https://ui-avatars.com/api/?name=#{URI.encode(contact.name)}&size=24&background=475569&color=fff"}
+                          class="w-6 h-6 rounded-full"
+                          alt={contact.name}
+                        />
+                        <div>
+                          <div class="text-sm font-medium text-slate-800">{contact.name}</div>
+                          <div class="text-xs text-slate-500">{contact.email}</div>
+                        </div>
+                      </button>
+                    </div>
                   </div>
+
+                  <button
+                    type="button"
+                    id="chat-submit-btn"
+                    phx-click={JS.dispatch("chat:submit", to: "#mention-input")}
+                    disabled={@mentions == [] || @message_input == ""}
+                    class="px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed self-end transition-colors"
+                  >
+                    <.icon name="hero-paper-airplane" class="size-5" />
+                  </button>
+                </div>
+              </div>
+            <% else %>
+              <!-- History View -->
+              <div class="flex-1 overflow-y-auto">
+                <div :for={thread <- @threads} class="border-b border-slate-100">
+                  <button
+                    phx-click="select_thread"
+                    phx-value-id={thread.id}
+                    class="w-full p-4 text-left hover:bg-slate-50 transition-colors"
+                  >
+                    <div class="font-medium text-slate-800 truncate">
+                      {thread.title || "New Chat"}
+                    </div>
+                    <div class="text-sm text-slate-500">
+                      {Calendar.strftime(thread.updated_at, "%b %d, %Y")}
+                    </div>
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  id="chat-submit-btn"
-                  phx-click={JS.dispatch("chat:submit", to: "#mention-input")}
-                  disabled={@mentions == [] || @message_input == ""}
-                  class="px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed self-end transition-colors"
-                >
-                  <.icon name="hero-paper-airplane" class="size-5" />
-                </button>
+                <div :if={@threads == []} class="p-8 text-center text-slate-400">
+                  <.icon name="hero-inbox" class="size-10 mx-auto mb-2" />
+                  <p class="text-sm">No conversations yet</p>
+                </div>
               </div>
-            </div>
-          <% else %>
-            <!-- History View -->
-            <div class="flex-1 overflow-y-auto">
-              <div :for={thread <- @threads} class="border-b border-slate-100">
-                <button
-                  phx-click="select_thread"
-                  phx-value-id={thread.id}
-                  class="w-full p-4 text-left hover:bg-slate-50 transition-colors"
-                >
-                  <div class="font-medium text-slate-800 truncate">
-                    {thread.title || "New Chat"}
-                  </div>
-                  <div class="text-sm text-slate-500">
-                    {Calendar.strftime(thread.updated_at, "%b %d, %Y")}
-                  </div>
-                </button>
-              </div>
-
-              <div :if={@threads == []} class="p-8 text-center text-slate-400">
-                <.icon name="hero-inbox" class="size-10 mx-auto mb-2" />
-                <p class="text-sm">No conversations yet</p>
-              </div>
-            </div>
-          <% end %>
-        </div>
-      </div>
+            <% end %>
+          </div>
+        </:body>
+      </.drawer>
     </div>
     """
   end

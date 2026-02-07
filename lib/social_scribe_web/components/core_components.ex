@@ -685,4 +685,94 @@ defmodule SocialScribeWeb.CoreComponents do
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end
+
+  @doc """
+  Renders a drawer component that slides in from the side.
+
+  On mobile, the drawer takes up the full screen by default.
+  On desktop, it shows as a popup panel.
+
+  ## Examples
+
+      <.drawer id="chat-drawer" open={@open} on_close="close_drawer">
+        <:header>
+          <h3>Chat</h3>
+        </:header>
+        <:body>
+          <p>Drawer content here</p>
+        </:body>
+      </.drawer>
+
+  ## Options
+
+    * `:id` - Required. Unique identifier for the drawer.
+    * `:open` - Boolean. Whether the drawer is open.
+    * `:on_close` - Event name to trigger when closing.
+    * `:side` - Which side to slide from. Defaults to `:right`.
+    * `:full_width` - Whether drawer is full width on mobile. Defaults to `true`.
+    * `:desktop_width` - Width class for desktop. Defaults to `"sm:w-96"`.
+    * `:desktop_height` - Height class for desktop. Defaults to `"sm:h-[32rem]"`.
+
+  """
+  attr :id, :string, required: true
+  attr :open, :boolean, default: false
+  attr :on_close, :string, required: true
+  attr :side, :atom, default: :right, values: [:left, :right]
+  attr :full_width, :boolean, default: true
+  attr :desktop_width, :string, default: "sm:w-96"
+  attr :desktop_height, :string, default: "sm:h-[32rem]"
+
+  slot :header
+  slot :body, required: true
+
+  def drawer(assigns) do
+    ~H"""
+    <div :if={@open} id={@id} class="fixed inset-0 z-50 sm:relative sm:inset-auto">
+      <!-- Backdrop (mobile only) -->
+      <div
+        class="fixed inset-0 bg-black/20 sm:hidden transition-opacity"
+        phx-click={@on_close}
+        aria-hidden="true"
+      />
+
+      <!-- Drawer Panel -->
+      <div class={[
+        "fixed inset-y-0 bg-white shadow-2xl flex flex-col overflow-hidden",
+        "sm:relative sm:inset-auto sm:rounded-xl sm:border sm:border-slate-200",
+        @desktop_width,
+        @desktop_height,
+        @side == :right && "right-0 animate-slide-in-right",
+        @side == :left && "left-0 animate-slide-in-left",
+        @full_width && "w-full",
+        !@full_width && "w-80 max-w-[85vw]"
+      ]}>
+        <!-- Header -->
+        <div :if={@header != []} class="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
+          <div class="flex-1">
+            {render_slot(@header)}
+          </div>
+          <button
+            phx-click={@on_close}
+            class="text-slate-400 hover:text-slate-600 sm:hidden"
+            title="Close"
+          >
+            <.icon name="hero-chevron-double-right" class="size-5" />
+          </button>
+          <button
+            phx-click={@on_close}
+            class="hidden sm:block text-slate-400 hover:text-slate-600"
+            title="Close"
+          >
+            <.icon name="hero-x-mark" class="size-5" />
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="flex-1 overflow-hidden flex flex-col">
+          {render_slot(@body)}
+        </div>
+      </div>
+    </div>
+    """
+  end
 end
