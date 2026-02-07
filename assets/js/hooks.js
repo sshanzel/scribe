@@ -84,15 +84,16 @@ Hooks.MentionInput = {
         const lastAtIndex = text.lastIndexOf('@')
         if (lastAtIndex === -1) return
 
-        // Create the mention chip
+        // Create the mention chip - keep in sync with chat_live.ex mention_chip_html/2
         const chip = document.createElement('span')
-        chip.className = 'mention-chip inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full text-sm mx-0.5'
+        chip.className = 'mention-chip inline-flex items-center gap-0.5 bg-slate-200 text-slate-700 px-1 py-0.5 rounded-full text-[10px] font-medium mx-0.5'
         chip.contentEditable = 'false'
         chip.dataset.contactId = contactId
         chip.dataset.name = contactName
+        const firstName = contactName.split(' ')[0] || contactName
         chip.innerHTML = `
-            <span class="w-4 h-4 bg-indigo-300 rounded-full flex items-center justify-center text-xs text-white font-medium">${contactName.charAt(0).toUpperCase()}</span>
-            <span>${contactName}</span>
+            <span class="w-3 h-3 bg-slate-500 rounded-full flex items-center justify-center text-[8px] text-white font-medium">${contactName.charAt(0).toUpperCase()}</span>
+            <span>${firstName}</span>
         `
 
         // Find and replace the @query text
