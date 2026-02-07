@@ -2,11 +2,18 @@ defmodule SocialScribeWeb.SalesforceModalTest do
   use SocialScribeWeb.ConnCase
 
   import Phoenix.LiveViewTest
+  import Mox
   import SocialScribe.AccountsFixtures
   import SocialScribe.MeetingsFixtures
 
+  setup :verify_on_exit!
+
   describe "Salesforce Modal" do
     setup %{conn: conn} do
+      stub(SocialScribe.SalesforceApiMock, :search_contacts, fn _credential, _query ->
+        {:ok, []}
+      end)
+
       user = user_fixture()
       salesforce_credential = salesforce_credential_fixture(%{user_id: user.id})
       meeting = meeting_fixture_with_transcript_and_participants(user)
@@ -95,6 +102,10 @@ defmodule SocialScribeWeb.SalesforceModalTest do
 
   describe "Salesforce Modal - with credential but no participants" do
     setup %{conn: conn} do
+      stub(SocialScribe.SalesforceApiMock, :search_contacts, fn _credential, _query ->
+        {:ok, []}
+      end)
+
       user = user_fixture()
       salesforce_credential = salesforce_credential_fixture(%{user_id: user.id})
       meeting = meeting_fixture_with_transcript(user)
@@ -120,6 +131,10 @@ defmodule SocialScribeWeb.SalesforceModalTest do
 
   describe "SalesforceModalComponent events" do
     setup %{conn: conn} do
+      stub(SocialScribe.SalesforceApiMock, :search_contacts, fn _credential, _query ->
+        {:ok, []}
+      end)
+
       user = user_fixture()
       salesforce_credential = salesforce_credential_fixture(%{user_id: user.id})
       meeting = meeting_fixture_with_transcript_and_participants(user)

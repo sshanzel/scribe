@@ -383,19 +383,19 @@ SocialScribeWeb.ChatLive.MessageComponent
   - [x] Cascade delete tests (thread deletion removes messages)
 
 ### Step 5: AI Integration
-- [ ] Create ChatAI module
-- [ ] Implement contact resolution from message metadata
-- [ ] Implement contact CRM data fetching
-- [ ] Implement meeting context gathering (last 10, match by email)
-- [ ] Implement Gemini multi-turn payload builder
-- [ ] Implement generate_response
-- [ ] Implement generate_thread_title
-- [ ] **Tests:**
-  - [ ] Contact resolution from metadata tests
-  - [ ] Meeting context gathering tests (email match, limit 10, ordering)
-  - [ ] Gemini payload builder tests (multi-turn format)
-  - [ ] generate_response tests with mocked Gemini API
-  - [ ] generate_thread_title tests
+- [x] Create ChatAI module
+- [x] Implement contact resolution from message metadata
+- [x] Implement contact CRM data fetching
+- [x] Implement meeting context gathering (last 10, match by email)
+- [x] Implement Gemini multi-turn payload builder
+- [x] Implement generate_response
+- [x] Implement generate_thread_title
+- [x] **Tests:**
+  - [x] Contact resolution from metadata tests
+  - [x] Meeting context gathering tests (email match, limit 10, ordering)
+  - [x] Gemini payload builder tests (multi-turn format)
+  - [x] generate_response tests with mocked Gemini API
+  - [x] generate_thread_title tests
 
 ### Step 6: Basic UI
 - [ ] Create chat bubble component
