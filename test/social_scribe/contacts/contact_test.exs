@@ -56,9 +56,11 @@ defmodule SocialScribe.Contacts.ContactTest do
     end
 
     test "enforces unique constraint on email" do
+      email = unique_email("unique")
+
       attrs = %{
         name: "John Doe",
-        email: "john@example.com"
+        email: email
       }
 
       {:ok, _contact} =

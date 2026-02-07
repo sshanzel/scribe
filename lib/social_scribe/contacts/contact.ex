@@ -27,7 +27,7 @@ defmodule SocialScribe.Contacts.Contact do
     |> cast(attrs, [:name, :email])
     |> validate_required([:email])
     |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must be a valid email")
-    |> update_change(:email, &String.downcase/1)
+    |> update_change(:email, &normalize_email/1)
     |> unique_constraint(:email,
       name: :contacts_email_index,
       message: "contact with this email already exists"
@@ -41,4 +41,8 @@ defmodule SocialScribe.Contacts.Contact do
   def display_name(%__MODULE__{name: name, email: email}) do
     if name && name != "", do: name, else: email
   end
+
+  defp normalize_email(nil), do: nil
+  defp normalize_email(email) when is_binary(email), do: String.downcase(email)
+  defp normalize_email(other), do: other
 end

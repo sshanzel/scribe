@@ -1,5 +1,6 @@
 defmodule SocialScribe.CalendarSyncronizerTest do
-  use SocialScribe.DataCase, async: true
+  # async: false because module attributes use hardcoded emails that conflict with other tests
+  use SocialScribe.DataCase, async: false
 
   import Mox
   import SocialScribe.AccountsFixtures

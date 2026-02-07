@@ -153,7 +153,10 @@ defmodule SocialScribe.Contacts do
   def create_calendar_event_attendee(attrs) do
     changeset = CalendarEventAttendee.changeset(%CalendarEventAttendee{}, attrs)
 
-    case Repo.insert(changeset, on_conflict: :nothing) do
+    case Repo.insert(changeset,
+           on_conflict: :nothing,
+           conflict_target: [:calendar_event_id, :contact_id]
+         ) do
       {:ok, %CalendarEventAttendee{id: nil}} ->
         # Conflict occurred, fetch the existing record
         calendar_event_id = attrs[:calendar_event_id] || attrs["calendar_event_id"]

@@ -62,7 +62,7 @@ defmodule SocialScribe.ChatAITest do
       user = user_fixture()
 
       # Create a contact
-      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: "john@example.com"})
+      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: unique_email("john")})
 
       # Create a calendar event for the user
       calendar_event = calendar_event_fixture(user_id: user.id)
@@ -102,7 +102,7 @@ defmodule SocialScribe.ChatAITest do
 
     test "limits to 10 most recent meetings" do
       user = user_fixture()
-      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: "john@example.com"})
+      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: unique_email("john")})
 
       # Create 12 meetings
       for i <- 1..12 do
@@ -132,7 +132,7 @@ defmodule SocialScribe.ChatAITest do
 
     test "orders meetings by most recent first" do
       user = user_fixture()
-      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: "john@example.com"})
+      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: unique_email("john")})
 
       # Create older meeting
       old_event = calendar_event_fixture(user_id: user.id)
@@ -183,7 +183,7 @@ defmodule SocialScribe.ChatAITest do
     test "does not return meetings from other users" do
       user1 = user_fixture()
       user2 = user_fixture()
-      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: "john@example.com"})
+      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: unique_email("john")})
 
       # Create meeting for user2 with the same contact
       calendar_event = calendar_event_fixture(user_id: user2.id)
@@ -212,7 +212,7 @@ defmodule SocialScribe.ChatAITest do
     test "both users see only their own meetings with shared contact" do
       user1 = user_fixture()
       user2 = user_fixture()
-      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: "john@example.com"})
+      {:ok, contact} = Contacts.create_contact(%{name: "John Doe", email: unique_email("john")})
 
       # User1's meeting with John
       event1 = calendar_event_fixture(user_id: user1.id)
