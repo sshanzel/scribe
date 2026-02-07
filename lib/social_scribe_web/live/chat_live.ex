@@ -108,12 +108,17 @@ defmodule SocialScribeWeb.ChatLive do
               >
                 <%= if @current_thread do %>
                   <!-- Welcome message for new/empty threads -->
-                  <div :if={@messages == []} class="flex-1 flex flex-col items-center justify-center text-slate-500">
-                    <p class="text-sm">I can answer questions about Jump meetings and data — just ask!</p>
+                  <div
+                    :if={@messages == []}
+                    class="flex-1 flex flex-col items-center justify-center text-slate-500"
+                  >
+                    <p class="text-sm">
+                      I can answer questions about Jump meetings and data — just ask!
+                    </p>
                   </div>
-
-                  <!-- Timestamp for first message -->
-                  <div :if={@messages != []} class="flex items-center gap-3 pb-1 mx-3">
+                  
+    <!-- Timestamp for first message -->
+                  <div :if={@messages != []} class="flex items-center gap-3 pb-1 mx-1">
                     <div class="flex-1 h-px bg-slate-200"></div>
                     <span class="text-xs text-slate-400 whitespace-nowrap">
                       {format_thread_timestamp(List.first(@messages).inserted_at)}
@@ -121,13 +126,26 @@ defmodule SocialScribeWeb.ChatLive do
                     <div class="flex-1 h-px bg-slate-200"></div>
                   </div>
 
-                  <div :for={message <- @messages} class={message_class(message.role)}>
+                  <div
+                    :for={{message, index} <- Enum.with_index(@messages)}
+                    class={message_class(message.role)}
+                  >
                     <div class={message_bubble_class(message.role)}>
                       <div class="text-sm leading-relaxed">
                         {raw(render_message_content(message))}
                       </div>
-                      <div class="text-xs mt-1 opacity-60">
-                        {Calendar.strftime(message.inserted_at, "%H:%M")}
+                      <!-- Sources for the last assistant message -->
+                      <div
+                        :if={message.role != "user" && index == length(@messages) - 1}
+                        class="flex items-center gap-1.5 mt-2"
+                      >
+                        <span class="text-xs text-slate-400">Sources</span>
+                        <div
+                          class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center"
+                          title="Jump AI Meetings"
+                        >
+                          <img src={~p"/images/jump-logo.svg"} class="w-3 h-3" />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -164,7 +182,7 @@ defmodule SocialScribeWeb.ChatLive do
                 <% end %>
               </div>
               
-              <!-- Message Input Container -->
+    <!-- Message Input Container -->
               <div class="p-2">
                 <div class="rounded-lg border border-slate-200 bg-white">
                   <!-- Row 1: Add context button -->
@@ -177,7 +195,7 @@ defmodule SocialScribeWeb.ChatLive do
                       <span>Add context</span>
                     </button>
                   </div>
-
+                  
     <!-- Row 2: Input field (plain) -->
                   <div class="relative">
                     <div
@@ -188,7 +206,7 @@ defmodule SocialScribeWeb.ChatLive do
                       data-placeholder="Type @ to mention a contact..."
                       class="min-h-[50px] max-h-[100px] overflow-y-auto w-full focus:outline-none text-sm px-2.5 py-1.5 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
                     ></div>
-
+                    
     <!-- Contact Mention Dropdown -->
                     <div
                       :if={@show_mention_dropdown && length(@contact_results) > 0}
@@ -213,44 +231,43 @@ defmodule SocialScribeWeb.ChatLive do
                       </button>
                     </div>
                   </div>
-
-                  <!-- Row 3: Sources + Submit button -->
+                  
+    <!-- Row 3: Sources + Submit button -->
                   <div class="px-2.5 py-1.5 flex items-center justify-between">
-                    <!-- Sources - only show after first AI response -->
-                    <div :if={@messages != []} class="flex items-center gap-1.5">
+                    <!-- Sources - always displayed -->
+                    <div class="flex items-center gap-1.5">
                       <span class="text-xs text-slate-400">Sources</span>
-                      <div class="flex -space-x-1.5">
-                        <!-- Jump AI icon -->
+                      <div class="flex -space-x-2">
+                        <!-- Jump AI logo -->
                         <div
-                          class="w-4 h-4 rounded-full bg-slate-700 flex items-center justify-center ring-1 ring-white z-40"
-                          title="Jump AI"
+                          class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center ring-1 ring-white z-40"
+                          title="Jump AI Meetings"
                         >
-                          <.icon name="hero-sparkles" class="size-2.5 text-white" />
+                          <img src={~p"/images/jump-logo.svg"} class="w-3 h-3" />
                         </div>
-                        <!-- Gmail icon -->
+                        <!-- Gmail logo -->
                         <div
-                          class="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center ring-1 ring-white z-30"
+                          class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center ring-1 ring-white z-30"
                           title="Gmail"
                         >
-                          <.icon name="hero-envelope" class="size-2.5 text-white" />
+                          <img src={~p"/images/gmail-logo.svg"} class="w-3 h-3" />
                         </div>
-                        <!-- HubSpot icon -->
+                        <!-- HubSpot logo -->
                         <div
-                          class="w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center ring-1 ring-white z-20"
+                          class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center ring-1 ring-white z-20"
                           title="HubSpot"
                         >
-                          <.icon name="hero-building-office" class="size-2.5 text-white" />
+                          <img src={~p"/images/hubspot-logo.svg"} class="w-3 h-3" />
                         </div>
-                        <!-- Salesforce icon -->
+                        <!-- Salesforce logo -->
                         <div
-                          class="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center ring-1 ring-white z-10"
+                          class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center ring-1 ring-white z-10"
                           title="Salesforce"
                         >
-                          <.icon name="hero-cloud" class="size-2.5 text-white" />
+                          <img src={~p"/images/salesforce-logo.svg"} class="w-3 h-3" />
                         </div>
                       </div>
                     </div>
-                    <div :if={@messages == []}></div>
 
                     <button
                       type="button"
@@ -624,7 +641,7 @@ defmodule SocialScribeWeb.ChatLive do
 
   # Shared mention chip HTML - keep in sync with assets/js/hooks.js MentionInput
   defp mention_chip_html(initial, display_name) do
-    ~s(<span class="mention-chip inline-flex items-center gap-1 bg-slate-200 text-slate-700 px-1 py-px rounded-full text-xs font-medium"><span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">#{initial}</span><span>#{display_name}</span></span>)
+    ~s(<span class="mention-chip inline-flex items-center gap-1 bg-slate-200 text-slate-700 px-1 py-px rounded-full text-xs font-medium"><span class="relative"><span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">#{initial}</span><img src="/images/jump-logo.svg" class="absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0" /></span><span>#{display_name}</span></span>)
   end
 
   defp render_meeting_links(content, []), do: content
@@ -635,7 +652,7 @@ defmodule SocialScribeWeb.ChatLive do
     Regex.replace(
       ~r/\[Meeting:\s*(.+?)\]\(meeting:(\d+)\)/,
       content,
-      ~s(<a href="/dashboard/meetings/\\2" data-phx-link="redirect" data-phx-link-state="push" class="text-slate-600 hover:text-slate-800 underline font-medium">\\1</a>)
+      ~s(<a href="/dashboard/meetings/\\2" data-phx-link="redirect" data-phx-link-state="push" class="text-slate-600 hover:text-slate-800 underline font-medium">\\1</a><img src="/images/jump-logo.svg" class="w-3 h-3 inline ml-1 align-baseline" />)
     )
   end
 

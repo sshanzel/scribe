@@ -92,7 +92,10 @@ Hooks.MentionInput = {
         chip.dataset.name = contactName
         const firstName = contactName.split(' ')[0] || contactName
         chip.innerHTML = `
-            <span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">${contactName.charAt(0).toUpperCase()}</span>
+            <span class="relative">
+                <span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">${contactName.charAt(0).toUpperCase()}</span>
+                <img src="/images/jump-logo.svg" class="absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0" />
+            </span>
             <span>${firstName}</span>
         `
 
