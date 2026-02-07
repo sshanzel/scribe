@@ -5,6 +5,8 @@ defmodule SocialScribeWeb.ChatLive do
   """
   use SocialScribeWeb, :live_view
 
+  on_mount {SocialScribeWeb.UserAuth, :mount_current_user}
+
   alias SocialScribe.Chat
   alias SocialScribe.Contacts
   alias SocialScribe.ChatAIApi
