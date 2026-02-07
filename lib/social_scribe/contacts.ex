@@ -172,6 +172,22 @@ defmodule SocialScribe.Contacts do
   end
 
   @doc """
+  Syncs attendees for a calendar event by deleting existing and creating fresh.
+
+  This ensures removed attendees are cleaned up when an event is resynced.
+  """
+  def sync_attendees_from_event_data(calendar_event_id, attendees) when is_list(attendees) do
+    # Delete existing attendees for this event
+    from(a in CalendarEventAttendee, where: a.calendar_event_id == ^calendar_event_id)
+    |> Repo.delete_all()
+
+    # Create fresh attendee records
+    create_attendees_from_event_data(calendar_event_id, attendees)
+  end
+
+  def sync_attendees_from_event_data(_calendar_event_id, _attendees), do: []
+
+  @doc """
   Creates contacts and attendee records from calendar event attendees data.
 
   For each attendee with an email:
@@ -179,6 +195,9 @@ defmodule SocialScribe.Contacts do
   2. Create a calendar_event_attendee record linking them
 
   Returns a list of created attendee records.
+
+  Note: Use `sync_attendees_from_event_data/2` when resyncing events to clean up
+  removed attendees.
   """
   def create_attendees_from_event_data(calendar_event_id, attendees) when is_list(attendees) do
     attendees

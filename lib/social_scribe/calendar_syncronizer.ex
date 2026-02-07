@@ -73,7 +73,7 @@ defmodule SocialScribe.CalendarSyncronizer do
         case Calendar.create_or_update_calendar_event(event_attrs) do
           {:ok, calendar_event} ->
             # Create attendee records linking contacts to this event
-            Contacts.create_attendees_from_event_data(calendar_event.id, attendees)
+            Contacts.sync_attendees_from_event_data(calendar_event.id, attendees)
 
           {:error, reason} ->
             Logger.warning("Failed to create/update event #{item["id"]}: #{inspect(reason)}")

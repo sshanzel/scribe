@@ -369,4 +369,60 @@ defmodule SocialScribe.ContactsTest do
       assert guest_record != nil
     end
   end
+
+  describe "sync_attendees_from_event_data/2" do
+    test "removes old attendees and creates new ones" do
+      user = user_fixture()
+      calendar_event = calendar_event_fixture(%{user_id: user.id})
+
+      # Initial sync with Alice and Bob
+      initial_attendees = [
+        %{"email" => "alice@example.com", "displayName" => "Alice"},
+        %{"email" => "bob@example.com", "displayName" => "Bob"}
+      ]
+
+      records = Contacts.sync_attendees_from_event_data(calendar_event.id, initial_attendees)
+      assert length(records) == 2
+
+      # Verify both contacts are linked
+      contacts = Contacts.list_contacts(user)
+      emails = Enum.map(contacts, & &1.email)
+      assert "alice@example.com" in emails
+      assert "bob@example.com" in emails
+
+      # Resync with only Alice (Bob was removed from event)
+      updated_attendees = [
+        %{"email" => "alice@example.com", "displayName" => "Alice"}
+      ]
+
+      records = Contacts.sync_attendees_from_event_data(calendar_event.id, updated_attendees)
+      assert length(records) == 1
+
+      # Verify only Alice is linked now (Bob's attendee record was deleted)
+      contacts = Contacts.list_contacts(user)
+      assert length(contacts) == 1
+      assert hd(contacts).email == "alice@example.com"
+    end
+
+    test "contacts are preserved even when attendee records are deleted" do
+      user = user_fixture()
+      calendar_event = calendar_event_fixture(%{user_id: user.id})
+
+      # Create attendee
+      attendees = [%{"email" => "preserved@example.com", "displayName" => "Preserved"}]
+      Contacts.sync_attendees_from_event_data(calendar_event.id, attendees)
+
+      # Get the contact
+      contact = Contacts.get_contact_by_email("preserved@example.com")
+      assert contact != nil
+
+      # Resync with empty list (removes attendee record)
+      Contacts.sync_attendees_from_event_data(calendar_event.id, [])
+
+      # Contact should still exist in DB (just not linked to this event)
+      contact_after = Contacts.get_contact_by_email("preserved@example.com")
+      assert contact_after != nil
+      assert contact_after.id == contact.id
+    end
+  end
 end
