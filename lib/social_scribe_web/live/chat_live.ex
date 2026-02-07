@@ -268,7 +268,10 @@ defmodule SocialScribeWeb.ChatLive do
   end
 
   @impl true
-  def handle_event("message_input_change", %{"value" => value}, socket) do
+  def handle_event("message_input_change", params, socket) do
+    # phx-keyup sends value in params, but key varies based on event type
+    value = params["value"] || ""
+
     socket =
       socket
       |> assign(:message_input, value)
@@ -363,6 +366,12 @@ defmodule SocialScribeWeb.ChatLive do
   # Private Helpers
   # =============================================================================
 
+  defp maybe_search_contacts(%{assigns: %{current_user: nil}} = socket, _value) do
+    socket
+    |> assign(:show_mention_dropdown, false)
+    |> assign(:contact_results, [])
+  end
+
   defp maybe_search_contacts(socket, value) do
     # Check if there's an @ mention at the end
     case Regex.run(~r/@(\S*)$/, value) do
@@ -373,8 +382,8 @@ defmodule SocialScribeWeb.ChatLive do
         |> assign(:show_mention_dropdown, true)
         |> assign(:contact_results, results)
 
-      [_] ->
-        # Just @ with no query yet
+      [_, ""] ->
+        # Just @ with no query yet - show first 5 contacts
         results = Contacts.list_contacts(socket.assigns.current_user) |> Enum.take(5)
 
         socket
