@@ -89,3 +89,27 @@ This leads to code duplication and maintenance overhead.
 - Deprecate individual modal components
 
 **Benefit:** Single codebase for all CRM integrations. Adding new CRMs (Pipedrive, Zoho, etc.) becomes trivial.
+
+## 4. Add CRM IDs to contacts table
+
+**Problem:** The chat feature's contacts table is intentionally lean (id, user_id, name, email). When we need to fetch fresh CRM data for a contact, we have no direct link to the CRM record - we must search by email.
+
+**Solution:** Add optional CRM ID columns to the contacts table:
+```elixir
+# contacts (extended)
+- hubspot_id (string, nullable)
+- salesforce_id (string, nullable)
+```
+
+**Implementation:**
+1. Add migration for new columns
+2. When user creates contact from CRM search results, store the CRM ID
+3. When fetching CRM data, use direct ID lookup instead of email search
+4. Update contact CRM IDs when syncing
+
+**Files to modify:**
+- `priv/repo/migrations/xxx_add_crm_ids_to_contacts.exs`
+- `lib/social_scribe/contacts/contact.ex`
+- `lib/social_scribe/contacts.ex`
+
+**Benefit:** Direct CRM lookups are faster and more reliable than email-based search. Enables future features like "open in HubSpot/Salesforce" links.
