@@ -421,7 +421,22 @@ defmodule SocialScribeWeb.ChatLive do
     if content == "" || mentions_data == [] do
       {:noreply, socket}
     else
-      thread = socket.assigns.current_thread
+      # Create thread if one doesn't exist
+      {thread, socket} =
+        case socket.assigns.current_thread do
+          nil ->
+            {:ok, new_thread} = Chat.create_thread(socket.assigns.current_user)
+
+            socket =
+              socket
+              |> assign(:current_thread, new_thread)
+              |> assign(:threads, [new_thread | socket.assigns.threads])
+
+            {new_thread, socket}
+
+          existing_thread ->
+            {existing_thread, socket}
+        end
 
       # Build metadata from mentions
       metadata = %{

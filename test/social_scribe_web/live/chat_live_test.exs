@@ -5,6 +5,9 @@ defmodule SocialScribeWeb.ChatLiveTest do
   import Mox
   import SocialScribe.AccountsFixtures
 
+  alias SocialScribe.Chat
+  alias SocialScribe.Contacts
+
   setup :verify_on_exit!
 
   describe "ChatLive rendering" do
@@ -45,6 +48,109 @@ defmodule SocialScribeWeb.ChatLiveTest do
 
       assert html =~ "chat-container"
       assert html =~ "hero-chat-bubble-left-right"
+    end
+  end
+
+  describe "ChatLive send_message without existing thread" do
+    setup %{conn: conn} do
+      # Stub mocks
+      stub(SocialScribe.SalesforceApiMock, :search_contacts, fn _credential, _query ->
+        {:ok, []}
+      end)
+
+      stub(SocialScribe.HubspotApiMock, :search_contacts, fn _credential, _query ->
+        {:ok, []}
+      end)
+
+      user = user_fixture()
+      {:ok, contact} = Contacts.create_contact(user, %{name: "Test Contact", email: "test@example.com"})
+
+      %{
+        conn: log_in_user(conn, user),
+        user: user,
+        contact: contact
+      }
+    end
+
+    test "creates thread automatically when sending message without existing thread", %{
+      user: user,
+      contact: contact
+    } do
+      # Stub ChatAIMock to return success
+      expect(SocialScribe.ChatAIMock, :generate_response, fn thread, _user, _content, _metadata ->
+        # Verify thread is not nil - this is the key assertion
+        assert thread != nil
+        assert thread.user_id == user.id
+        {:ok, "Response from AI", %{"meeting_refs" => []}}
+      end)
+
+      # Verify no threads exist initially
+      assert Chat.list_threads(user) == []
+
+      # Test the ChatLive module directly using a live_isolated approach
+      {:ok, view, _html} =
+        Phoenix.LiveViewTest.live_isolated(build_conn(), SocialScribeWeb.ChatLive,
+          session: %{"user_token" => SocialScribe.Accounts.generate_user_session_token(user)}
+        )
+
+      # Add the contact to mentions by selecting it
+      view |> render_click("select_contact", %{"id" => "#{contact.id}"})
+
+      # Send message without creating a thread first
+      view
+      |> render_click("send_message", %{
+        "message" => "Hello @Test Contact",
+        "mentions" => [%{"contact_id" => contact.id}]
+      })
+
+      # Give a moment for async message handling
+      :timer.sleep(50)
+
+      # Verify a thread was created
+      threads = Chat.list_threads(user)
+      assert length(threads) == 1
+    end
+
+    test "uses existing thread when one is already selected", %{
+      user: user,
+      contact: contact
+    } do
+      # Create a thread first
+      {:ok, existing_thread} = Chat.create_thread(user)
+
+      # Stub ChatAIMock to return success and verify the correct thread is used
+      expect(SocialScribe.ChatAIMock, :generate_response, fn thread, _user, _content, _metadata ->
+        # Verify it's the existing thread
+        assert thread.id == existing_thread.id
+        {:ok, "Response from AI", %{"meeting_refs" => []}}
+      end)
+
+      # Test the ChatLive module directly using a live_isolated approach
+      {:ok, view, _html} =
+        Phoenix.LiveViewTest.live_isolated(build_conn(), SocialScribeWeb.ChatLive,
+          session: %{"user_token" => SocialScribe.Accounts.generate_user_session_token(user)}
+        )
+
+      # Select the existing thread
+      view |> render_click("select_thread", %{"id" => "#{existing_thread.id}"})
+
+      # Add the contact to mentions
+      view |> render_click("select_contact", %{"id" => "#{contact.id}"})
+
+      # Send message
+      view
+      |> render_click("send_message", %{
+        "message" => "Hello @Test Contact",
+        "mentions" => [%{"contact_id" => contact.id}]
+      })
+
+      # Give a moment for async message handling
+      :timer.sleep(50)
+
+      # Verify no new threads were created
+      threads = Chat.list_threads(user)
+      assert length(threads) == 1
+      assert hd(threads).id == existing_thread.id
     end
   end
 end
