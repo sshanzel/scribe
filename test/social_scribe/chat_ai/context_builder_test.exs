@@ -704,6 +704,64 @@ defmodule SocialScribe.ChatAI.ContextBuilderTest do
   end
 
   # =============================================================================
+  # get_user_visible_contact/2
+  # =============================================================================
+
+  describe "get_user_visible_contact/2" do
+    test "returns contact when user has a calendar event with the contact" do
+      %{contact: contact, user: user} =
+        contact_with_event_fixture(%{name: "John Doe", email: "john@example.com"})
+
+      result = ContextBuilder.get_user_visible_contact(user, contact.id)
+
+      assert result.id == contact.id
+      assert result.email == "john@example.com"
+    end
+
+    test "returns nil when contact exists but user has no calendar event with them" do
+      user = user_fixture()
+      other_user = user_fixture()
+
+      # Create contact linked to other_user's calendar event
+      %{contact: contact} =
+        contact_with_event_fixture(%{
+          name: "John Doe",
+          email: "john@example.com",
+          user: other_user
+        })
+
+      # Current user should NOT see this contact
+      result = ContextBuilder.get_user_visible_contact(user, contact.id)
+
+      assert result == nil
+    end
+
+    test "returns nil when contact_id does not exist" do
+      user = user_fixture()
+
+      result = ContextBuilder.get_user_visible_contact(user, 999_999)
+
+      assert result == nil
+    end
+
+    test "returns nil for nil contact_id" do
+      user = user_fixture()
+
+      result = ContextBuilder.get_user_visible_contact(user, nil)
+
+      assert result == nil
+    end
+
+    test "returns nil for non-integer contact_id" do
+      user = user_fixture()
+
+      result = ContextBuilder.get_user_visible_contact(user, "not-an-id")
+
+      assert result == nil
+    end
+  end
+
+  # =============================================================================
   # gather_context/2
   # =============================================================================
 

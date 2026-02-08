@@ -168,7 +168,7 @@ defmodule SocialScribe.CRM.ContactSearch do
       email: email,
       company: nil,
       title: nil,
-      crm_data: %{}
+      crm_data: nil
     }
   end
 
@@ -184,6 +184,8 @@ defmodule SocialScribe.CRM.ContactSearch do
       {:error, _reason} ->
         []
     end
+  rescue
+    _ -> []
   end
 
   defp normalize_hubspot_contact(%{id: id, display_name: name, email: email} = contact) do
@@ -214,6 +216,8 @@ defmodule SocialScribe.CRM.ContactSearch do
       {:error, _reason} ->
         []
     end
+  rescue
+    _ -> []
   end
 
   defp normalize_salesforce_contact(%{id: id, display_name: name, email: email} = contact) do

@@ -165,14 +165,12 @@ defmodule SocialScribeWeb.ChatLive do
                       :if={@show_mention_dropdown}
                       class="absolute bottom-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto z-10"
                     >
-                      <!-- Loading state -->
                       <div :if={@searching} class="px-3 py-4 text-center">
                         <div class="flex items-center justify-center gap-2">
                           <.icon name="hero-arrow-path" class="h-4 w-4 text-slate-400 animate-spin" />
                           <span class="text-sm text-slate-500">Searching CRM...</span>
                         </div>
                       </div>
-                      <!-- Empty state -->
                       <div
                         :if={!@searching && length(@contact_results) == 0}
                         class="px-3 py-4 text-center"
@@ -181,7 +179,6 @@ defmodule SocialScribeWeb.ChatLive do
                           Type to search your CRM contacts
                         </p>
                       </div>
-                      <!-- Results -->
                       <button
                         :for={contact <- @contact_results}
                         :if={!@searching}
@@ -215,7 +212,6 @@ defmodule SocialScribeWeb.ChatLive do
                   </div>
 
                   <div class="px-2.5 py-1.5 flex items-center justify-between">
-                    <!-- Sources - always displayed -->
                     <div class="flex items-center gap-1.5">
                       <span class="text-xs text-slate-400">Sources</span>
                       <div class="flex -space-x-2">
@@ -555,12 +551,13 @@ defmodule SocialScribeWeb.ChatLive do
 
   @impl true
   def handle_info({:search_contacts, query}, socket) do
-    # Only apply search results if this query still matches the current input.
+    # Only apply search results if this query matches the pending query.
     # This prevents stale debounced messages from overwriting newer results.
     socket =
-      if query == socket.assigns.message_input do
+      if query == socket.assigns[:pending_contact_query] do
         socket
         |> assign(:search_timer, nil)
+        |> assign(:pending_contact_query, nil)
         |> perform_contact_search(query)
       else
         # Stale search: clear timer and searching state, but keep existing results.
@@ -753,6 +750,7 @@ defmodule SocialScribeWeb.ChatLive do
 
     socket
     |> assign(:search_timer, timer)
+    |> assign(:pending_contact_query, query)
     |> assign(:show_mention_dropdown, true)
     |> assign(:searching, true)
   end

@@ -19,10 +19,10 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
   # =============================================================================
 
   @meeting_link_regex ~r/\[([^\]]+)\]\(meeting:(\d+)\)/
-  @meeting_link_instruction """
-  - When referencing a meeting, mention the date naturally as a link using format: [Month Day, Year](meeting:{meeting_id})
-    Example: "In a meeting on [January 15, 2025](meeting:123), they discussed..." or "During the [November 3, 2025](meeting:456) call..."\
-  """
+  @meeting_link_instruction String.trim_trailing("""
+                            - When referencing a meeting, mention the date naturally as a link using format: [Month Day, Year](meeting:{meeting_id})
+                              Example: "In a meeting on [January 15, 2025](meeting:123), they discussed..." or "During the [November 3, 2025](meeting:456) call..."
+                            """)
 
   @doc """
   Returns the regex pattern for matching meeting links in AI responses.

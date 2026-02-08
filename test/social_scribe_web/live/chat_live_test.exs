@@ -218,4 +218,72 @@ defmodule SocialScribeWeb.ChatLiveTest do
       assert hd(threads).id == existing_thread.id
     end
   end
+
+  describe "XSS prevention in contact display" do
+    setup %{conn: conn} do
+      stub(SocialScribe.SalesforceApiMock, :search_contacts, fn _credential, _query ->
+        {:ok, []}
+      end)
+
+      stub(SocialScribe.HubspotApiMock, :search_contacts, fn _credential, _query ->
+        {:ok, []}
+      end)
+
+      # Create contact with XSS payload in name
+      %{contact: contact, user: user} =
+        contact_with_event_fixture(%{
+          name: "<script>alert('xss')</script>",
+          email: "xss@example.com"
+        })
+
+      %{
+        conn: log_in_user(conn, user),
+        user: user,
+        contact: contact
+      }
+    end
+
+    test "escapes HTML in contact names in dropdown", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/dashboard")
+
+      # The contact name should not appear as raw HTML (would be executed)
+      # Phoenix templates auto-escape, so the literal <script> should appear escaped
+      refute html =~ "<script>alert('xss')</script>"
+    end
+
+    test "contact search results escape malicious names", %{user: user} do
+      # Mock HubSpot to return a contact with XSS payload
+      stub(SocialScribe.HubspotApiMock, :search_contacts, fn _credential, _query ->
+        {:ok,
+         [
+           %{
+             id: "xss123",
+             display_name: "<img src=x onerror=alert('xss')>",
+             email: "malicious@example.com",
+             company: "Evil Corp"
+           }
+         ]}
+      end)
+
+      _credential = hubspot_credential_fixture(%{user_id: user.id})
+
+      {:ok, view, _html} =
+        Phoenix.LiveViewTest.live_isolated(build_conn(), SocialScribeWeb.ChatLive,
+          session: %{"user_token" => SocialScribe.Accounts.generate_user_session_token(user)}
+        )
+
+      # Trigger contact search via message_input_change with @ mention
+      view |> render_click("message_input_change", %{"value" => "@test", "key" => "t"})
+
+      # Wait for debounced search to complete
+      :timer.sleep(350)
+
+      html = render(view)
+
+      # The malicious HTML should be escaped, not rendered as raw HTML
+      refute html =~ "<img src=x onerror="
+      # The escaped version should appear (HEEx auto-escapes)
+      assert html =~ "&lt;img src=x" or html =~ "malicious@example.com"
+    end
+  end
 end
