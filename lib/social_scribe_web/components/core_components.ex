@@ -453,6 +453,45 @@ defmodule SocialScribeWeb.CoreComponents do
     """
   end
 
+  @doc """
+  Renders a page header with consistent dashboard styling.
+
+  ## Examples
+
+      <.page_header title="Dashboard" />
+
+      <.page_header title="Automations">
+        <:actions>
+          <.button>New Automation</.button>
+        </:actions>
+      </.page_header>
+
+      <.page_header title="Upcoming Meetings">
+        <:subtitle>Your unified schedule from all connected accounts.</:subtitle>
+      </.page_header>
+  """
+  attr :title, :string, required: true
+  attr :class, :string, default: nil
+
+  slot :subtitle
+  slot :actions
+
+  def page_header(assigns) do
+    ~H"""
+    <div class={["mb-8", @actions != [] && "flex items-center justify-between gap-6", @class]}>
+      <div>
+        <h1 class="text-3xl md:text-4xl font-bold text-slate-800">
+          {@title}
+        </h1>
+        <p :if={@subtitle != []} class="mt-2 text-slate-600">
+          {render_slot(@subtitle)}
+        </p>
+      </div>
+      <div :if={@actions != []} class="flex-none">{render_slot(@actions)}</div>
+    </div>
+    """
+  end
+
   @doc ~S"""
   Renders a table with generic styling.
 

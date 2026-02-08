@@ -1,16 +1,13 @@
 <div class="container mx-auto px-4 py-8 md:py-12">
-  <h1 class="text-4xl md:text-5xl font-bold mb-4 text-slate-800 tracking-tight">
-    {@page_title}
-  </h1>
-  <div class="text-lg text-slate-600 mb-10">
-    <p class="leading-relaxed mb-2">
+  <.page_header title={@page_title}>
+    <:subtitle>
       Your unified schedule from all connected Google Accounts.
-    </p>
-    <p class="text-sm text-slate-500 italic pl-4 py-1">
-      <.icon name="hero-information-circle" class="w-4 h-4 inline-block mr-1" />
-      Currently we only support Google Calendar's Primary Calendar.
-    </p>
-  </div>
+      <p class="mt-1 text-sm text-slate-500 italic">
+        <.icon name="hero-information-circle" class="w-4 h-4 inline-block mr-1" />
+        Currently we only support Google Calendar's Primary Calendar.
+      </p>
+    </:subtitle>
+  </.page_header>
 
   <div class="space-y-6">
     <%= if @loading do %>
