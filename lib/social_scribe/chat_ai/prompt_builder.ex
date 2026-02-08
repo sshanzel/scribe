@@ -68,7 +68,8 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
   def build_system_context(%{
         contact: %Contact{} = contact,
         crm_data: crm_data,
-        meetings: meetings
+        meetings: meetings,
+        name_matched_meetings: name_matched
       })
       when is_list(meetings) do
     """
@@ -87,10 +88,16 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
 
     MEETING HISTORY (most recent first, last #{length(meetings)} meetings):
     #{format_meetings(meetings)}
+    #{format_name_matched_meetings(name_matched)}
     """
   end
 
-  def build_system_context(%{contact: nil, crm_data: crm_data, meetings: meetings})
+  def build_system_context(%{
+        contact: nil,
+        crm_data: crm_data,
+        meetings: meetings,
+        name_matched_meetings: name_matched
+      })
       when is_map(crm_data) and is_list(meetings) do
     """
     You are a helpful assistant that answers questions about business contacts based on meeting history and CRM data.
@@ -108,10 +115,16 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
 
     MEETING HISTORY (most recent first, last #{length(meetings)} meetings):
     #{format_meetings(meetings)}
+    #{format_name_matched_meetings(name_matched)}
     """
   end
 
-  def build_system_context(%{contact: nil, crm_data: nil, meetings: meetings})
+  def build_system_context(%{
+        contact: nil,
+        crm_data: nil,
+        meetings: meetings,
+        name_matched_meetings: name_matched
+      })
       when is_list(meetings) do
     """
     You are a helpful assistant that answers questions about the user's recent meetings.
@@ -126,7 +139,18 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
 
     RECENT MEETING HISTORY (most recent first, last #{length(meetings)} meetings):
     #{format_meetings(meetings)}
+    #{format_name_matched_meetings(name_matched)}
     """
+  end
+
+  # Fallback for old context format without name_matched_meetings
+  def build_system_context(%{contact: contact, crm_data: crm_data, meetings: meetings}) do
+    build_system_context(%{
+      contact: contact,
+      crm_data: crm_data,
+      meetings: meetings,
+      name_matched_meetings: []
+    })
   end
 
   # =============================================================================
@@ -135,27 +159,36 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
 
   @doc """
   Builds metadata for the AI response including meeting references.
+  Combines email-matched and name-matched meetings so all can be linked.
   """
-  def build_response_metadata(%{meetings: meetings}) when is_list(meetings) do
-    meeting_refs =
-      meetings
-      |> Enum.map(fn %Meeting{id: id, title: title, recorded_at: recorded_at} ->
-        date =
-          case recorded_at do
-            %DateTime{} = dt -> Calendar.strftime(dt, "%Y-%m-%d")
-            %NaiveDateTime{} = ndt -> Calendar.strftime(ndt, "%Y-%m-%d")
-            nil -> nil
-          end
-
-        %{
-          "meeting_id" => id,
-          "title" => title,
-          "date" => date
-        }
-      end)
-
-    %{"meeting_refs" => meeting_refs}
+  def build_response_metadata(%{meetings: meetings, name_matched_meetings: name_matched})
+      when is_list(meetings) do
+    all_meetings = meetings ++ (name_matched || [])
+    %{"meeting_refs" => build_meeting_refs(all_meetings)}
   end
+
+  def build_response_metadata(%{meetings: meetings}) when is_list(meetings) do
+    %{"meeting_refs" => build_meeting_refs(meetings)}
+  end
+
+  defp build_meeting_refs(meetings) when is_list(meetings) do
+    Enum.map(meetings, fn %Meeting{id: id, title: title, recorded_at: recorded_at} ->
+      date =
+        case recorded_at do
+          %DateTime{} = dt -> Calendar.strftime(dt, "%Y-%m-%d")
+          %NaiveDateTime{} = ndt -> Calendar.strftime(ndt, "%Y-%m-%d")
+          nil -> nil
+        end
+
+      %{
+        "meeting_id" => id,
+        "title" => title,
+        "date" => date
+      }
+    end)
+  end
+
+  defp build_meeting_refs(_), do: []
 
   # =============================================================================
   # Formatting Helpers
@@ -182,7 +215,11 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
     name = crm_data["display_name"] || crm_data[:display_name] || "Unknown"
     email = crm_data["email"] || crm_data[:email] || "Unknown"
     company = crm_data["company"] || crm_data[:company] || "Unknown"
-    title = crm_data["title"] || crm_data[:title] || crm_data["jobtitle"] || crm_data[:jobtitle] || "Unknown"
+
+    title =
+      crm_data["title"] || crm_data[:title] || crm_data["jobtitle"] || crm_data[:jobtitle] ||
+        "Unknown"
+
     phone = crm_data["phone"] || crm_data[:phone] || "Unknown"
     department = crm_data["department"] || crm_data[:department]
 
@@ -207,6 +244,27 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
     meetings
     |> Enum.map(&format_single_meeting/1)
     |> Enum.join("\n\n---\n\n")
+  end
+
+  defp format_name_matched_meetings([]), do: ""
+
+  defp format_name_matched_meetings(meetings) when is_list(meetings) do
+    """
+
+    POTENTIAL MEETINGS (matched by first name only - USE WITH CAUTION):
+    ⚠️ IMPORTANT: No meetings were found with an exact email match for this contact.
+    The meetings below were found by matching the contact's first name to meeting participants.
+    This is NOT a confirmed match - different people may share the same first name.
+
+    Guidelines:
+    1. Only use information from these meetings if the context (topic, company, participants) clearly matches the contact
+    2. Look for the meeting with strong contextual evidence when reviewing the details against the questions being asked to determine if it's likely to be the same person
+    3. The email mismatched which is why we should not use it to compare whether this was the user or not
+    4. Mention in your response that these meetings were based on the participant's name only and may not be the same person, so the information should be used with caution
+    5. If there is any uncertainty, it's better to state that you don't have enough information rather than risk providing inaccurate information
+
+    #{format_meetings(meetings)}
+    """
   end
 
   defp format_single_meeting(%Meeting{} = meeting) do
