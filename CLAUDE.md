@@ -93,6 +93,28 @@ def change do
 end
 ```
 
+# Ecto Schema Types
+
+For Ecto schemas, always define a simple type `t` to satisfy dialyzer and enable typespecs:
+
+```elixir
+defmodule MyApp.Accounts.User do
+  use Ecto.Schema
+
+  @type t :: %__MODULE__{}
+
+  schema "users" do
+    field :email, :string
+    # ...
+  end
+end
+```
+
+**Guidelines:**
+- Use `@type t :: %__MODULE__{}` - keep it simple, don't enumerate all fields
+- Place the `@type` definition before the `schema` block
+- This enables using `User.t()` in function specs throughout the codebase
+
 # Testing Guidelines
 
 Write tests that cover ALL edge cases, not just the happy path. Bugs often slip through when tests only cover basic scenarios.

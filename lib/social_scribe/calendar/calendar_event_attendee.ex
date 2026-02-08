@@ -11,6 +11,8 @@ defmodule SocialScribe.Calendar.CalendarEventAttendee do
   alias SocialScribe.Calendar.CalendarEvent
   alias SocialScribe.Contacts.Contact
 
+  @type t :: %__MODULE__{}
+
   schema "calendar_event_attendees" do
     field :display_name, :string
     field :response_status, :string

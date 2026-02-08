@@ -10,6 +10,8 @@ defmodule SocialScribe.Contacts.Contact do
 
   alias SocialScribe.Calendar.CalendarEventAttendee
 
+  @type t :: %__MODULE__{}
+
   schema "contacts" do
     field :name, :string
     field :email, :string

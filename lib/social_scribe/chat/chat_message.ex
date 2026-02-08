@@ -23,6 +23,8 @@ defmodule SocialScribe.Chat.ChatMessage do
 
   alias SocialScribe.Chat.ChatThread
 
+  @type t :: %__MODULE__{}
+
   @roles ~w(user assistant)
 
   schema "chat_messages" do

@@ -518,9 +518,7 @@ defmodule SocialScribeWeb.ChatLive do
   # Function Components
   # =============================================================================
 
-  @doc """
-  Renders the loading indicator shown when AI is generating a response.
-  """
+  # Renders the loading indicator shown when AI is generating a response.
   attr :loading, :boolean, required: true
 
   defp loading_indicator(assigns) do
@@ -533,9 +531,7 @@ defmodule SocialScribeWeb.ChatLive do
     """
   end
 
-  @doc """
-  Renders an error message with dismiss button.
-  """
+  # Renders an error message with dismiss button.
   attr :message, :string, required: true
 
   defp error_alert(assigns) do
@@ -559,9 +555,7 @@ defmodule SocialScribeWeb.ChatLive do
     """
   end
 
-  @doc """
-  Renders an empty state message.
-  """
+  # Renders an empty state message.
   attr :icon, :string, default: "hero-chat-bubble-left-right"
   attr :title, :string, required: true
   attr :subtitle, :string, default: nil
@@ -576,9 +570,7 @@ defmodule SocialScribeWeb.ChatLive do
     """
   end
 
-  @doc """
-  Renders the timestamp separator between messages.
-  """
+  # Renders the timestamp separator between messages.
   attr :datetime, :any, required: true
 
   defp timestamp_separator(assigns) do
@@ -593,9 +585,7 @@ defmodule SocialScribeWeb.ChatLive do
     """
   end
 
-  @doc """
-  Renders the sources indicator for assistant messages.
-  """
+  # Renders the sources indicator for assistant messages.
   defp sources_indicator(assigns) do
     ~H"""
     <div class="flex items-center gap-1.5 mt-2">

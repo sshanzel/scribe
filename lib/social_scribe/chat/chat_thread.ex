@@ -22,6 +22,8 @@ defmodule SocialScribe.Chat.ChatThread do
   alias SocialScribe.Accounts.User
   alias SocialScribe.Chat.ChatMessage
 
+  @type t :: %__MODULE__{}
+
   schema "chat_threads" do
     field :title, :string
 
