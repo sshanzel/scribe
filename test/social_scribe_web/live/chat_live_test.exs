@@ -309,8 +309,8 @@ defmodule SocialScribeWeb.ChatLiveTest do
     end
 
     test "contact search results escape malicious names", %{user: user} do
-      # Mock HubSpot to return a contact with XSS payload
-      stub(SocialScribe.HubspotApiMock, :search_contacts, fn _credential, _query ->
+      # Use expect to override the stub from setup
+      expect(SocialScribe.HubspotApiMock, :search_contacts, fn _credential, _query ->
         {:ok,
          [
            %{
@@ -333,7 +333,7 @@ defmodule SocialScribeWeb.ChatLiveTest do
       view |> render_click("message_input_change", %{"value" => "@test", "key" => "t"})
 
       # Wait for debounced search to complete
-      :timer.sleep(350)
+      :timer.sleep(400)
 
       html = render(view)
 
