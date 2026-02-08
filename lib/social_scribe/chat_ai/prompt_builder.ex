@@ -66,81 +66,20 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
   Builds the system context prompt from gathered context.
   """
   def build_system_context(%{
-        contact: %Contact{} = contact,
+        contact: contact,
         crm_data: crm_data,
         meetings: meetings,
         name_matched_meetings: name_matched
       })
       when is_list(meetings) do
-    """
-    You are a helpful assistant that answers questions about business contacts based on meeting history and CRM data.
+    has_contact_context = contact != nil or is_map(crm_data)
 
-    RULES:
-    - Be concise and direct
-    - Base your answers ONLY on the context provided below
-    - If information is not in the meeting transcripts or contact data, clearly state that you don't have that information
-    - Never guess, infer, or make up information
-    - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
-    - Format responses in markdown
-
-    CONTACT INFORMATION:
-    #{format_contact_info(contact, crm_data)}
-
-    MEETING HISTORY (most recent first, last #{length(meetings)} meetings):
-    #{format_meetings(meetings)}
-    #{format_name_matched_meetings(name_matched)}
-    """
-  end
-
-  def build_system_context(%{
-        contact: nil,
-        crm_data: crm_data,
-        meetings: meetings,
-        name_matched_meetings: name_matched
-      })
-      when is_map(crm_data) and is_list(meetings) do
-    """
-    You are a helpful assistant that answers questions about business contacts based on meeting history and CRM data.
-
-    RULES:
-    - Be concise and direct
-    - Base your answers ONLY on the context provided below
-    - If information is not in the meeting transcripts or contact data, clearly state that you don't have that information
-    - Never guess, infer, or make up information
-    - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
-    - Format responses in markdown
-
-    CONTACT INFORMATION (from CRM):
-    #{format_crm_contact_info(crm_data)}
-
-    MEETING HISTORY (most recent first, last #{length(meetings)} meetings):
-    #{format_meetings(meetings)}
-    #{format_name_matched_meetings(name_matched)}
-    """
-  end
-
-  def build_system_context(%{
-        contact: nil,
-        crm_data: nil,
-        meetings: meetings,
-        name_matched_meetings: name_matched
-      })
-      when is_list(meetings) do
-    """
-    You are a helpful assistant that answers questions about the user's recent meetings.
-
-    RULES:
-    - Be concise and direct
-    - Base your answers ONLY on the context provided below
-    - If information is not in the meeting transcripts, clearly state that you don't have that information
-    - Never guess, infer, or make up information
-    - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
-    - Format responses in markdown
-
-    RECENT MEETING HISTORY (most recent first, last #{length(meetings)} meetings):
-    #{format_meetings(meetings)}
-    #{format_name_matched_meetings(name_matched)}
-    """
+    build_prompt(%{
+      has_contact_context: has_contact_context,
+      contact_info: format_contact_section(contact, crm_data),
+      meetings: meetings,
+      name_matched_meetings: name_matched || []
+    })
   end
 
   # Fallback for old context format without name_matched_meetings
@@ -152,6 +91,55 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
       name_matched_meetings: []
     })
   end
+
+  defp build_prompt(%{
+         has_contact_context: has_contact_context,
+         contact_info: contact_info,
+         meetings: meetings,
+         name_matched_meetings: name_matched
+       }) do
+    {intro, info_source, meeting_label} = context_parts(has_contact_context)
+
+    """
+    You are a helpful assistant that answers questions about #{intro}.
+
+    RULES:
+    - Be concise and direct
+    - Base your answers ONLY on the context provided below
+    - If information is not in the meeting transcripts#{info_source}, clearly state that you don't have that information
+    - Never guess, infer, or make up information
+    - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
+    - Format responses in markdown
+    #{contact_info}
+    #{meeting_label} HISTORY (most recent first, last #{length(meetings)} meetings):
+    #{format_meetings(meetings)}
+    #{format_name_matched_meetings(name_matched)}
+    """
+  end
+
+  defp context_parts(true = _has_contact),
+    do: {"business contacts based on meeting history and CRM data", " or contact data", "MEETING"}
+
+  defp context_parts(false = _has_contact),
+    do: {"the user's recent meetings", "", "RECENT MEETING"}
+
+  defp format_contact_section(%Contact{} = contact, crm_data) do
+    """
+
+    CONTACT INFORMATION:
+    #{format_contact_info(contact, crm_data)}
+    """
+  end
+
+  defp format_contact_section(nil, crm_data) when is_map(crm_data) do
+    """
+
+    CONTACT INFORMATION:
+    #{format_crm_contact_info(crm_data)}
+    """
+  end
+
+  defp format_contact_section(nil, nil), do: ""
 
   # =============================================================================
   # Response Metadata Building
