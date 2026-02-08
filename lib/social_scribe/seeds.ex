@@ -209,8 +209,7 @@ defmodule SocialScribe.Seeds do
           topic2: "your deployment infrastructure",
           topic2_response:
             "We're on AWS, using ECS for containers. Our AWS bill is around $25,000/month.",
-          contact_info:
-            "You can reach me at emily.r@startup.dev or on my cell 510-555-0789."
+          contact_info: "You can reach me at emily.r@startup.dev or on my cell 510-555-0789."
         }
       },
       %{
@@ -224,8 +223,7 @@ defmodule SocialScribe.Seeds do
             "We need SOC 2 Type II compliance before we can proceed. Our security team also requires SSO integration with Okta.",
           followup:
             "We can definitely support those requirements. What's the timeline for your security review?",
-          response:
-            "Our CISO needs to sign off, which typically takes 4-6 weeks.",
+          response: "Our CISO needs to sign off, which typically takes 4-6 weeks.",
           topic2: "data residency requirements",
           topic2_response:
             "All data must stay within US data centers. We have customers in regulated industries.",
@@ -240,8 +238,7 @@ defmodule SocialScribe.Seeds do
         duration: 30,
         transcript_details: %{
           question: "What are the main goals for this consulting engagement?",
-          answer:
-            "We need help with our go-to-market strategy for the European expansion.",
+          answer: "We need help with our go-to-market strategy for the European expansion.",
           followup: "What's your current presence in Europe?",
           response:
             "Minimal right now - about 50 customers, mostly in the UK. Revenue from Europe is about $200K ARR.",

@@ -26,10 +26,7 @@ defmodule SocialScribeWeb.Sidebar do
           phx-disable-with=""
           class="group w-full flex items-center gap-3 px-2 py-2 mb-4 text-sm rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
         >
-          <.icon
-            name="hero-beaker"
-            class="size-5 group-[.phx-click-loading]:hidden"
-          />
+          <.icon name="hero-beaker" class="size-5 group-[.phx-click-loading]:hidden" />
           <.icon
             name="hero-arrow-path"
             class="size-5 hidden group-[.phx-click-loading]:block animate-spin"

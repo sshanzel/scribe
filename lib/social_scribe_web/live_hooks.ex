@@ -41,7 +41,8 @@ defmodule SocialScribeWeb.LiveHooks do
       {:halt, socket}
     rescue
       e ->
-        {:halt, Phoenix.LiveView.put_flash(socket, :error, "Seeding failed: #{Exception.message(e)}")}
+        {:halt,
+         Phoenix.LiveView.put_flash(socket, :error, "Seeding failed: #{Exception.message(e)}")}
     end
   end
 
