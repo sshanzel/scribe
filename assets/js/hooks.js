@@ -30,13 +30,11 @@ Hooks.MentionInput = {
         this.mentionStartPos = null
         this.mentions = []
 
-        // Handle input events
         this.el.addEventListener('input', (e) => {
             const text = this.getTextContent()
             this.pushEvent('message_input_change', { value: text })
         })
 
-        // Handle keydown for special keys
         this.el.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
@@ -47,17 +45,14 @@ Hooks.MentionInput = {
             }
         })
 
-        // Listen for submit button click via custom event
         this.el.addEventListener('chat:submit', () => {
             this.submitMessage()
         })
 
-        // Listen for mention insertion from server
         this.handleEvent('insert_mention', ({ id, name }) => {
             this.insertMentionChip(id, name)
         })
 
-        // Listen for clear input
         this.handleEvent('clear_input', () => {
             this.el.innerHTML = ''
             this.mentions = []
@@ -66,7 +61,6 @@ Hooks.MentionInput = {
     },
 
     getTextContent() {
-        // Get text content, replacing mention chips with @name
         let text = ''
         this.el.childNodes.forEach(node => {
             if (node.nodeType === Node.TEXT_NODE) {
@@ -81,7 +75,6 @@ Hooks.MentionInput = {
     insertMentionChip(contactId, contactName) {
         const text = this.getTextContent()
 
-        // Find the @query to replace (everything from last @ to cursor)
         const lastAtIndex = text.lastIndexOf('@')
         if (lastAtIndex === -1) return
 
@@ -100,27 +93,18 @@ Hooks.MentionInput = {
             <span>${firstName}</span>
         `
 
-        // Find and replace the @query text
         this.replaceAtQuery(chip)
-
-        // Track the mention
         this.mentions.push({ id: contactId, name: contactName })
-
-        // Move cursor after the chip
         this.placeCursorAfter(chip)
-
-        // Notify server
         this.pushEvent('message_input_change', { value: this.getTextContent() })
     },
 
     replaceAtQuery(chip) {
-        // Walk through nodes and find the @ text to replace
         const walker = document.createTreeWalker(this.el, NodeFilter.SHOW_TEXT)
         let node
         while (node = walker.nextNode()) {
             const atIndex = node.textContent.lastIndexOf('@')
             if (atIndex !== -1) {
-                // Split the text node and insert the chip
                 const before = node.textContent.substring(0, atIndex)
 
                 const beforeNode = document.createTextNode(before)

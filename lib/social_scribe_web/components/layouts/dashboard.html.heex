@@ -2,7 +2,6 @@
   <header class="shrink-0">
     <div class="flex items-center justify-between border-b border-zinc-100 py-3 text-sm px-2 sm:px-4 md:px-6 lg:px-8 bg-white">
       <div class="flex items-center gap-4">
-        <!-- Hamburger (mobile only) -->
         <button
           class="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg"
           phx-click={JS.show(to: "#mobile-sidebar-drawer")}
@@ -57,7 +56,6 @@
   </header>
 
   <div class="flex flex-1 min-h-0 relative">
-    <!-- Desktop sidebar -->
     <div class="hidden md:flex">
       <.sidebar
         base_path={~p"/dashboard"}
@@ -72,8 +70,7 @@
         ]}
       />
     </div>
-    
-<!-- Mobile sidebar drawer -->
+
     <.mobile_sidebar_drawer
       id="mobile-sidebar-drawer"
       base_path={~p"/dashboard"}
@@ -94,8 +91,7 @@
         {@inner_content}
       </main>
     </div>
-    
-<!-- Chat Widget -->
+
     <%= if assigns[:current_user] do %>
       {live_render(@socket, SocialScribeWeb.ChatLive, id: "chat-widget", sticky: true)}
     <% end %>

@@ -42,7 +42,6 @@ defmodule SocialScribeWeb.ChatLive do
   def render(assigns) do
     ~H"""
     <div id="chat-container" class="fixed bottom-4 right-4 z-50">
-      <!-- Chat Bubble -->
       <button
         :if={!@open}
         phx-click="toggle_chat"
@@ -57,7 +56,6 @@ defmodule SocialScribeWeb.ChatLive do
           <h3 class="font-semibold text-slate-800 text-base">Ask Anything</h3>
         </:header>
         <:body>
-          <!-- Tab Bar -->
           <div class="flex items-center justify-between px-3 py-1.5">
             <div class="flex gap-1">
               <button
@@ -91,25 +89,21 @@ defmodule SocialScribeWeb.ChatLive do
               <.icon name="hero-plus" class="size-4" />
             </button>
           </div>
-          
-    <!-- Content Area -->
+
           <div class="flex-1 overflow-hidden flex flex-col">
             <%= if @active_tab == :chat do %>
-              <!-- Messages View -->
               <div
                 id="messages-container"
                 class="flex-1 overflow-y-auto p-3 space-y-3 flex flex-col"
                 phx-hook="ScrollToBottom"
               >
-                <!-- Timestamp -->
                 <.timestamp_separator datetime={
                   cond do
                     @current_thread -> @current_thread.inserted_at
                     true -> DateTime.utc_now()
                   end
                 } />
-                
-    <!-- Persistent welcome message (always first) -->
+
                 <div class="flex justify-start">
                   <div class="text-slate-800 px-3 py-2 max-w-[85%]">
                     <div class="text-sm leading-relaxed">
@@ -128,7 +122,6 @@ defmodule SocialScribeWeb.ChatLive do
                       <div class="text-sm leading-relaxed">
                         {raw(render_message_content(message))}
                       </div>
-                      <!-- Sources for the last assistant message -->
                       <.sources_indicator :if={
                         message.role != "user" && index == length(@messages) - 1
                       } />
@@ -139,11 +132,9 @@ defmodule SocialScribeWeb.ChatLive do
                   <.error_alert :if={@error_message} message={@error_message} />
                 <% end %>
               </div>
-              
-    <!-- Message Input Container -->
+
               <div class="p-2">
                 <div class="rounded-lg border border-slate-200 bg-white">
-                  <!-- Row 1: Add context button -->
                   <div class="px-2.5 pt-1.5">
                     <button
                       type="button"
@@ -153,8 +144,7 @@ defmodule SocialScribeWeb.ChatLive do
                       <span>Add context</span>
                     </button>
                   </div>
-                  
-    <!-- Row 2: Input field (plain) -->
+
                   <div class="relative">
                     <div
                       id="mention-input"
@@ -164,8 +154,7 @@ defmodule SocialScribeWeb.ChatLive do
                       data-placeholder="Type @ to mention a contact..."
                       class="min-h-[50px] max-h-[100px] overflow-y-auto w-full focus:outline-none text-sm px-2.5 py-1.5 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
                     ></div>
-                    
-    <!-- Contact Mention Dropdown -->
+
                     <div
                       :if={@show_mention_dropdown && length(@contact_results) > 0}
                       class="absolute bottom-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto z-10"
@@ -189,35 +178,30 @@ defmodule SocialScribeWeb.ChatLive do
                       </button>
                     </div>
                   </div>
-                  
-    <!-- Row 3: Sources + Submit button -->
+
                   <div class="px-2.5 py-1.5 flex items-center justify-between">
                     <!-- Sources - always displayed -->
                     <div class="flex items-center gap-1.5">
                       <span class="text-xs text-slate-400">Sources</span>
                       <div class="flex -space-x-2">
-                        <!-- Jump AI logo -->
                         <div
                           class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center ring-1 ring-white z-40"
                           title="Jump AI Meetings"
                         >
                           <img src={~p"/images/jump-logo.svg"} class="w-3 h-3" />
                         </div>
-                        <!-- Gmail logo -->
                         <div
                           class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center ring-1 ring-white z-30"
                           title="Gmail"
                         >
                           <img src={~p"/images/gmail-logo.svg"} class="w-3 h-3" />
                         </div>
-                        <!-- HubSpot logo -->
                         <div
                           class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center ring-1 ring-white z-20"
                           title="HubSpot"
                         >
                           <img src={~p"/images/hubspot-logo.svg"} class="w-3 h-3" />
                         </div>
-                        <!-- Salesforce logo -->
                         <div
                           class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center ring-1 ring-white z-10"
                           title="Salesforce"
@@ -240,10 +224,8 @@ defmodule SocialScribeWeb.ChatLive do
                 </div>
               </div>
             <% else %>
-              <!-- History View -->
               <div class="flex-1 overflow-y-auto flex flex-col">
                 <%= if is_nil(@threads) or @threads.loading do %>
-                  <!-- Loading state -->
                   <div class="flex-1 flex flex-col items-center justify-center text-slate-400 py-6">
                     <.icon name="hero-arrow-path" class="size-6 mb-2 animate-spin" />
                     <p class="text-sm">Loading...</p>

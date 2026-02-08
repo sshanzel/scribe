@@ -23,6 +23,39 @@ You are an expert Elixir developer. Below are the guidelines on using Elixir eff
 - Use @moduledoc and @doc annotations to provide documentation for modules and functions, enhancing code readability and maintainability.
 - Avoid using global state and mutable data structures; instead, embrace Elixir's immutable data and functional programming paradigm for better performance and reliability.
 
+# Comments
+
+Avoid unnecessary comments. Code should be self-documenting through clear naming and structure.
+
+**DO add comments for:**
+- `@moduledoc` and `@doc` annotations for public APIs
+- Cross-file synchronization notes (e.g., `# keep in sync with hooks.js`)
+- Non-obvious "why" explanations (business logic, workarounds, design decisions)
+- Section dividers in large files (e.g., `# === Event Handlers ===`)
+
+**DO NOT add comments that:**
+- Restate what the code does (e.g., `# Loop through users` before `Enum.each(users, ...)`)
+- Label HTML sections with obvious names (e.g., `<!-- Header -->`, `<!-- Footer -->`)
+- Describe function calls (e.g., `# Save the user` before `Repo.insert(user)`)
+
+```elixir
+# BAD: Comment restates the code
+# Get the user by ID
+user = Repo.get(User, id)
+
+# BAD: Obvious section label
+<!-- Chat Bubble -->
+<button class="chat-bubble">...</button>
+
+# GOOD: Explains non-obvious behavior
+# Phoenix sends value in different keys depending on event type
+value = params["value"] || params["key"]
+
+# GOOD: Cross-file reference
+# Keep in sync with assets/js/hooks.js MentionInput
+defp mention_chip_html(initial, name) do
+```
+
 # Return Values and State Communication
 
 Functions should return meaningful state information that allows consumers to understand and react to the current state. Use tagged tuples and descriptive atoms to communicate outcomes clearly.
