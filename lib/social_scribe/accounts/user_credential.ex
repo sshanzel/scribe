@@ -22,6 +22,8 @@ defmodule SocialScribe.Accounts.UserCredential do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @type t :: %__MODULE__{}
+
   schema "user_credentials" do
     field :token, :string
     field :uid, :string
