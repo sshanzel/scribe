@@ -7,6 +7,7 @@ defmodule SocialScribe.HubspotApi do
   @behaviour SocialScribe.HubspotApiBehaviour
 
   alias SocialScribe.Accounts.UserCredential
+  alias SocialScribe.CRM.FieldMapper
   alias SocialScribe.HubspotTokenRefresher
 
   require Logger
@@ -30,6 +31,13 @@ defmodule SocialScribe.HubspotApi do
     "hs_linkedin_url",
     "twitterhandle"
   ]
+
+  # Mapping from internal field names to HubSpot API field names
+  # Only fields that differ need to be listed here
+  @field_to_api_mapping %{
+    "linkedin_url" => "hs_linkedin_url",
+    "twitter_handle" => "twitterhandle"
+  }
 
   defp client(access_token) do
     Tesla.client([
@@ -103,7 +111,8 @@ defmodule SocialScribe.HubspotApi do
   def update_contact(%UserCredential{} = credential, contact_id, updates)
       when is_map(updates) do
     with_token_refresh(credential, fn cred ->
-      body = %{properties: updates}
+      mapped_updates = FieldMapper.map_fields_to_api(updates, @field_to_api_mapping)
+      body = %{properties: mapped_updates}
 
       case Tesla.patch(client(cred.token), "/crm/v3/objects/contacts/#{contact_id}", body) do
         {:ok, %Tesla.Env{status: 200, body: body}} ->

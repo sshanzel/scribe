@@ -7,6 +7,7 @@ defmodule SocialScribe.SalesforceApi do
   @behaviour SocialScribe.SalesforceApiBehaviour
 
   alias SocialScribe.Accounts.UserCredential
+  alias SocialScribe.CRM.FieldMapper
   alias SocialScribe.SalesforceTokenRefresher
 
   require Logger
@@ -29,6 +30,25 @@ defmodule SocialScribe.SalesforceApi do
     "MailingCountry",
     "Account.Name"
   ]
+
+  # Mapping from internal field names to Salesforce API field names
+  @field_to_api_mapping %{
+    "firstname" => "FirstName",
+    "lastname" => "LastName",
+    "email" => "Email",
+    "phone" => "Phone",
+    "mobilephone" => "MobilePhone",
+    "title" => "Title",
+    "department" => "Department",
+    "address" => "MailingStreet",
+    "city" => "MailingCity",
+    "state" => "MailingState",
+    "zip" => "MailingPostalCode",
+    "country" => "MailingCountry"
+  }
+
+  # Fields that cannot be updated directly (read-only or relationship fields)
+  @readonly_fields ["company"]
 
   defp client(access_token) do
     Tesla.client([
@@ -136,7 +156,9 @@ defmodule SocialScribe.SalesforceApi do
 
   @doc """
   Updates a contact's properties.
-  `updates` should be a map of Salesforce field names to new values.
+  `updates` should be a map of internal field names to new values.
+  Fields are automatically mapped to Salesforce API field names.
+  Read-only fields (like company) are filtered out.
   Automatically refreshes token on 401/expired errors and retries once.
   """
   @impl true
@@ -144,8 +166,9 @@ defmodule SocialScribe.SalesforceApi do
       when is_map(updates) do
     with_token_refresh(credential, fn cred ->
       url = "#{api_base_url(cred.instance_url)}/sobjects/Contact/#{contact_id}"
+      mapped_updates = FieldMapper.map_fields_to_api(updates, @field_to_api_mapping, readonly_fields: @readonly_fields)
 
-      case Tesla.patch(client(cred.token), url, updates) do
+      case Tesla.patch(client(cred.token), url, mapped_updates) do
         # Salesforce returns 204 No Content on successful PATCH
         {:ok, %Tesla.Env{status: 204}} ->
           # Fetch the updated contact
