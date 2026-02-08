@@ -1,5 +1,5 @@
 defmodule SocialScribeWeb.HubspotModalMoxTest do
-  use SocialScribeWeb.ConnCase
+  use SocialScribeWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
   import SocialScribe.AccountsFixtures
@@ -143,8 +143,8 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       |> element("input[phx-keyup='contact_search']")
       |> render_keyup(%{"value" => "John"})
 
-      # Wait for search results
-      eventually(view, fn html -> html =~ "John Doe" end)
+      # Wait for the select button to appear
+      eventually(view, fn html -> html =~ "phx-value-id=\"123\"" end)
 
       # Select the contact (it's a button, not li)
       view
