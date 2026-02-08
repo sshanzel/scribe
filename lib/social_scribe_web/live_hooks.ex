@@ -52,6 +52,7 @@ defmodule SocialScribeWeb.LiveHooks do
         socket
         |> assign(:seeded, true)
         |> Phoenix.LiveView.put_flash(:info, message)
+        |> Phoenix.LiveView.push_navigate(to: "/dashboard/meetings")
 
       {:halt, socket}
     rescue
