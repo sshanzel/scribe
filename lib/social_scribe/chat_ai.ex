@@ -61,8 +61,7 @@ defmodule SocialScribe.ChatAI do
   def generate_response(%ChatThread{} = thread, %User{} = user, content, metadata)
       when is_binary(content) and is_map(metadata) do
     with {:ok, user_message} <- Chat.create_user_message(thread, content, metadata),
-         {:ok, contact} <- resolve_contact_from_metadata(metadata),
-         {:ok, context} <- ContextBuilder.gather_context(user, contact),
+         {:ok, context} <- gather_context_for_metadata(user, metadata),
          messages <- Chat.list_messages(thread),
          {:ok, response} <- call_gemini_chat(context, messages, content),
          response_metadata <- PromptBuilder.build_response_metadata(context),
@@ -73,6 +72,29 @@ defmodule SocialScribe.ChatAI do
 
       {:ok, response, response_metadata}
     end
+  end
+
+  # Build context from mention metadata
+  # Prioritizes contact_id (direct lookup) then falls back to email
+  defp gather_context_for_metadata(user, %{"mentions" => [first_mention | _]} = _metadata)
+       when is_map(first_mention) do
+    case first_mention do
+      %{"contact_id" => contact_id} when is_integer(contact_id) ->
+        ContextBuilder.gather_context_from_metadata(user, first_mention)
+
+      %{"crm_data" => _crm_data} ->
+        ContextBuilder.gather_context_from_metadata(user, first_mention)
+
+      %{"email" => _email} ->
+        ContextBuilder.gather_context_from_metadata(user, first_mention)
+
+      _ ->
+        ContextBuilder.gather_context(user, nil)
+    end
+  end
+
+  defp gather_context_for_metadata(user, _metadata) do
+    ContextBuilder.gather_context(user, nil)
   end
 
   @doc """

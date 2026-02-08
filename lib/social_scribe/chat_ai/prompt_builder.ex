@@ -90,6 +90,27 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
     """
   end
 
+  def build_system_context(%{contact: nil, crm_data: crm_data, meetings: meetings})
+      when is_map(crm_data) and is_list(meetings) do
+    """
+    You are a helpful assistant that answers questions about business contacts based on meeting history and CRM data.
+
+    RULES:
+    - Be concise and direct
+    - Base your answers ONLY on the context provided below
+    - If information is not in the meeting transcripts or contact data, clearly state that you don't have that information
+    - Never guess, infer, or make up information
+    - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
+    - Format responses in markdown
+
+    CONTACT INFORMATION (from CRM):
+    #{format_crm_contact_info(crm_data)}
+
+    MEETING HISTORY (most recent first, last #{length(meetings)} meetings):
+    #{format_meetings(meetings)}
+    """
+  end
+
   def build_system_context(%{contact: nil, crm_data: nil, meetings: meetings})
       when is_list(meetings) do
     """
@@ -155,6 +176,29 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
     Title: #{crm_data[:jobtitle] || crm_data["jobtitle"] || crm_data[:title] || crm_data["title"] || "Unknown"}
     Phone: #{crm_data[:phone] || crm_data["phone"] || "Unknown"}
     """
+  end
+
+  defp format_crm_contact_info(crm_data) when is_map(crm_data) do
+    name = crm_data["display_name"] || crm_data[:display_name] || "Unknown"
+    email = crm_data["email"] || crm_data[:email] || "Unknown"
+    company = crm_data["company"] || crm_data[:company] || "Unknown"
+    title = crm_data["title"] || crm_data[:title] || crm_data["jobtitle"] || crm_data[:jobtitle] || "Unknown"
+    phone = crm_data["phone"] || crm_data[:phone] || "Unknown"
+    department = crm_data["department"] || crm_data[:department]
+
+    base = """
+    Name: #{name}
+    Email: #{email}
+    Company: #{company}
+    Title: #{title}
+    Phone: #{phone}
+    """
+
+    if department do
+      base <> "Department: #{department}\n"
+    else
+      base
+    end
   end
 
   defp format_meetings([]), do: "No meetings found with this contact."

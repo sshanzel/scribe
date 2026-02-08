@@ -9,8 +9,10 @@ defmodule SocialScribeWeb.ChatLive do
 
   alias Phoenix.LiveView.AsyncResult
   alias SocialScribe.Chat
-  alias SocialScribe.Contacts
   alias SocialScribe.ChatAIApi
+  alias SocialScribe.CRM.ContactSearch
+
+  @search_debounce_ms 300
 
   @impl true
   def mount(_params, _session, socket) do
@@ -33,6 +35,9 @@ defmodule SocialScribeWeb.ChatLive do
       |> assign(:active_tab, :chat)
       # Threads not loaded yet - will be fetched when history tab opens
       |> assign(:threads, nil)
+      # Contact search debounce and loading state
+      |> assign(:search_timer, nil)
+      |> assign(:searching, false)
 
     # No layout for embedded LiveView
     {:ok, socket, layout: false}
@@ -156,24 +161,53 @@ defmodule SocialScribeWeb.ChatLive do
                     ></div>
 
                     <div
-                      :if={@show_mention_dropdown && length(@contact_results) > 0}
+                      :if={@show_mention_dropdown}
                       class="absolute bottom-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto z-10"
                     >
+                      <!-- Loading state -->
+                      <div :if={@searching} class="px-3 py-4 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                          <.icon name="hero-arrow-path" class="h-4 w-4 text-slate-400 animate-spin" />
+                          <span class="text-sm text-slate-500">Searching CRM...</span>
+                        </div>
+                      </div>
+                      <!-- Empty state -->
+                      <div
+                        :if={!@searching && length(@contact_results) == 0}
+                        class="px-3 py-4 text-center"
+                      >
+                        <p class="text-sm text-slate-500">
+                          Type to search your CRM contacts
+                        </p>
+                      </div>
+                      <!-- Results -->
                       <button
                         :for={contact <- @contact_results}
+                        :if={!@searching}
                         type="button"
                         phx-click="select_contact"
                         phx-value-id={contact.id}
                         class="w-full px-2.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2"
                       >
-                        <img
-                          src={"https://ui-avatars.com/api/?name=#{URI.encode(contact.name)}&size=24&background=475569&color=fff"}
-                          class="w-6 h-6 rounded-full"
-                          alt={contact.name}
-                        />
-                        <div>
-                          <div class="text-sm font-medium text-slate-800">{contact.name}</div>
-                          <div class="text-xs text-slate-500">{contact.email}</div>
+                        <div class="relative flex-shrink-0">
+                          <img
+                            src={"https://ui-avatars.com/api/?name=#{URI.encode(contact.name || "?")}&size=24&background=475569&color=fff"}
+                            class="w-6 h-6 rounded-full"
+                            alt={contact.name}
+                          />
+                          <img
+                            src={source_logo_path(contact.source)}
+                            class="absolute -bottom-0.5 -right-1 w-3 h-3 bg-white rounded-full p-px"
+                            alt={Atom.to_string(contact.source)}
+                          />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <div class="text-sm font-medium text-slate-800 truncate">
+                            {contact.name}
+                          </div>
+                          <div class="text-xs text-slate-500 truncate">
+                            {contact.email}
+                          </div>
                         </div>
                       </button>
                     </div>
@@ -375,21 +409,28 @@ defmodule SocialScribeWeb.ChatLive do
   end
 
   @impl true
-  def handle_event("select_contact", %{"id" => id}, socket) do
-    contact_id = String.to_integer(id)
-    contact = Contacts.get_contact!(contact_id)
+  def handle_event("select_contact", %{"id" => compound_id}, socket) do
+    case find_contact_in_results(socket.assigns.contact_results, compound_id) do
+      {:ok, contact} ->
+        mention = build_mention_from_contact(contact)
+        mentions = socket.assigns.mentions ++ [mention]
 
-    # Add contact to mentions list
-    mentions = socket.assigns.mentions ++ [contact]
+        socket =
+          socket
+          |> assign(:mentions, mentions)
+          |> assign(:show_mention_dropdown, false)
+          |> assign(:contact_results, [])
+          |> push_event("insert_mention", %{
+            id: compound_id,
+            name: contact.name,
+            source: Atom.to_string(contact.source)
+          })
 
-    socket =
-      socket
-      |> assign(:mentions, mentions)
-      |> assign(:show_mention_dropdown, false)
-      |> assign(:contact_results, [])
-      |> push_event("insert_mention", %{id: contact.id, name: contact.name})
+        {:noreply, socket}
 
-    {:noreply, socket}
+      {:error, :not_found} ->
+        {:noreply, socket}
+    end
   end
 
   @impl true
@@ -423,13 +464,18 @@ defmodule SocialScribeWeb.ChatLive do
         end
 
       # Build metadata from mentions
+      # contact_id enables direct meeting lookup for local contacts
+      # crm_data provides enriched info from CRM
       metadata = %{
         "mentions" =>
-          Enum.map(socket.assigns.mentions, fn contact ->
+          Enum.map(socket.assigns.mentions, fn mention ->
             %{
-              "contact_id" => contact.id,
-              "name" => contact.name,
-              "email" => contact.email
+              "contact_id" => mention[:contact_id],
+              "name" => mention[:name],
+              "email" => mention[:email],
+              "source" => mention[:source],
+              "crm_id" => mention[:crm_id],
+              "crm_data" => mention[:crm_data] || %{}
             }
           end)
       }
@@ -504,6 +550,42 @@ defmodule SocialScribeWeb.ChatLive do
   @impl true
   def handle_info(:clear_animate, socket) do
     {:noreply, assign(socket, :animate, false)}
+  end
+
+  @impl true
+  def handle_info({:search_contacts, query}, socket) do
+    socket =
+      socket
+      |> assign(:search_timer, nil)
+      |> perform_contact_search(query)
+
+    {:noreply, socket}
+  end
+
+  defp perform_contact_search(%{assigns: %{current_user: user}} = socket, query) do
+    {:ok, results} = ContactSearch.search(user, query)
+
+    socket
+    |> assign(:searching, false)
+    |> assign(:contact_results, results)
+  end
+
+  defp find_contact_in_results(results, compound_id) do
+    case Enum.find(results, &(&1.id == compound_id)) do
+      nil -> {:error, :not_found}
+      contact -> {:ok, contact}
+    end
+  end
+
+  defp build_mention_from_contact(%{source: source} = contact) do
+    %{
+      contact_id: contact[:contact_id],
+      name: contact[:name],
+      email: contact[:email],
+      source: to_string(source),
+      crm_id: contact[:crm_id],
+      crm_data: contact[:crm_data] || %{}
+    }
   end
 
   # =============================================================================
@@ -610,29 +692,48 @@ defmodule SocialScribeWeb.ChatLive do
   end
 
   defp maybe_search_contacts(socket, value) do
-    # Check if there's an @ mention at the end
+    # Cancel any existing search timer
+    socket = cancel_search_timer(socket)
+
     case Regex.run(~r/@(\S*)$/, value) do
       [_, query] when byte_size(query) >= 1 ->
-        results = Contacts.search_contacts(socket.assigns.current_user, query)
-
-        socket
-        |> assign(:show_mention_dropdown, true)
-        |> assign(:contact_results, results)
+        schedule_contact_search(socket, query)
 
       [_, ""] ->
-        # Just @ with no query yet - show first 5 contacts
-        results = Contacts.list_contacts(socket.assigns.current_user) |> Enum.take(5)
-
+        # Just @ with no query yet - show dropdown but don't search (CRM calls are expensive)
         socket
         |> assign(:show_mention_dropdown, true)
-        |> assign(:contact_results, results)
+        |> assign(:searching, false)
+        |> assign(:contact_results, [])
 
       nil ->
         socket
         |> assign(:show_mention_dropdown, false)
+        |> assign(:searching, false)
         |> assign(:contact_results, [])
     end
   end
+
+  defp cancel_search_timer(%{assigns: %{search_timer: nil}} = socket), do: socket
+
+  defp cancel_search_timer(%{assigns: %{search_timer: timer}} = socket) do
+    Process.cancel_timer(timer)
+    assign(socket, :search_timer, nil)
+  end
+
+  defp schedule_contact_search(socket, query) do
+    timer = Process.send_after(self(), {:search_contacts, query}, @search_debounce_ms)
+
+    socket
+    |> assign(:search_timer, timer)
+    |> assign(:show_mention_dropdown, true)
+    |> assign(:searching, true)
+  end
+
+  defp source_logo_path(:hubspot), do: ~p"/images/hubspot-logo.svg"
+  defp source_logo_path(:salesforce), do: ~p"/images/salesforce-logo.svg"
+  defp source_logo_path(:local), do: ~p"/images/jump-logo.svg"
+  defp source_logo_path(_), do: ~p"/images/jump-logo.svg"
 
   defp message_class("user"), do: "flex justify-end"
   defp message_class(_), do: "flex justify-start"
@@ -676,22 +777,32 @@ defmodule SocialScribeWeb.ChatLive do
     Enum.reduce(mentions, content, fn mention, acc ->
       name = mention["name"] || ""
       first_name = name |> String.split() |> List.first() || name
-      initial = String.first(name) |> String.upcase()
+      initial = if name != "", do: String.first(name) |> String.upcase(), else: "?"
+      source = mention["source"] || "local"
 
       # The @ was already escaped, so match the escaped version
       pattern = "@#{escape_html(name)}"
 
       # Use same styling as the input mention chip (hooks.js)
-      avatar_html = mention_chip_html(initial, first_name)
+      avatar_html = mention_chip_html(initial, first_name, source)
 
       String.replace(acc, pattern, avatar_html)
     end)
   end
 
   # Shared mention chip HTML - keep in sync with assets/js/hooks.js MentionInput
-  defp mention_chip_html(initial, display_name) do
-    ~s(<span class="mention-chip inline-flex items-center gap-1 bg-slate-200 text-slate-700 px-1 py-px rounded-full text-xs font-medium"><span class="relative"><span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">#{initial}</span><img src="/images/jump-logo.svg" class="absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0" /></span><span>#{display_name}</span></span>)
+  defp mention_chip_html(initial, display_name, source) do
+    # Convert string source to atom for logo lookup
+    source_atom = source_to_atom(source)
+    logo_path = source_logo_path(source_atom)
+
+    ~s(<span class="mention-chip inline-flex items-center gap-1 bg-slate-200 text-slate-700 px-1 py-px rounded-full text-xs font-medium"><span class="relative"><span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">#{initial}</span><img src="#{logo_path}" class="absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0" /></span><span>#{display_name}</span></span>)
   end
+
+  defp source_to_atom("hubspot"), do: :hubspot
+  defp source_to_atom("salesforce"), do: :salesforce
+  defp source_to_atom("local"), do: :local
+  defp source_to_atom(_), do: :local
 
   defp render_meeting_links(content, []), do: content
 

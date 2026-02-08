@@ -13,6 +13,7 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   alias SocialScribe.Repo
   alias SocialScribe.Accounts.Credentials
   alias SocialScribe.Accounts.User
+  alias SocialScribe.Contacts
   alias SocialScribe.Contacts.Contact
   alias SocialScribe.Meetings.Meeting
   alias SocialScribe.Calendar.CalendarEventAttendee
@@ -22,6 +23,86 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   # =============================================================================
   # Public API
   # =============================================================================
+
+  @doc """
+  Gathers context from message metadata.
+
+  Prioritizes contact_id for direct meeting lookup (most efficient),
+  falls back to email lookup if contact_id is not available.
+  CRM data is included when available for enriched AI context.
+
+  ## Returns
+  - `{:ok, %{contact: Contact.t() | nil, crm_data: map() | nil, meetings: list()}}` - Context
+  """
+  # Priority 1: contact_id available (direct lookup, most reliable)
+  def gather_context_from_metadata(%User{} = user, %{"contact_id" => contact_id} = metadata)
+      when is_integer(contact_id) do
+    case Repo.get(Contact, contact_id) do
+      %Contact{} = contact ->
+        meetings = find_meetings_for_contact(user, contact)
+        crm_data = metadata["crm_data"]
+
+        {:ok,
+         %{
+           contact: contact,
+           crm_data: crm_data,
+           meetings: meetings
+         }}
+
+      nil ->
+        # Contact was deleted, fall back to email lookup
+        gather_context_from_metadata(user, Map.delete(metadata, "contact_id"))
+    end
+  end
+
+  # Priority 2: email with CRM data
+  def gather_context_from_metadata(%User{} = user, %{"crm_data" => crm_data, "email" => email})
+      when is_map(crm_data) and is_binary(email) and email != "" do
+    meetings = find_meetings_by_email(user, email)
+
+    {:ok,
+     %{
+       contact: nil,
+       crm_data: crm_data,
+       meetings: meetings
+     }}
+  end
+
+  # Priority 3: CRM data only (no email, rare case)
+  def gather_context_from_metadata(%User{}, %{"crm_data" => crm_data})
+      when is_map(crm_data) do
+    {:ok,
+     %{
+       contact: nil,
+       crm_data: crm_data,
+       meetings: []
+     }}
+  end
+
+  # Priority 4: email only
+  def gather_context_from_metadata(%User{} = user, %{"email" => email})
+      when is_binary(email) and email != "" do
+    meetings = find_meetings_by_email(user, email)
+
+    {:ok,
+     %{
+       contact: nil,
+       crm_data: nil,
+       meetings: meetings
+     }}
+  end
+
+  # Fallback: no contact info, show recent meetings
+  def gather_context_from_metadata(%User{} = user, _metadata) do
+    meetings = find_recent_meetings_for_user(user)
+
+    {:ok,
+     %{
+       contact: nil,
+       crm_data: nil,
+       meetings: meetings
+     }}
+  end
 
   @doc """
   Gathers context for a user and contact.
@@ -75,6 +156,21 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   end
 
   def find_meetings_for_contact(_user, _contact), do: []
+
+  @doc """
+  Finds meetings for a contact by email.
+
+  Looks up the contact in the local contacts table by email, then finds
+  meetings where that contact was an attendee.
+  """
+  def find_meetings_by_email(%User{} = user, email) when is_binary(email) do
+    case Contacts.get_contact_by_email(email) do
+      nil -> []
+      contact -> find_meetings_for_contact(user, contact)
+    end
+  end
+
+  def find_meetings_by_email(_user, _email), do: []
 
   @doc """
   Finds the most recent meetings for a user when no specific contact is tagged.

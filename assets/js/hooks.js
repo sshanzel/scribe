@@ -49,8 +49,8 @@ Hooks.MentionInput = {
             this.submitMessage()
         })
 
-        this.handleEvent('insert_mention', ({ id, name }) => {
-            this.insertMentionChip(id, name)
+        this.handleEvent('insert_mention', ({ id, name, source }) => {
+            this.insertMentionChip(id, name, source)
         })
 
         this.handleEvent('clear_input', () => {
@@ -72,11 +72,14 @@ Hooks.MentionInput = {
         return text
     },
 
-    insertMentionChip(contactId, contactName) {
+    insertMentionChip(contactId, contactName, source) {
         const text = this.getTextContent()
 
         const lastAtIndex = text.lastIndexOf('@')
         if (lastAtIndex === -1) return
+
+        // Get logo path based on source
+        const logoPath = this.getSourceLogoPath(source)
 
         // Create the mention chip - keep in sync with chat_live.ex mention_chip_html/2
         const chip = document.createElement('span')
@@ -84,19 +87,31 @@ Hooks.MentionInput = {
         chip.contentEditable = 'false'
         chip.dataset.contactId = contactId
         chip.dataset.name = contactName
+        chip.dataset.source = source || 'local'
         const firstName = contactName.split(' ')[0] || contactName
         chip.innerHTML = `
             <span class="relative">
                 <span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">${contactName.charAt(0).toUpperCase()}</span>
-                <img src="/images/jump-logo.svg" class="absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0" />
+                <img src="${logoPath}" class="absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0" />
             </span>
             <span>${firstName}</span>
         `
 
         this.replaceAtQuery(chip)
-        this.mentions.push({ id: contactId, name: contactName })
+        this.mentions.push({ id: contactId, name: contactName, source: source })
         this.placeCursorAfter(chip)
         this.pushEvent('message_input_change', { value: this.getTextContent() })
+    },
+
+    getSourceLogoPath(source) {
+        switch (source) {
+            case 'hubspot':
+                return '/images/hubspot-logo.svg'
+            case 'salesforce':
+                return '/images/salesforce-logo.svg'
+            default:
+                return '/images/jump-logo.svg'
+        }
     },
 
     replaceAtQuery(chip) {
