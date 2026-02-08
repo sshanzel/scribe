@@ -19,7 +19,6 @@ defmodule SocialScribe.SalesforceSuggestions do
       "email" => "Email",
       "phone" => "Phone",
       "mobilephone" => "Mobile Phone",
-      "company" => "Company",
       "title" => "Job Title",
       "department" => "Department",
       "address" => "Address",

@@ -116,7 +116,6 @@ defmodule SocialScribe.AIContentGenerator do
         Look for mentions of:
         - Phone numbers (phone, mobilephone)
         - Email addresses (email)
-        - Company name (company)
         - Job title/role (title)
         - Department (department)
         - Physical address details (address, city, state, zip, country)
@@ -126,7 +125,7 @@ defmodule SocialScribe.AIContentGenerator do
         The transcript includes timestamps in [MM:SS] format at the start of each line.
 
         Return your response as a JSON array of objects. Each object should have:
-        - "field": the Salesforce field name (use exactly: firstname, lastname, email, phone, mobilephone, company, title, department, address, city, state, zip, country)
+        - "field": the Salesforce field name (use exactly: firstname, lastname, email, phone, mobilephone, title, department, address, city, state, zip, country)
         - "value": the extracted value
         - "context": a brief quote of where this was mentioned
         - "timestamp": the timestamp in MM:SS format where this was mentioned
@@ -136,7 +135,7 @@ defmodule SocialScribe.AIContentGenerator do
         Example response format:
         [
           {"field": "phone", "value": "555-123-4567", "context": "John mentioned 'you can reach me at 555-123-4567'", "timestamp": "01:23"},
-          {"field": "company", "value": "Acme Corp", "context": "Sarah said she just joined Acme Corp", "timestamp": "05:47"}
+          {"field": "title", "value": "VP of Sales", "context": "Sarah said she was promoted to VP of Sales", "timestamp": "05:47"}
         ]
 
         ONLY return valid JSON, no other text.

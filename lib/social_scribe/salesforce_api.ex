@@ -47,9 +47,6 @@ defmodule SocialScribe.SalesforceApi do
     "country" => "MailingCountry"
   }
 
-  # Fields that cannot be updated directly (read-only or relationship fields)
-  @readonly_fields ["company"]
-
   defp client(access_token) do
     Tesla.client([
       Tesla.Middleware.JSON,
@@ -166,7 +163,7 @@ defmodule SocialScribe.SalesforceApi do
       when is_map(updates) do
     with_token_refresh(credential, fn cred ->
       url = "#{api_base_url(cred.instance_url)}/sobjects/Contact/#{contact_id}"
-      mapped_updates = FieldMapper.map_fields_to_api(updates, @field_to_api_mapping, readonly_fields: @readonly_fields)
+      mapped_updates = FieldMapper.map_fields_to_api(updates, @field_to_api_mapping)
 
       case Tesla.patch(client(cred.token), url, mapped_updates) do
         # Salesforce returns 204 No Content on successful PATCH
