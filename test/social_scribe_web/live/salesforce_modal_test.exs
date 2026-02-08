@@ -63,7 +63,10 @@ defmodule SocialScribeWeb.SalesforceModalTest do
       assert has_element?(view, "input[phx-keyup='contact_search']")
     end
 
-    test "shows contact search initially without suggestions form", %{conn: conn, meeting: meeting} do
+    test "shows contact search initially without suggestions form", %{
+      conn: conn,
+      meeting: meeting
+    } do
       {:ok, view, _html} = live(conn, ~p"/dashboard/meetings/#{meeting.id}/salesforce")
 
       assert has_element?(view, "input[phx-keyup='contact_search']")
@@ -241,7 +244,9 @@ defmodule SocialScribeWeb.SalesforceModalTest do
          ]}
       end)
 
-      expect(SocialScribe.SalesforceApiMock, :update_contact, fn _credential, contact_id, updates ->
+      expect(SocialScribe.SalesforceApiMock, :update_contact, fn _credential,
+                                                                 contact_id,
+                                                                 updates ->
         assert contact_id == "003BBB222"
         assert updates["phone"] == "999-8888"
         {:ok, Map.merge(contact, %{phone: "999-8888"})}
