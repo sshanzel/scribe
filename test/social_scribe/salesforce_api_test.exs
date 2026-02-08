@@ -1,7 +1,7 @@
 defmodule SocialScribe.SalesforceApiTest do
   use SocialScribe.DataCase
 
-  alias SocialScribe.SalesforceApi
+  alias SocialScribe.CRM.Salesforce.Api, as: SalesforceApi
 
   import SocialScribe.AccountsFixtures
 

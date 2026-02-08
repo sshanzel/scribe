@@ -5,13 +5,13 @@ defmodule SocialScribeWeb.MeetingLive.Show do
   import SocialScribeWeb.ClipboardButton
   import SocialScribeWeb.ModalComponents, only: [hubspot_modal: 1, salesforce_modal: 1]
 
-  alias SocialScribe.Meetings
-  alias SocialScribe.Automations
   alias SocialScribe.Accounts.Credentials
-  alias SocialScribe.HubspotApiBehaviour, as: HubspotApi
-  alias SocialScribe.HubspotSuggestions
-  alias SocialScribe.SalesforceApiBehaviour, as: SalesforceApi
-  alias SocialScribe.SalesforceSuggestions
+  alias SocialScribe.Automations
+  alias SocialScribe.CRM.HubSpot.ApiBehaviour, as: HubspotApi
+  alias SocialScribe.CRM.HubSpot.Suggestions, as: HubspotSuggestions
+  alias SocialScribe.CRM.Salesforce.ApiBehaviour, as: SalesforceApi
+  alias SocialScribe.CRM.Salesforce.Suggestions, as: SalesforceSuggestions
+  alias SocialScribe.Meetings
 
   @impl true
   def mount(%{"id" => meeting_id}, _session, socket) do

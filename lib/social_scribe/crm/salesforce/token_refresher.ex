@@ -1,4 +1,4 @@
-defmodule SocialScribe.SalesforceTokenRefresher do
+defmodule SocialScribe.CRM.Salesforce.TokenRefresher do
   @moduledoc """
   Refreshes Salesforce OAuth tokens.
 

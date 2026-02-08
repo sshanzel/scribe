@@ -1,4 +1,4 @@
-defmodule SocialScribe.HubspotApiPropertyTest do
+defmodule SocialScribe.CRM.HubSpot.ApiPropertyTest do
   use SocialScribe.DataCase, async: true
   use ExUnitProperties
 
@@ -33,14 +33,14 @@ defmodule SocialScribe.HubspotApiPropertyTest do
       credential: credential
     } do
       check all(updates <- list_of(update_generator(apply: false), min_length: 1, max_length: 10)) do
-        result = SocialScribe.HubspotApi.apply_updates(credential, "123", updates)
+        result = SocialScribe.CRM.HubSpot.Api.apply_updates(credential, "123", updates)
         assert result == {:ok, :no_updates}
       end
     end
 
     property "returns {:ok, :no_updates} for empty updates list", %{credential: credential} do
       check all(contact_id <- string(:alphanumeric, min_length: 1, max_length: 20)) do
-        result = SocialScribe.HubspotApi.apply_updates(credential, contact_id, [])
+        result = SocialScribe.CRM.HubSpot.Api.apply_updates(credential, contact_id, [])
         assert result == {:ok, :no_updates}
       end
     end

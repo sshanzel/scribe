@@ -1,4 +1,4 @@
-defmodule SocialScribe.SalesforceApiBehaviour do
+defmodule SocialScribe.CRM.Salesforce.ApiBehaviour do
   @moduledoc """
   A behaviour for implementing a Salesforce API client.
   Allows for using a real client in production and a mock client in tests.
@@ -50,6 +50,6 @@ defmodule SocialScribe.SalesforceApiBehaviour do
   end
 
   defp impl do
-    Application.get_env(:social_scribe, :salesforce_api, SocialScribe.SalesforceApi)
+    Application.get_env(:social_scribe, :salesforce_api, SocialScribe.CRM.Salesforce.Api)
   end
 end

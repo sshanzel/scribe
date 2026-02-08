@@ -1,7 +1,7 @@
 defmodule SocialScribe.SalesforceSuggestionsTest do
   use SocialScribe.DataCase
 
-  alias SocialScribe.SalesforceSuggestions
+  alias SocialScribe.CRM.Salesforce.Suggestions, as: SalesforceSuggestions
 
   describe "merge_with_contact/2" do
     test "merges suggestions with contact data and filters unchanged values" do

@@ -1,7 +1,7 @@
 defmodule SocialScribe.SalesforceTokenRefresherTest do
   use SocialScribe.DataCase
 
-  alias SocialScribe.SalesforceTokenRefresher
+  alias SocialScribe.CRM.Salesforce.TokenRefresher, as: SalesforceTokenRefresher
   alias SocialScribe.Accounts.Credentials
 
   import SocialScribe.AccountsFixtures

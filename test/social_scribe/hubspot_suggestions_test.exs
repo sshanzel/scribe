@@ -1,7 +1,7 @@
 defmodule SocialScribe.HubspotSuggestionsTest do
   use SocialScribe.DataCase
 
-  alias SocialScribe.HubspotSuggestions
+  alias SocialScribe.CRM.HubSpot.Suggestions, as: HubspotSuggestions
 
   describe "merge_with_contact/2" do
     test "merges suggestions with contact data and filters unchanged values" do

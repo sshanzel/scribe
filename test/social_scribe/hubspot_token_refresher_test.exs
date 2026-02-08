@@ -1,7 +1,7 @@
 defmodule SocialScribe.HubspotTokenRefresherTest do
   use SocialScribe.DataCase
 
-  alias SocialScribe.HubspotTokenRefresher
+  alias SocialScribe.CRM.HubSpot.TokenRefresher, as: HubspotTokenRefresher
   alias SocialScribe.Accounts.Credentials
 
   import SocialScribe.AccountsFixtures

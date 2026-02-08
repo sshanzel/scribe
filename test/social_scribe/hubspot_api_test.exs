@@ -1,7 +1,7 @@
 defmodule SocialScribe.HubspotApiTest do
   use SocialScribe.DataCase
 
-  alias SocialScribe.HubspotApi
+  alias SocialScribe.CRM.HubSpot.Api, as: HubspotApi
 
   import SocialScribe.AccountsFixtures
 

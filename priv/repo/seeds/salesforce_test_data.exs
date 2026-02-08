@@ -13,7 +13,7 @@ alias SocialScribe.Accounts.User
 alias SocialScribe.Calendar.CalendarEvent
 alias SocialScribe.Bots.RecallBot
 alias SocialScribe.Meetings.{Meeting, MeetingParticipant, MeetingTranscript}
-alias SocialScribe.SalesforceApi
+alias SocialScribe.CRM.Salesforce.Api, as: SalesforceApi
 
 # Get user - change this to your email
 user_email = System.get_env("SEED_USER_EMAIL") || "your-email@example.com"

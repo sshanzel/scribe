@@ -146,10 +146,10 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   # =============================================================================
 
   defp hubspot_api do
-    Application.get_env(:social_scribe, :hubspot_api, SocialScribe.HubspotApi)
+    Application.get_env(:social_scribe, :hubspot_api, SocialScribe.CRM.HubSpot.Api)
   end
 
   defp salesforce_api do
-    Application.get_env(:social_scribe, :salesforce_api, SocialScribe.SalesforceApi)
+    Application.get_env(:social_scribe, :salesforce_api, SocialScribe.CRM.Salesforce.Api)
   end
 end

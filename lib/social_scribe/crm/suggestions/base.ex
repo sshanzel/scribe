@@ -1,4 +1,4 @@
-defmodule SocialScribe.CRMSuggestions.Base do
+defmodule SocialScribe.CRM.Suggestions.Base do
   @moduledoc """
   Shared behavior and functionality for CRM contact update suggestions.
 
@@ -8,7 +8,7 @@ defmodule SocialScribe.CRMSuggestions.Base do
   ## Usage
 
       defmodule MyApp.HubspotSuggestions do
-        use SocialScribe.CRMSuggestions.Base
+        use SocialScribe.CRM.Suggestions.Base
 
         @impl true
         def field_labels do
@@ -25,7 +25,7 @@ defmodule SocialScribe.CRMSuggestions.Base do
 
         @impl true
         def generate_ai_suggestions(meeting) do
-          AIContentGeneratorApi.generate_hubspot_suggestions(meeting)
+          AIContentGeneratorApi.generate_crm_suggestions(:hubspot, meeting)
         end
       end
 
@@ -55,7 +55,7 @@ defmodule SocialScribe.CRMSuggestions.Base do
 
   defmacro __using__(_opts) do
     quote do
-      @behaviour SocialScribe.CRMSuggestions.Base
+      @behaviour SocialScribe.CRM.Suggestions.Base
 
       alias SocialScribe.Accounts.UserCredential
 

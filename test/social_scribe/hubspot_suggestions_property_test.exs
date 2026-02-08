@@ -2,7 +2,7 @@ defmodule SocialScribe.HubspotSuggestionsPropertyTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  alias SocialScribe.HubspotSuggestions
+  alias SocialScribe.CRM.HubSpot.Suggestions, as: HubspotSuggestions
 
   @hubspot_fields [
     "firstname",

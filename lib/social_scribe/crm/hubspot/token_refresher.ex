@@ -1,4 +1,4 @@
-defmodule SocialScribe.HubspotTokenRefresher do
+defmodule SocialScribe.CRM.HubSpot.TokenRefresher do
   @moduledoc """
   Refreshes HubSpot OAuth tokens.
 

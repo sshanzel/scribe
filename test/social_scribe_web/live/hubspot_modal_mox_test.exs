@@ -114,7 +114,7 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
 
       # Also need to mock the AI content generator for suggestions
       SocialScribe.AIContentGeneratorMock
-      |> expect(:generate_hubspot_suggestions, fn _meeting ->
+      |> expect(:generate_crm_suggestions, fn :hubspot, _meeting ->
         {:ok, mock_suggestions}
       end)
 
@@ -188,7 +188,7 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       end)
 
       assert {:ok, ^expected} =
-               SocialScribe.HubspotApiBehaviour.search_contacts(credential, "test query")
+               SocialScribe.CRM.HubSpot.ApiBehaviour.search_contacts(credential, "test query")
     end
 
     test "get_contact delegates to implementation", %{credential: credential} do
@@ -200,7 +200,7 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
         {:ok, expected}
       end)
 
-      assert {:ok, ^expected} = SocialScribe.HubspotApiBehaviour.get_contact(credential, "123")
+      assert {:ok, ^expected} = SocialScribe.CRM.HubSpot.ApiBehaviour.get_contact(credential, "123")
     end
 
     test "update_contact delegates to implementation", %{credential: credential} do
@@ -215,7 +215,7 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       end)
 
       assert {:ok, ^expected} =
-               SocialScribe.HubspotApiBehaviour.update_contact(credential, "123", updates)
+               SocialScribe.CRM.HubSpot.ApiBehaviour.update_contact(credential, "123", updates)
     end
 
     test "apply_updates delegates to implementation", %{credential: credential} do
@@ -232,7 +232,7 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       end)
 
       assert {:ok, _} =
-               SocialScribe.HubspotApiBehaviour.apply_updates(credential, "123", updates_list)
+               SocialScribe.CRM.HubSpot.ApiBehaviour.apply_updates(credential, "123", updates_list)
     end
   end
 

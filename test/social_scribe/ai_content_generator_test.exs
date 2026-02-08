@@ -45,14 +45,14 @@ defmodule SocialScribe.AIContentGeneratorTest do
     end
   end
 
-  describe "generate_hubspot_suggestions/1" do
+  describe "generate_crm_suggestions/2" do
     test "returns error when meeting has no participants" do
       meeting = meeting_fixture()
       meeting = Meetings.get_meeting_with_details(meeting.id)
 
-      result = AIContentGenerator.generate_hubspot_suggestions(meeting)
-
-      assert {:error, :no_participants} = result
+      # Test with both CRM types
+      assert {:error, :no_participants} = AIContentGenerator.generate_crm_suggestions(:hubspot, meeting)
+      assert {:error, :no_participants} = AIContentGenerator.generate_crm_suggestions(:salesforce, meeting)
     end
 
     test "returns error when meeting has no transcript but has participants" do
@@ -60,9 +60,8 @@ defmodule SocialScribe.AIContentGeneratorTest do
       _participant = meeting_participant_fixture(%{meeting_id: meeting.id})
       meeting = Meetings.get_meeting_with_details(meeting.id)
 
-      result = AIContentGenerator.generate_hubspot_suggestions(meeting)
-
-      assert {:error, :no_transcript} = result
+      assert {:error, :no_transcript} = AIContentGenerator.generate_crm_suggestions(:hubspot, meeting)
+      assert {:error, :no_transcript} = AIContentGenerator.generate_crm_suggestions(:salesforce, meeting)
     end
 
     test "returns error when gemini api key is missing" do
@@ -76,46 +75,8 @@ defmodule SocialScribe.AIContentGeneratorTest do
       meeting = meeting_with_transcript_and_participants_fixture()
       meeting = Meetings.get_meeting_with_details(meeting.id)
 
-      result = AIContentGenerator.generate_hubspot_suggestions(meeting)
-
-      assert {:error, {:config_error, _}} = result
-    end
-  end
-
-  describe "generate_salesforce_suggestions/1" do
-    test "returns error when meeting has no participants" do
-      meeting = meeting_fixture()
-      meeting = Meetings.get_meeting_with_details(meeting.id)
-
-      result = AIContentGenerator.generate_salesforce_suggestions(meeting)
-
-      assert {:error, :no_participants} = result
-    end
-
-    test "returns error when meeting has no transcript but has participants" do
-      meeting = meeting_fixture()
-      _participant = meeting_participant_fixture(%{meeting_id: meeting.id})
-      meeting = Meetings.get_meeting_with_details(meeting.id)
-
-      result = AIContentGenerator.generate_salesforce_suggestions(meeting)
-
-      assert {:error, :no_transcript} = result
-    end
-
-    test "returns error when gemini api key is missing" do
-      original_key = Application.get_env(:social_scribe, :gemini_api_key)
-      Application.put_env(:social_scribe, :gemini_api_key, nil)
-
-      on_exit(fn ->
-        Application.put_env(:social_scribe, :gemini_api_key, original_key)
-      end)
-
-      meeting = meeting_with_transcript_and_participants_fixture()
-      meeting = Meetings.get_meeting_with_details(meeting.id)
-
-      result = AIContentGenerator.generate_salesforce_suggestions(meeting)
-
-      assert {:error, {:config_error, _}} = result
+      assert {:error, {:config_error, _}} = AIContentGenerator.generate_crm_suggestions(:hubspot, meeting)
+      assert {:error, {:config_error, _}} = AIContentGenerator.generate_crm_suggestions(:salesforce, meeting)
     end
   end
 
