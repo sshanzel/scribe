@@ -45,6 +45,7 @@ defmodule SocialScribeWeb.CRM.ModalHelpers do
   This handles all common update logic including:
   - Applying incoming assigns
   - Selecting all suggestions by default
+  - Pre-filling search with first participant name and triggering search
 
   ## Example
 
@@ -52,13 +53,41 @@ defmodule SocialScribeWeb.CRM.ModalHelpers do
         ModalHelpers.handle_update(socket, assigns, @crm_config)
       end
   """
-  def handle_update(socket, assigns, _config) do
+  def handle_update(socket, assigns, config) do
     socket =
       socket
       |> assign(assigns)
       |> maybe_select_all_suggestions(assigns)
+      |> maybe_prefill_and_search_participant(assigns, config)
 
     {:ok, socket}
+  end
+
+  @doc """
+  Pre-fills the search field with the first non-host participant's name
+  and triggers a search. User still needs to manually select a contact.
+  """
+  def maybe_prefill_and_search_participant(socket, assigns, config) do
+    # Only prefill/search if query is empty and no contact is selected
+    if socket.assigns.query == "" and is_nil(socket.assigns.selected_contact) do
+      meeting = assigns[:meeting] || socket.assigns[:meeting]
+
+      if meeting && is_list(meeting.meeting_participants) do
+        case Enum.find(meeting.meeting_participants, fn p -> not p.is_host end) do
+          nil ->
+            socket
+
+          participant ->
+            socket = assign(socket, query: participant.name, searching: true, dropdown_open: true)
+            send(self(), {config.search_message, participant.name, socket.assigns.credential})
+            socket
+        end
+      else
+        socket
+      end
+    else
+      socket
+    end
   end
 
   @doc """
