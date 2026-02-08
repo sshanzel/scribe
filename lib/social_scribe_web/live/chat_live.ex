@@ -733,6 +733,7 @@ defmodule SocialScribeWeb.ChatLive do
         |> assign(:show_mention_dropdown, false)
         |> assign(:searching, false)
         |> assign(:contact_results, [])
+        |> assign(:pending_contact_query, nil)
     end
   end
 
@@ -740,7 +741,10 @@ defmodule SocialScribeWeb.ChatLive do
 
   defp cancel_search_timer(%{assigns: %{search_timer: timer}} = socket) do
     Process.cancel_timer(timer)
-    assign(socket, :search_timer, nil)
+
+    socket
+    |> assign(:search_timer, nil)
+    |> assign(:pending_contact_query, nil)
   end
 
   defp schedule_contact_search(socket, query) do

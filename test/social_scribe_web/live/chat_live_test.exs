@@ -105,11 +105,11 @@ defmodule SocialScribeWeb.ChatLiveTest do
       # Click history tab
       view |> render_click("switch_tab", %{"tab" => "history"})
 
-      # Wait for async load to complete
-      :timer.sleep(100)
-
-      # Re-render to get updated HTML after async
-      html = render(view)
+      # Wait for async load to complete with retry logic
+      html =
+        eventually(view, fn h ->
+          h =~ "First Thread" and h =~ "Second Thread"
+        end)
 
       # Verify threads are displayed
       assert html =~ "First Thread"
@@ -125,11 +125,11 @@ defmodule SocialScribeWeb.ChatLiveTest do
       # Click history tab
       view |> render_click("switch_tab", %{"tab" => "history"})
 
-      # Wait for async load to complete
-      :timer.sleep(100)
-
-      # Re-render to get updated HTML after async
-      html = render(view)
+      # Wait for async load to complete with retry logic
+      html =
+        eventually(view, fn h ->
+          h =~ "No conversations yet"
+        end)
 
       # Verify empty state is shown
       assert html =~ "No conversations yet"
@@ -189,8 +189,13 @@ defmodule SocialScribeWeb.ChatLiveTest do
         "mentions" => [%{"contact_id" => contact.id}]
       })
 
-      # Give a moment for async message handling
-      :timer.sleep(50)
+      # Wait for async message handling with retry logic
+      eventually(
+        view,
+        fn _html -> length(Chat.list_threads(user)) == 1 end,
+        retries: 20,
+        delay: 25
+      )
 
       # Verify a thread was created
       threads = Chat.list_threads(user)
@@ -230,8 +235,17 @@ defmodule SocialScribeWeb.ChatLiveTest do
         "mentions" => [%{"contact_id" => contact.id}]
       })
 
-      # Give a moment for async message handling
-      :timer.sleep(50)
+      # Wait for async message handling with retry logic
+      # We check that exactly 1 thread exists (no new thread created)
+      eventually(
+        view,
+        fn _html ->
+          threads = Chat.list_threads(user)
+          length(threads) == 1 and hd(threads).id == existing_thread.id
+        end,
+        retries: 20,
+        delay: 25
+      )
 
       # Verify no new threads were created
       threads = Chat.list_threads(user)
@@ -284,10 +298,14 @@ defmodule SocialScribeWeb.ChatLiveTest do
       # Immediately type "@ab" - this should cancel the previous search
       view |> render_click("message_input_change", %{"value" => "@ab", "key" => "b"})
 
-      # Wait for all debounced searches to complete
-      :timer.sleep(400)
-
-      html = render(view)
+      # Wait for results with retry logic instead of fixed sleep
+      html =
+        eventually(
+          view,
+          fn h -> h =~ "ab@example.com" or h =~ "Result for AB" end,
+          retries: 15,
+          delay: 50
+        )
 
       # The final results should be for "ab", not "a"
       # If the race condition fix works, we should see "ab@example.com"

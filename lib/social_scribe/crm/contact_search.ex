@@ -24,7 +24,7 @@ defmodule SocialScribe.CRM.ContactSearch do
           email: String.t() | nil,
           company: String.t() | nil,
           title: String.t() | nil,
-          crm_data: map()
+          crm_data: map() | nil
         }
 
   @doc """
