@@ -1,7 +1,7 @@
 defmodule SocialScribeWeb.HubspotModalMoxTest do
   @moduledoc """
-  Unit tests for HubSpot modal functionality using Mox.
-  Tests individual behaviors: search, selection, suggestion generation, updates.
+  Tests for HubSpot modal functionality using Mox.
+  Tests the flow: search → select contact → generate suggestions → apply updates.
   """
   use SocialScribeWeb.ConnCase, async: false
 
@@ -14,12 +14,32 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
 
   setup :verify_on_exit!
 
+  # Helper to wait for async operations
+  defp wait_for(view, condition, opts \\ []) do
+    retries = Keyword.get(opts, :retries, 20)
+    delay = Keyword.get(opts, :delay, 50)
+
+    Enum.reduce_while(1..retries, nil, fn attempt, _acc ->
+      html = render(view)
+
+      if condition.(html) do
+        {:halt, html}
+      else
+        if attempt < retries do
+          :timer.sleep(delay)
+          {:cont, nil}
+        else
+          {:halt, html}
+        end
+      end
+    end)
+  end
+
   describe "HubSpot Modal with mocked API" do
     setup %{conn: conn} do
       user = user_fixture()
       hubspot_credential = hubspot_credential_fixture(%{user_id: user.id})
-      # Meeting without non-host participants to avoid auto-search
-      meeting = meeting_fixture_without_guests(user)
+      meeting = meeting_fixture_with_transcript(user)
 
       %{
         conn: log_in_user(conn, user),
@@ -59,9 +79,8 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       |> element("input[phx-keyup='contact_search']")
       |> render_keyup(%{"value" => "John"})
 
-      # Wait for async search
-      :timer.sleep(100)
-      html = render(view)
+      # Wait for search results
+      html = wait_for(view, fn h -> h =~ "john@example.com" end)
 
       assert html =~ "John Doe"
       assert html =~ "john@example.com"
@@ -79,8 +98,8 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       |> element("input[phx-keyup='contact_search']")
       |> render_keyup(%{"value" => "Test"})
 
-      :timer.sleep(100)
-      html = render(view)
+      # Wait for error message
+      html = wait_for(view, fn h -> h =~ "Failed to search" end)
 
       assert html =~ "Failed to search"
     end
@@ -113,15 +132,16 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       |> element("input[phx-keyup='contact_search']")
       |> render_keyup(%{"value" => "John"})
 
-      :timer.sleep(100)
+      # Wait for search results
+      wait_for(view, fn h -> h =~ "john@example.com" end)
 
       # Select the contact
       view
       |> element("button[phx-click='select_contact'][phx-value-id='contact-123']")
       |> render_click()
 
-      :timer.sleep(100)
-      html = render(view)
+      # Wait for suggestions
+      html = wait_for(view, fn h -> h =~ "555-9999" end)
 
       # Modal should show suggestions
       assert html =~ "555-9999"
@@ -149,8 +169,8 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       |> element("input[phx-keyup='contact_search']")
       |> render_keyup(%{"value" => "Alice"})
 
-      :timer.sleep(100)
-      html = render(view)
+      # Wait for search results
+      html = wait_for(view, fn h -> h =~ "alice@test.com" end)
 
       assert html =~ "Alice Anderson"
       assert html =~ "alice@test.com"
@@ -185,18 +205,21 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
 
       {:ok, view, _html} = live(conn, ~p"/dashboard/meetings/#{meeting.id}/hubspot")
 
-      # Search and select contact
+      # Search for contact
       view
       |> element("input[phx-keyup='contact_search']")
       |> render_keyup(%{"value" => "Bob"})
 
-      :timer.sleep(100)
+      # Wait for search results
+      wait_for(view, fn h -> h =~ "bob@example.com" end)
 
+      # Select contact
       view
       |> element("button[phx-click='select_contact'][phx-value-id='contact-456']")
       |> render_click()
 
-      :timer.sleep(100)
+      # Wait for suggestions
+      wait_for(view, fn h -> h =~ "999-8888" end)
 
       # Submit the update form
       view
@@ -206,7 +229,27 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
         "values" => %{"phone" => "999-8888"}
       })
 
+      # Wait for update to complete
       :timer.sleep(100)
+    end
+  end
+
+  describe "HubSpot Modal - without credential" do
+    setup %{conn: conn} do
+      user = user_fixture()
+      meeting = meeting_fixture_with_transcript(user)
+
+      %{
+        conn: log_in_user(conn, user),
+        user: user,
+        meeting: meeting
+      }
+    end
+
+    test "does not show HubSpot button when no credential", %{conn: conn, meeting: meeting} do
+      {:ok, _view, html} = live(conn, ~p"/dashboard/meetings/#{meeting.id}")
+
+      refute html =~ "Update HubSpot"
     end
   end
 
@@ -265,8 +308,8 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
     end
   end
 
-  # Meeting fixture without non-host participants (avoids auto-search)
-  defp meeting_fixture_without_guests(user) do
+  # Meeting fixture with transcript
+  defp meeting_fixture_with_transcript(user) do
     meeting = meeting_fixture(%{})
 
     calendar_event = SocialScribe.Calendar.get_calendar_event!(meeting.calendar_event_id)
@@ -277,24 +320,17 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       content: %{
         "data" => [
           %{
-            "speaker" => "Host",
+            "speaker" => "John Doe",
             "words" => [
               %{"text" => "Hello,", "start_timestamp" => 0.0, "end_timestamp" => 0.5},
-              %{"text" => "this", "start_timestamp" => 0.5, "end_timestamp" => 0.7},
-              %{"text" => "is", "start_timestamp" => 0.7, "end_timestamp" => 0.9},
-              %{"text" => "a", "start_timestamp" => 0.9, "end_timestamp" => 1.0},
-              %{"text" => "test.", "start_timestamp" => 1.0, "end_timestamp" => 1.3}
+              %{"text" => "my", "start_timestamp" => 0.5, "end_timestamp" => 0.7},
+              %{"text" => "phone", "start_timestamp" => 0.7, "end_timestamp" => 1.0},
+              %{"text" => "is", "start_timestamp" => 1.0, "end_timestamp" => 1.2},
+              %{"text" => "555-1234", "start_timestamp" => 1.2, "end_timestamp" => 1.8}
             ]
           }
         ]
       }
-    })
-
-    # Only host participant - no auto-search triggered
-    meeting_participant_fixture(%{
-      meeting_id: meeting.id,
-      name: "Host",
-      is_host: true
     })
 
     SocialScribe.Meetings.get_meeting_with_details(meeting.id)

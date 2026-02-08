@@ -26,10 +26,7 @@ defmodule SocialScribeWeb.CRM.ModalHelpers do
       loading: false,
       searching: false,
       dropdown_open: false,
-      error: nil,
-      auto_searched: false,
-      auto_select_single: false,
-      auto_select_query: nil
+      error: nil
     ]
   end
 
@@ -48,8 +45,6 @@ defmodule SocialScribeWeb.CRM.ModalHelpers do
   This handles all common update logic including:
   - Applying incoming assigns
   - Selecting all suggestions by default
-  - Auto-searching for meeting participants
-  - Auto-selecting single attendee contacts
 
   ## Example
 
@@ -57,13 +52,11 @@ defmodule SocialScribeWeb.CRM.ModalHelpers do
         ModalHelpers.handle_update(socket, assigns, @crm_config)
       end
   """
-  def handle_update(socket, assigns, config) do
+  def handle_update(socket, assigns, _config) do
     socket =
       socket
       |> assign(assigns)
       |> maybe_select_all_suggestions(assigns)
-      |> maybe_auto_search_participant(assigns, config)
-      |> maybe_auto_select_single_contact(assigns, config)
 
     {:ok, socket}
   end
@@ -233,127 +226,4 @@ defmodule SocialScribeWeb.CRM.ModalHelpers do
   def handle_apply_updates_empty(socket) do
     {:noreply, assign(socket, error: "Please select at least one field to update")}
   end
-
-  # ============================================================================
-  # Auto-search helpers (used by Salesforce)
-  # ============================================================================
-
-  @doc """
-  Auto-searches for non-host participants when modal opens.
-
-  If only one non-host participant: auto-fill search AND auto-select when results come back.
-  If multiple non-host participants: search first one, show dropdown for user to select.
-
-  ## Config
-  - `:search_message` - The message atom to send for search
-  """
-  def maybe_auto_search_participant(socket, assigns, config) do
-    if not socket.assigns.auto_searched and is_nil(socket.assigns.selected_contact) do
-      meeting = assigns[:meeting] || socket.assigns[:meeting]
-
-      if meeting && is_list(meeting.meeting_participants) do
-        non_host_participants =
-          Enum.filter(meeting.meeting_participants, fn p -> not p.is_host end)
-
-        case non_host_participants do
-          [single_participant] ->
-            socket =
-              assign(socket,
-                searching: true,
-                auto_searched: true,
-                dropdown_open: false,
-                query: single_participant.name,
-                auto_select_single: true,
-                auto_select_query: single_participant.name
-              )
-
-            send(
-              self(),
-              {config.search_message, single_participant.name, socket.assigns.credential}
-            )
-
-            socket
-
-          [first | _rest] ->
-            socket =
-              assign(socket,
-                searching: true,
-                auto_searched: true,
-                dropdown_open: true,
-                query: first.name
-              )
-
-            send(self(), {config.search_message, first.name, socket.assigns.credential})
-            socket
-
-          [] ->
-            assign(socket, auto_searched: true)
-        end
-      else
-        socket
-      end
-    else
-      socket
-    end
-  end
-
-  @doc """
-  Auto-selects contact when:
-  1. auto_select_single is true (only one non-host participant)
-  2. Contacts just came in from search
-  3. No contact is currently selected
-
-  ## Config
-  - `:generate_message` - The message atom to send for generating suggestions
-  """
-  def maybe_auto_select_single_contact(socket, %{contacts: contacts}, config)
-      when is_list(contacts) and length(contacts) > 0 do
-    if socket.assigns.auto_select_single and is_nil(socket.assigns.selected_contact) do
-      query = socket.assigns.auto_select_query || socket.assigns.query
-      contact = find_best_matching_contact(contacts, query)
-
-      if contact do
-        socket =
-          assign(socket,
-            loading: true,
-            selected_contact: contact,
-            error: nil,
-            dropdown_open: false,
-            query: "",
-            suggestions: [],
-            auto_select_single: false
-          )
-
-        send(
-          self(),
-          {config.generate_message, contact, socket.assigns.meeting, socket.assigns.credential}
-        )
-
-        socket
-      else
-        socket
-      end
-    else
-      socket
-    end
-  end
-
-  def maybe_auto_select_single_contact(socket, _assigns, _config), do: socket
-
-  @doc """
-  Finds the best matching contact - prioritize exact name match, otherwise take first result.
-  """
-  def find_best_matching_contact(contacts, query) when is_binary(query) do
-    query_lower = String.downcase(query)
-
-    exact_match =
-      Enum.find(contacts, fn contact ->
-        full_name = "#{contact.firstname} #{contact.lastname}"
-        String.downcase(full_name) == query_lower
-      end)
-
-    exact_match || List.first(contacts)
-  end
-
-  def find_best_matching_contact(contacts, _query), do: List.first(contacts)
 end
