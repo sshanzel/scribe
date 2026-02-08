@@ -28,6 +28,7 @@ defmodule SocialScribe.Accounts.User do
     field :hashed_password, :string, redact: true
     field :current_password, :string, virtual: true, redact: true
     field :confirmed_at, :utc_datetime
+    field :has_seeded, :boolean, default: false
 
     has_many :user_credentials, SocialScribe.Accounts.UserCredential
 

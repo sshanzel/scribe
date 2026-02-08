@@ -143,6 +143,15 @@ defmodule SocialScribe.Accounts do
     end
   end
 
+  @doc """
+  Updates the user's has_seeded flag.
+  """
+  def update_user_seeded(%User{} = user, seeded) when is_boolean(seeded) do
+    user
+    |> Ecto.Changeset.change(has_seeded: seeded)
+    |> Repo.update()
+  end
+
   defp get_user_by_oauth_uid(provider, uid) do
     from(c in UserCredential,
       where: c.provider == ^provider and c.uid == ^uid,

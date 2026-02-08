@@ -6,11 +6,13 @@ defmodule SocialScribeWeb.LiveHooks do
 
   def on_mount(:assign_current_path, _params, _session, socket) do
     show_seed_button = System.get_env("SHOW_SEED_BUTTON") != nil
+    user = socket.assigns[:current_user]
+    seeded = user && Map.get(user, :has_seeded, false)
 
     socket =
       socket
       |> assign(:show_seed_button, show_seed_button)
-      |> assign(:seeded, false)
+      |> assign(:seeded, seeded)
       |> attach_hook(:assign_current_path, :handle_params, &assign_current_path/3)
       |> attach_hook(:handle_seed_event, :handle_event, &handle_seed_event/3)
 
@@ -28,6 +30,9 @@ defmodule SocialScribeWeb.LiveHooks do
 
     try do
       {:ok, summary} = Seeds.run(user)
+
+      # Mark user as seeded
+      SocialScribe.Accounts.update_user_seeded(user, true)
 
       message =
         "Seeded #{summary.meetings_count} meetings with #{summary.contacts_count} contacts!" <>
