@@ -219,6 +219,63 @@ defmodule SocialScribeWeb.ChatLiveTest do
     end
   end
 
+  describe "debounce race condition handling" do
+    setup %{conn: conn} do
+      user = user_fixture()
+
+      %{
+        conn: log_in_user(conn, user),
+        user: user
+      }
+    end
+
+    test "discards stale search results when query changes during debounce", %{user: user} do
+      # This test verifies that if a user types "@a", then quickly types "@ab",
+      # the results from the "@a" search don't overwrite the "@ab" results.
+
+      # Mock to track which queries were searched
+      search_calls = :ets.new(:search_calls, [:set, :public])
+
+      stub(SocialScribe.HubspotApiMock, :search_contacts, fn _credential, query ->
+        :ets.insert(search_calls, {query, true})
+        # Return different results based on query to distinguish them
+        if String.contains?(query, "ab") do
+          {:ok, [%{id: "2", display_name: "Result for AB", email: "ab@example.com"}]}
+        else
+          {:ok, [%{id: "1", display_name: "Result for A", email: "a@example.com"}]}
+        end
+      end)
+
+      stub(SocialScribe.SalesforceApiMock, :search_contacts, fn _credential, _query ->
+        {:ok, []}
+      end)
+
+      _credential = hubspot_credential_fixture(%{user_id: user.id})
+
+      {:ok, view, _html} =
+        Phoenix.LiveViewTest.live_isolated(build_conn(), SocialScribeWeb.ChatLive,
+          session: %{"user_token" => SocialScribe.Accounts.generate_user_session_token(user)}
+        )
+
+      # Type "@a" - this schedules a debounced search
+      view |> render_click("message_input_change", %{"value" => "@a", "key" => "a"})
+
+      # Immediately type "@ab" - this should cancel the previous search
+      view |> render_click("message_input_change", %{"value" => "@ab", "key" => "b"})
+
+      # Wait for all debounced searches to complete
+      :timer.sleep(400)
+
+      html = render(view)
+
+      # The final results should be for "ab", not "a"
+      # If the race condition fix works, we should see "ab@example.com"
+      assert html =~ "ab@example.com" or html =~ "Result for AB"
+
+      :ets.delete(search_calls)
+    end
+  end
+
   describe "XSS prevention in contact display" do
     setup %{conn: conn} do
       stub(SocialScribe.SalesforceApiMock, :search_contacts, fn _credential, _query ->
