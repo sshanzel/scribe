@@ -264,8 +264,7 @@ defmodule SocialScribe.Seeds do
           topic2: "the launch timeline",
           topic2_response:
             "Still on track for March 15th. We'll do a soft launch first - 10% of users.",
-          contact_info:
-            "Same as before - 415-555-0123 or sarah.chen@techcorp.io."
+          contact_info: "Same as before - 415-555-0123 or sarah.chen@techcorp.io."
         }
       }
     ]

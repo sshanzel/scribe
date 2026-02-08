@@ -270,6 +270,323 @@ defmodule SocialScribe.ChatAI.PromptBuilderTest do
   end
 
   # =============================================================================
+  # build_response_metadata/1
+  # =============================================================================
+
+  describe "build_response_metadata/1" do
+    test "includes meeting refs from both email and name matched meetings" do
+      context = %{
+        meetings: [sample_meeting(1, "Email Match", ~U[2025-01-15 10:00:00Z])],
+        name_matched_meetings: [sample_meeting(2, "Name Match", ~U[2025-01-10 10:00:00Z])]
+      }
+
+      metadata = PromptBuilder.build_response_metadata(context)
+
+      assert length(metadata["meeting_refs"]) == 2
+      ids = Enum.map(metadata["meeting_refs"], & &1["meeting_id"])
+      assert 1 in ids
+      assert 2 in ids
+    end
+
+    test "handles empty meetings list" do
+      context = %{
+        meetings: [],
+        name_matched_meetings: []
+      }
+
+      metadata = PromptBuilder.build_response_metadata(context)
+
+      assert metadata["meeting_refs"] == []
+    end
+
+    test "handles nil name_matched_meetings" do
+      context = %{
+        meetings: [sample_meeting(1, "Meeting", ~U[2025-01-15 10:00:00Z])],
+        name_matched_meetings: nil
+      }
+
+      metadata = PromptBuilder.build_response_metadata(context)
+
+      assert length(metadata["meeting_refs"]) == 1
+    end
+
+    test "formats dates correctly" do
+      context = %{
+        meetings: [sample_meeting(1, "Meeting", ~U[2025-12-25 10:00:00Z])],
+        name_matched_meetings: []
+      }
+
+      metadata = PromptBuilder.build_response_metadata(context)
+
+      [ref] = metadata["meeting_refs"]
+      assert ref["date"] == "2025-12-25"
+    end
+
+    test "handles meeting with nil recorded_at" do
+      meeting = %Meeting{
+        id: 1,
+        title: "Untitled",
+        recorded_at: nil,
+        duration_seconds: nil,
+        meeting_transcript: nil,
+        meeting_participants: []
+      }
+
+      context = %{
+        meetings: [meeting],
+        name_matched_meetings: []
+      }
+
+      metadata = PromptBuilder.build_response_metadata(context)
+
+      [ref] = metadata["meeting_refs"]
+      assert ref["date"] == nil
+    end
+
+    test "fallback for context without name_matched_meetings key" do
+      context = %{meetings: [sample_meeting(1, "Meeting", ~U[2025-01-15 10:00:00Z])]}
+
+      metadata = PromptBuilder.build_response_metadata(context)
+
+      assert length(metadata["meeting_refs"]) == 1
+    end
+  end
+
+  # =============================================================================
+  # build_gemini_payload/3
+  # =============================================================================
+
+  describe "build_gemini_payload/3" do
+    alias SocialScribe.Chat.ChatMessage
+
+    test "builds payload with system context and current question" do
+      context = %{
+        contact: nil,
+        crm_data: nil,
+        meetings: [],
+        name_matched_meetings: []
+      }
+
+      payload = PromptBuilder.build_gemini_payload(context, [], "What is the summary?")
+
+      assert is_map(payload)
+      assert is_list(payload.contents)
+      # System context + model ack + current question
+      assert length(payload.contents) == 3
+    end
+
+    test "includes thread history" do
+      context = %{
+        contact: nil,
+        crm_data: nil,
+        meetings: [],
+        name_matched_meetings: []
+      }
+
+      messages = [
+        %ChatMessage{role: "user", content: "First question"},
+        %ChatMessage{role: "assistant", content: "First answer"}
+      ]
+
+      payload = PromptBuilder.build_gemini_payload(context, messages, "Second question")
+
+      # System context + ack + 2 history + current = 5
+      assert length(payload.contents) == 5
+    end
+
+    test "excludes current question from history if already saved" do
+      context = %{
+        contact: nil,
+        crm_data: nil,
+        meetings: [],
+        name_matched_meetings: []
+      }
+
+      messages = [
+        %ChatMessage{role: "user", content: "My question"},
+        %ChatMessage{role: "assistant", content: "Previous answer"}
+      ]
+
+      payload = PromptBuilder.build_gemini_payload(context, messages, "My question")
+
+      # System + ack + 1 assistant msg (user msg excluded as duplicate) + current = 4
+      assert length(payload.contents) == 4
+    end
+
+    test "maps assistant role to model" do
+      context = %{
+        contact: nil,
+        crm_data: nil,
+        meetings: [],
+        name_matched_meetings: []
+      }
+
+      messages = [
+        %ChatMessage{role: "assistant", content: "I am assistant"}
+      ]
+
+      payload = PromptBuilder.build_gemini_payload(context, messages, "Question")
+
+      roles = Enum.map(payload.contents, & &1.role)
+      assert "model" in roles
+      refute "assistant" in roles
+    end
+  end
+
+  # =============================================================================
+  # Edge Cases
+  # =============================================================================
+
+  describe "edge cases" do
+    test "handles meeting with no transcript" do
+      meeting = %Meeting{
+        id: 1,
+        title: "No Transcript Meeting",
+        recorded_at: ~U[2025-01-15 10:00:00Z],
+        duration_seconds: 1800,
+        meeting_transcript: nil,
+        meeting_participants: []
+      }
+
+      context = %{
+        contact: nil,
+        crm_data: nil,
+        meetings: [meeting],
+        name_matched_meetings: []
+      }
+
+      prompt = PromptBuilder.build_system_context(context)
+
+      assert prompt =~ "No transcript available"
+    end
+
+    test "handles meeting with no participants" do
+      meeting = %Meeting{
+        id: 1,
+        title: "Solo Meeting",
+        recorded_at: ~U[2025-01-15 10:00:00Z],
+        duration_seconds: 1800,
+        meeting_transcript: nil,
+        meeting_participants: []
+      }
+
+      context = %{
+        contact: nil,
+        crm_data: nil,
+        meetings: [meeting],
+        name_matched_meetings: []
+      }
+
+      prompt = PromptBuilder.build_system_context(context)
+
+      # Should not crash and should not show "Participants:"
+      refute prompt =~ "Participants:"
+    end
+
+    test "handles meeting with nil duration" do
+      meeting = %Meeting{
+        id: 1,
+        title: "Unknown Duration",
+        recorded_at: ~U[2025-01-15 10:00:00Z],
+        duration_seconds: nil,
+        meeting_transcript: nil,
+        meeting_participants: []
+      }
+
+      context = %{
+        contact: nil,
+        crm_data: nil,
+        meetings: [meeting],
+        name_matched_meetings: []
+      }
+
+      prompt = PromptBuilder.build_system_context(context)
+
+      assert prompt =~ "Duration: Unknown"
+    end
+
+    test "handles CRM data with atom keys" do
+      context = %{
+        contact: nil,
+        crm_data: %{
+          display_name: "John Doe",
+          email: "john@example.com",
+          company: "Acme",
+          title: "CEO",
+          phone: "555-0000"
+        },
+        meetings: [],
+        name_matched_meetings: []
+      }
+
+      prompt = PromptBuilder.build_system_context(context)
+
+      assert prompt =~ "Name: John Doe"
+      assert prompt =~ "Company: Acme"
+    end
+
+    test "prefers CRM display_name over contact name" do
+      contact = %Contact{
+        id: 1,
+        name: "John Contact",
+        email: "john@example.com"
+      }
+
+      crm_data = %{
+        "display_name" => "John CRM"
+      }
+
+      context = %{
+        contact: contact,
+        crm_data: crm_data,
+        meetings: [],
+        name_matched_meetings: []
+      }
+
+      prompt = PromptBuilder.build_system_context(context)
+
+      assert prompt =~ "Name: John CRM"
+      refute prompt =~ "Name: John Contact"
+    end
+
+    test "falls back to contact name when CRM display_name is missing" do
+      contact = %Contact{
+        id: 1,
+        name: "John Contact",
+        email: "john@example.com"
+      }
+
+      crm_data = %{
+        "company" => "Acme"
+      }
+
+      context = %{
+        contact: contact,
+        crm_data: crm_data,
+        meetings: [],
+        name_matched_meetings: []
+      }
+
+      prompt = PromptBuilder.build_system_context(context)
+
+      assert prompt =~ "Name: John Contact"
+    end
+
+    test "handles old context format without name_matched_meetings" do
+      context = %{
+        contact: nil,
+        crm_data: nil,
+        meetings: []
+      }
+
+      # Should not crash
+      prompt = PromptBuilder.build_system_context(context)
+
+      assert prompt =~ "RECENT MEETING HISTORY"
+    end
+  end
+
+  # =============================================================================
   # Scenario Builders
   # =============================================================================
 

@@ -68,7 +68,10 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   end
 
   # Priority 2: email with CRM data
-  def gather_context_from_metadata(%User{} = user, %{"crm_data" => crm_data, "email" => email} = metadata)
+  def gather_context_from_metadata(
+        %User{} = user,
+        %{"crm_data" => crm_data, "email" => email} = metadata
+      )
       when is_map(crm_data) and is_binary(email) and email != "" do
     meetings = find_meetings_by_email(user, email)
     first_name = extract_first_name(metadata["name"])
@@ -291,30 +294,37 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
       when is_binary(first_name) do
     name_pattern = "#{first_name}%"
 
+    # Subquery to get distinct meeting IDs that match
+    matching_ids =
+      Meeting
+      |> join(:inner, [m], ce in assoc(m, :calendar_event))
+      |> join(:inner, [m, ce], mp in MeetingParticipant, on: mp.meeting_id == m.id)
+      |> where([m, ce, mp], ce.user_id == ^user_id)
+      |> where([m, ce, mp], ilike(mp.name, ^name_pattern))
+      |> select([m, ce, mp], m.id)
+      |> distinct(true)
+
+    # Query meetings by those IDs, ordered by most recent
     Meeting
-    |> join(:inner, [m], ce in assoc(m, :calendar_event))
-    |> join(:inner, [m, ce], mp in MeetingParticipant, on: mp.meeting_id == m.id)
-    |> where([m, ce, mp], ce.user_id == ^user_id)
-    |> where([m, ce, mp], ilike(mp.name, ^name_pattern))
-    |> order_by([m, ce, mp], desc: m.recorded_at)
+    |> where([m], m.id in subquery(matching_ids))
+    |> order_by([m], desc: m.recorded_at)
     |> limit(@max_name_matched_meetings)
-    |> distinct([m, ce, mp], m.id)
     |> preload([:meeting_transcript, :meeting_participants, :calendar_event])
     |> Repo.all()
   end
 
   @doc """
   Extracts the first name from a full name string.
-  Returns nil if the name is nil or empty.
+  Returns nil if the name is nil, empty, or whitespace-only.
   """
   def extract_first_name(nil), do: nil
   def extract_first_name(""), do: nil
 
   def extract_first_name(name) when is_binary(name) do
-    name
-    |> String.trim()
-    |> String.split(~r/\s+/, parts: 2)
-    |> List.first()
+    case String.trim(name) do
+      "" -> nil
+      trimmed -> trimmed |> String.split(~r/\s+/, parts: 2) |> List.first()
+    end
   end
 
   # =============================================================================
