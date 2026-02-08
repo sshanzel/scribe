@@ -51,6 +51,70 @@ defmodule SocialScribeWeb.ChatLiveTest do
     end
   end
 
+  describe "ChatLive history tab" do
+    setup %{conn: conn} do
+      stub(SocialScribe.SalesforceApiMock, :search_contacts, fn _credential, _query ->
+        {:ok, []}
+      end)
+
+      stub(SocialScribe.HubspotApiMock, :search_contacts, fn _credential, _query ->
+        {:ok, []}
+      end)
+
+      user = user_fixture()
+
+      %{
+        conn: log_in_user(conn, user),
+        user: user
+      }
+    end
+
+    test "loads and displays threads when history tab is clicked", %{user: user} do
+      # Create some threads first
+      {:ok, thread1} = Chat.create_thread(user)
+      {:ok, _} = Chat.update_thread(thread1, %{title: "First Thread"})
+      {:ok, thread2} = Chat.create_thread(user)
+      {:ok, _} = Chat.update_thread(thread2, %{title: "Second Thread"})
+
+      {:ok, view, _html} =
+        Phoenix.LiveViewTest.live_isolated(build_conn(), SocialScribeWeb.ChatLive,
+          session: %{"user_token" => SocialScribe.Accounts.generate_user_session_token(user)}
+        )
+
+      # Click history tab
+      view |> render_click("switch_tab", %{"tab" => "history"})
+
+      # Wait for async load to complete
+      :timer.sleep(100)
+
+      # Re-render to get updated HTML after async
+      html = render(view)
+
+      # Verify threads are displayed
+      assert html =~ "First Thread"
+      assert html =~ "Second Thread"
+    end
+
+    test "shows empty state when no threads exist", %{user: user} do
+      {:ok, view, _html} =
+        Phoenix.LiveViewTest.live_isolated(build_conn(), SocialScribeWeb.ChatLive,
+          session: %{"user_token" => SocialScribe.Accounts.generate_user_session_token(user)}
+        )
+
+      # Click history tab
+      view |> render_click("switch_tab", %{"tab" => "history"})
+
+      # Wait for async load to complete
+      :timer.sleep(100)
+
+      # Re-render to get updated HTML after async
+      html = render(view)
+
+      # Verify empty state is shown
+      assert html =~ "No conversations yet"
+    end
+  end
+
   describe "ChatLive send_message without existing thread" do
     setup %{conn: conn} do
       # Stub mocks
