@@ -1,8 +1,7 @@
 defmodule SocialScribeWeb.MeetingLive.SalesforceModalComponent do
   use SocialScribeWeb, :live_component
 
-  import SocialScribeWeb.ModalComponents, only: [contact_select: 1]
-  import SocialScribeWeb.CRMModalComponents
+  import SocialScribeWeb.CRM.ModalComponents
 
   alias SocialScribeWeb.MeetingLive.CRMModalHelpers
 
