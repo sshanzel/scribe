@@ -2,6 +2,15 @@
   <header class="shrink-0">
     <div class="flex items-center justify-between border-b border-zinc-100 py-3 text-sm px-2 sm:px-4 md:px-6 lg:px-8 bg-white">
       <div class="flex items-center gap-4">
+        <!-- Hamburger (mobile only) -->
+        <button
+          class="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+          phx-click={JS.show(to: "#mobile-sidebar-drawer")}
+          aria-label="Open menu"
+        >
+          <.icon name="hero-bars-3" class="size-6" />
+        </button>
+
         <.link navigate={~p"/dashboard"} class="flex items-center gap-2">
           <span class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-indigo-800 bg-clip-text text-transparent">
             social scribe
@@ -48,7 +57,25 @@
   </header>
 
   <div class="flex flex-1 min-h-0 relative">
-    <.sidebar
+    <!-- Desktop sidebar -->
+    <div class="hidden md:block">
+      <.sidebar
+        base_path={~p"/dashboard"}
+        current_path={@current_path}
+        show_seed_button={@show_seed_button}
+        seeded={@seeded}
+        links={[
+          {"Home", "hero-home", ~p"/dashboard"},
+          {"Meetings", "hero-calendar", ~p"/dashboard/meetings"},
+          {"Automations", "hero-rocket-launch", ~p"/dashboard/automations"},
+          {"Settings", "hero-cog-6-tooth", ~p"/dashboard/settings"}
+        ]}
+      />
+    </div>
+
+    <!-- Mobile sidebar drawer -->
+    <.mobile_sidebar_drawer
+      id="mobile-sidebar-drawer"
       base_path={~p"/dashboard"}
       current_path={@current_path}
       show_seed_button={@show_seed_button}
