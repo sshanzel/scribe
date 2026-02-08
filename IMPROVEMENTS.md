@@ -30,33 +30,7 @@ Tracked enhancements to implement after core features are complete.
 
 **Benefit:** Enables precise contact auto-selection by email instead of fuzzy name search which is prone to mistakes.
 
-## 2. Sequential multi-contact updates from a single meeting
-
-**Problem:** When a meeting has multiple participants (e.g., 3 contacts), the user currently has to manually search and update each contact one by one. This is tedious and requires re-opening the modal multiple times.
-
-**Solution:** Allow users to update all meeting participants sequentially without searching:
-1. Pre-match all non-host participants to CRM contacts (using attendee emails from calendar_events)
-2. Show a list of matched contacts with their suggested updates
-3. Let user step through each contact: review suggestions → apply → next contact
-4. Track which contacts have been updated for this meeting
-
-**Implementation:**
-1. On modal open, match all participants to CRM contacts using calendar_event.attendees
-2. Display a contact queue/stepper UI showing all matched contacts
-3. For each contact, show AI suggestions with before/after values
-4. After applying updates, automatically advance to next contact
-5. Optionally store update history to prevent duplicate updates
-
-**Files to modify:**
-- `lib/social_scribe_web/live/meeting_live/salesforce_modal_component.ex`
-- `lib/social_scribe_web/live/meeting_live/hubspot_modal_component.ex`
-- `lib/social_scribe/salesforce_suggestions.ex`
-- `lib/social_scribe/hubspot_suggestions.ex`
-- Possibly add `meeting_crm_updates` table to track applied updates
-
-**Benefit:** Streamlined workflow - update all contacts from one meeting in a single modal session.
-
-## 3. Unify HubSpot and Salesforce CRM integration code ✅
+## 2. Unify HubSpot and Salesforce CRM integration code ✅
 
 > **Status:** Implemented via shared helpers and components
 
@@ -70,20 +44,20 @@ This leads to code duplication and maintenance overhead.
 
 **Solution Implemented:**
 1. Created `CRMModalHelpers` module with config-based approach for CRM-specific settings
-2. Created `CRMModalComponents` with shared UI components (header, search, suggestions list, etc.)
+2. Created `SocialScribeWeb.CRM.ModalComponents` with shared UI components (header, search, suggestions list, etc.)
 3. Refactored both `HubspotModalComponent` and `SalesforceModalComponent` to use shared helpers
 4. Single `handle_update/3` function handles all common update logic
 5. Auto-search on modal open for both CRMs
 
 **Files created/modified:**
 - `lib/social_scribe_web/live/meeting_live/crm_modal_helpers.ex` (NEW)
-- `lib/social_scribe_web/components/crm_modal_components.ex` (NEW)
+- `lib/social_scribe_web/components/crm/modal_components.ex` (NEW)
 - `lib/social_scribe_web/live/meeting_live/hubspot_modal_component.ex` (refactored)
 - `lib/social_scribe_web/live/meeting_live/salesforce_modal_component.ex` (refactored)
 
 **Benefit:** Adding new CRMs is now trivial - just create a new modal component with CRM-specific config and reuse all shared helpers.
 
-## 4. Normalize contacts with calendar event attendees ✅
+## 3. Normalize contacts with calendar event attendees ✅
 
 > **Status:** Implemented for accurate chat contact-to-meeting matching
 
@@ -199,7 +173,7 @@ calendar_event_attendees: id, calendar_event_id, contact_id, display_name, respo
 
 ---
 
-## 5. Add pattern matching with guards for type safety
+## 4. Add pattern matching with guards for type safety
 
 **Problem:** Elixir is dynamically typed, so type mismatches (e.g., passing `user.id` instead of `user` struct) are only caught at runtime, often with cryptic errors like `expected a map, got: 1`.
 
@@ -231,7 +205,7 @@ end
 
 **Benefit:** Clearer error messages at runtime, better documentation, and Dialyzer can catch mismatches at compile time.
 
-## 6. Code Formatting Standards
+## 5. Code Formatting Standards
 
 **Problem:** Inconsistent code formatting across the codebase can lead to noisy diffs and style debates during code review.
 
