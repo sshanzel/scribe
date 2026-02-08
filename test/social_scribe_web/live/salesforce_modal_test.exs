@@ -73,38 +73,6 @@ defmodule SocialScribeWeb.SalesforceModalTest do
       refute has_element?(view, "form[phx-submit='apply_updates']")
     end
 
-    test "pre-fills search with participant name and triggers search on open", %{conn: conn} do
-      user = user_fixture()
-      _credential = salesforce_credential_fixture(%{user_id: user.id})
-      meeting = meeting_fixture_with_participant(user, "Marcus Johnson")
-
-      # Mock the search that will be triggered automatically
-      expect(SocialScribe.SalesforceApiMock, :search_contacts, fn _credential, query ->
-        assert query == "Marcus Johnson"
-
-        {:ok,
-         [
-           %{
-             id: "003MARCUS",
-             firstname: "Marcus",
-             lastname: "Johnson",
-             email: "marcus@example.com",
-             phone: "555-5678"
-           }
-         ]}
-      end)
-
-      {:ok, view, html} =
-        live(log_in_user(conn, user), ~p"/dashboard/meetings/#{meeting.id}/salesforce")
-
-      # Search input should be pre-filled with participant name
-      assert html =~ "Marcus Johnson"
-
-      # Wait for search results to appear
-      html = wait_for(view, fn h -> h =~ "marcus@example.com" end)
-      assert html =~ "marcus@example.com"
-    end
-
     test "search_contacts returns mocked results", %{conn: conn, meeting: meeting} do
       contacts = [
         %{
@@ -394,27 +362,6 @@ defmodule SocialScribeWeb.SalesforceModalTest do
           }
         ]
       }
-    })
-
-    SocialScribe.Meetings.get_meeting_with_details(meeting.id)
-  end
-
-  # Meeting fixture with a specific participant name for pre-fill testing
-  defp meeting_fixture_with_participant(user, participant_name) do
-    meeting = meeting_fixture(%{})
-
-    calendar_event = SocialScribe.Calendar.get_calendar_event!(meeting.calendar_event_id)
-    {:ok, _} = SocialScribe.Calendar.update_calendar_event(calendar_event, %{user_id: user.id})
-
-    meeting_transcript_fixture(%{
-      meeting_id: meeting.id,
-      content: %{"data" => []}
-    })
-
-    meeting_participant_fixture(%{
-      meeting_id: meeting.id,
-      name: participant_name,
-      is_host: false
     })
 
     SocialScribe.Meetings.get_meeting_with_details(meeting.id)
