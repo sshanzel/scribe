@@ -2,12 +2,19 @@ defmodule SocialScribeWeb.LiveHooks do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [attach_hook: 4]
 
+  alias SocialScribe.Accounts.Credentials
   alias SocialScribe.Seeds
 
   def on_mount(:assign_current_path, _params, _session, socket) do
-    show_seed_button = System.get_env("SHOW_SEED_BUTTON") != nil
+    env_enabled = System.get_env("SHOW_SEED_BUTTON") != nil
     user = socket.assigns[:current_user]
     seeded = user && Map.get(user, :has_seeded, false)
+
+    # Only show seed button if env is set AND user has Salesforce connected
+    has_salesforce =
+      user && Credentials.get_user_latest_credential(user.id, "salesforce") != nil
+
+    show_seed_button = env_enabled and has_salesforce
 
     socket =
       socket
