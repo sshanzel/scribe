@@ -254,7 +254,8 @@ defmodule SocialScribeWeb.SalesforceModalTest do
         "values" => %{"phone" => "999-8888"}
       })
 
-      :timer.sleep(100)
+      # Wait for async update to complete
+      wait_for(view, fn _h -> true end, retries: 5, delay: 50)
     end
 
     test "modal can be closed by navigating back", %{conn: conn, meeting: meeting} do

@@ -1,5 +1,5 @@
 defmodule SocialScribeWeb.ChatLiveTest do
-  use SocialScribeWeb.ConnCase
+  use SocialScribeWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
   import Mox
