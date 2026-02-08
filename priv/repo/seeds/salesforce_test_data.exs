@@ -21,7 +21,7 @@ user_email = System.get_env("SEED_USER_EMAIL") || "your-email@example.com"
 user = Repo.get_by!(User, email: user_email)
 IO.puts("Found user: #{user.email}")
 
-credential = Credentials.get_user_salesforce_credential(user.id)
+credential = Credentials.get_user_latest_credential(user.id, "salesforce")
 
 if is_nil(credential) do
   IO.puts("ERROR: No Salesforce credential found for user. Please connect Salesforce first.")

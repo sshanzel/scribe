@@ -200,7 +200,8 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
         {:ok, expected}
       end)
 
-      assert {:ok, ^expected} = SocialScribe.CRM.HubSpot.ApiBehaviour.get_contact(credential, "123")
+      assert {:ok, ^expected} =
+               SocialScribe.CRM.HubSpot.ApiBehaviour.get_contact(credential, "123")
     end
 
     test "update_contact delegates to implementation", %{credential: credential} do
@@ -232,7 +233,11 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       end)
 
       assert {:ok, _} =
-               SocialScribe.CRM.HubSpot.ApiBehaviour.apply_updates(credential, "123", updates_list)
+               SocialScribe.CRM.HubSpot.ApiBehaviour.apply_updates(
+                 credential,
+                 "123",
+                 updates_list
+               )
     end
   end
 

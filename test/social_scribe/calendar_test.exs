@@ -189,6 +189,5 @@ defmodule SocialScribe.CalendarTest do
       assert {:ok, %CalendarEvent{}} = Calendar.create_or_update_calendar_event(updated_attrs)
       assert Calendar.get_calendar_event!(calendar_event.id).summary == "some updated summary"
     end
-
   end
 end

@@ -525,20 +525,55 @@ defmodule SocialScribe.AccountsTest do
       assert updated_credential.refresh_token == "new_refresh"
     end
 
-    test "get_user_hubspot_credential/1 returns the hubspot credential" do
+    test "get_user_latest_credential/2 returns the hubspot credential" do
       user = user_fixture()
       credential = hubspot_credential_fixture(%{user_id: user.id})
 
-      found_credential = Credentials.get_user_hubspot_credential(user.id)
+      found_credential = Credentials.get_user_latest_credential(user.id, "hubspot")
 
       assert found_credential.id == credential.id
       assert found_credential.provider == "hubspot"
     end
 
-    test "get_user_hubspot_credential/1 returns nil when no credential exists" do
+    test "get_user_latest_credential/2 returns nil when no credential exists" do
       user = user_fixture()
 
-      assert Credentials.get_user_hubspot_credential(user.id) == nil
+      assert Credentials.get_user_latest_credential(user.id, "hubspot") == nil
+    end
+
+    test "get_user_latest_credential/2 returns the most recently created credential" do
+      user = user_fixture()
+
+      # Create an older credential using the fixture
+      older = hubspot_credential_fixture(%{user_id: user.id, uid: "old_uid", token: "old_token"})
+
+      # Create a newer credential using the fixture
+      newer = hubspot_credential_fixture(%{user_id: user.id, uid: "new_uid", token: "new_token"})
+
+      found_credential = Credentials.get_user_latest_credential(user.id, "hubspot")
+
+      # Should return the newer one (most recently created)
+      assert found_credential.id == newer.id
+      assert found_credential.id != older.id
+    end
+
+    test "get_user_latest_credential/2 works with salesforce provider" do
+      user = user_fixture()
+
+      {:ok, credential} =
+        Credentials.create_user_credential(%{
+          user_id: user.id,
+          provider: "salesforce",
+          uid: "salesforce_uid",
+          token: "salesforce_token",
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second),
+          email: "salesforce_user@example.com"
+        })
+
+      found_credential = Credentials.get_user_latest_credential(user.id, "salesforce")
+
+      assert found_credential.id == credential.id
+      assert found_credential.provider == "salesforce"
     end
 
     test "list_user_credentials/2 filters by hubspot provider" do
@@ -622,7 +657,10 @@ defmodule SocialScribe.AccountsTest do
       facebook_page_credential = facebook_page_credential_fixture()
 
       assert {:error, %Ecto.Changeset{}} =
-               Credentials.update_facebook_page_credential(facebook_page_credential, @invalid_attrs)
+               Credentials.update_facebook_page_credential(
+                 facebook_page_credential,
+                 @invalid_attrs
+               )
 
       assert facebook_page_credential ==
                Credentials.get_facebook_page_credential!(facebook_page_credential.id)

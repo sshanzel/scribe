@@ -31,7 +31,9 @@ defmodule SocialScribe.CRM.Salesforce.ApiPropertyTest do
       credential: credential
     } do
       check all(updates <- list_of(update_generator(apply: false), min_length: 1, max_length: 10)) do
-        result = SocialScribe.CRM.Salesforce.Api.apply_updates(credential, "003XXXXXXXXXXXX", updates)
+        result =
+          SocialScribe.CRM.Salesforce.Api.apply_updates(credential, "003XXXXXXXXXXXX", updates)
+
         assert result == {:ok, :no_updates}
       end
     end

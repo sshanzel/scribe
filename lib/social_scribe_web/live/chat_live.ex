@@ -132,7 +132,9 @@ defmodule SocialScribeWeb.ChatLive do
                         {raw(render_message_content(message))}
                       </div>
                       <!-- Sources for the last assistant message -->
-                      <.sources_indicator :if={message.role != "user" && index == length(@messages) - 1} />
+                      <.sources_indicator :if={
+                        message.role != "user" && index == length(@messages) - 1
+                      } />
                     </div>
                   </div>
 

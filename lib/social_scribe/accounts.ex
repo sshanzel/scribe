@@ -151,5 +151,4 @@ defmodule SocialScribe.Accounts do
     )
     |> Repo.one()
   end
-
 end

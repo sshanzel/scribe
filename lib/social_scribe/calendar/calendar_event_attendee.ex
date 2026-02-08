@@ -27,7 +27,13 @@ defmodule SocialScribe.Calendar.CalendarEventAttendee do
   @doc false
   def changeset(attendee, attrs) do
     attendee
-    |> cast(attrs, [:calendar_event_id, :contact_id, :display_name, :response_status, :is_organizer])
+    |> cast(attrs, [
+      :calendar_event_id,
+      :contact_id,
+      :display_name,
+      :response_status,
+      :is_organizer
+    ])
     |> validate_required([:calendar_event_id, :contact_id])
     |> foreign_key_constraint(:calendar_event_id)
     |> foreign_key_constraint(:contact_id)

@@ -4,17 +4,18 @@ defmodule SocialScribe.CRM.PromptBuilderTest do
   alias SocialScribe.CRM.PromptBuilder
 
   # Snapshot of expected HubSpot prompt structure
+  # Categories are ordered: basic, phone, work, address, online (deterministic)
   @hubspot_prompt_snapshot """
   You are an AI assistant that extracts contact information updates from meeting transcripts.
 
   Analyze the following meeting transcript and extract any information that could be used to update a HubSpot contact record.
 
   Look for mentions of:
-  - Address: Address (address), City (city), State (state), ZIP Code (zip), Country (country)
   - Basic info: First Name (firstname), Last Name (lastname), Email (email)
-  - Online presence: Website (website), LinkedIn (linkedin_url), Twitter (twitter_handle)
   - Phone numbers: Phone (phone), Mobile Phone (mobilephone)
   - Work info: Company (company), Job Title (jobtitle)
+  - Address: Address (address), City (city), State (state), ZIP Code (zip), Country (country)
+  - Online presence: Website (website), LinkedIn (linkedin_url), Twitter (twitter_handle)
   IMPORTANT: Only extract information that is EXPLICITLY mentioned in the transcript. Do not infer or guess.
 
   The transcript includes timestamps in [MM:SS] format at the start of each line.
@@ -40,16 +41,17 @@ defmodule SocialScribe.CRM.PromptBuilderTest do
   """
 
   # Snapshot of expected Salesforce prompt structure
+  # Categories are ordered: basic, phone, work, address (deterministic)
   @salesforce_prompt_snapshot """
   You are an AI assistant that extracts contact information updates from meeting transcripts.
 
   Analyze the following meeting transcript and extract any information that could be used to update a Salesforce contact record.
 
   Look for mentions of:
-  - Address: Address (address), City (city), State (state), ZIP Code (zip), Country (country)
   - Basic info: First Name (firstname), Last Name (lastname), Email (email)
   - Phone numbers: Phone (phone), Mobile Phone (mobilephone)
   - Work info: Job Title (title), Department (department)
+  - Address: Address (address), City (city), State (state), ZIP Code (zip), Country (country)
   IMPORTANT: Only extract information that is EXPLICITLY mentioned in the transcript. Do not infer or guess.
 
   The transcript includes timestamps in [MM:SS] format at the start of each line.
@@ -136,11 +138,16 @@ defmodule SocialScribe.CRM.PromptBuilderTest do
       assert prompt =~ "Basic info: First Name (firstname), Last Name (lastname), Email (email)"
       assert prompt =~ "Phone numbers: Phone (phone), Mobile Phone (mobilephone)"
       assert prompt =~ "Work info: Company (company), Job Title (jobtitle)"
-      assert prompt =~ "Address: Address (address), City (city), State (state), ZIP Code (zip), Country (country)"
-      assert prompt =~ "Online presence: Website (website), LinkedIn (linkedin_url), Twitter (twitter_handle)"
+
+      assert prompt =~
+               "Address: Address (address), City (city), State (state), ZIP Code (zip), Country (country)"
+
+      assert prompt =~
+               "Online presence: Website (website), LinkedIn (linkedin_url), Twitter (twitter_handle)"
 
       # 3. Explicit list of valid field names the AI must use
-      assert prompt =~ "use exactly: firstname, lastname, email, phone, mobilephone, company, jobtitle, address, city, state, zip, country, website, linkedin_url, twitter_handle"
+      assert prompt =~
+               "use exactly: firstname, lastname, email, phone, mobilephone, company, jobtitle, address, city, state, zip, country, website, linkedin_url, twitter_handle"
 
       # 4. JSON format instructions
       assert prompt =~ "Return your response as a JSON array"
@@ -171,12 +178,17 @@ defmodule SocialScribe.CRM.PromptBuilderTest do
       assert prompt =~ "Basic info: First Name (firstname), Last Name (lastname), Email (email)"
       assert prompt =~ "Phone numbers: Phone (phone), Mobile Phone (mobilephone)"
       assert prompt =~ "Work info: Job Title (title), Department (department)"
-      assert prompt =~ "Address: Address (address), City (city), State (state), ZIP Code (zip), Country (country)"
+
+      assert prompt =~
+               "Address: Address (address), City (city), State (state), ZIP Code (zip), Country (country)"
+
       refute prompt =~ "Company (company)"
       refute prompt =~ "Online presence:"
 
       # 3. Explicit list of valid field names for Salesforce
-      assert prompt =~ "use exactly: firstname, lastname, email, phone, mobilephone, title, department, address, city, state, zip, country"
+      assert prompt =~
+               "use exactly: firstname, lastname, email, phone, mobilephone, title, department, address, city, state, zip, country"
+
       refute prompt =~ "linkedin_url"
       refute prompt =~ "twitter_handle"
 

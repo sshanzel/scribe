@@ -112,7 +112,8 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   end
 
   defp get_hubspot_contact_data(%User{} = user, email) when is_binary(email) do
-    case Credentials.get_user_credential(user, "hubspot") do
+    # Use deterministic getter that returns most recently created credential
+    case Credentials.get_user_latest_credential(user.id, "hubspot") do
       nil ->
         {:error, :no_hubspot_credential}
 
@@ -127,7 +128,8 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   end
 
   defp get_salesforce_contact_data(%User{} = user, email) when is_binary(email) do
-    case Credentials.get_user_credential(user, "salesforce") do
+    # Use deterministic getter that returns most recently created credential
+    case Credentials.get_user_latest_credential(user.id, "salesforce") do
       nil ->
         {:error, :no_salesforce_credential}
 

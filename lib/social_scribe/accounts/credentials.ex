@@ -102,29 +102,28 @@ defmodule SocialScribe.Accounts.Credentials do
   end
 
   @doc """
-  Gets the user's HubSpot credential if one exists.
+  Gets the user's latest credential for a given provider.
 
-  If multiple HubSpot credentials exist for the same user, returns the most
+  If multiple credentials exist for the same provider, returns the most
   recently created one (by `inserted_at`) to ensure deterministic behavior.
-  """
-  def get_user_hubspot_credential(user_id) do
-    UserCredential
-    |> where([c], c.user_id == ^user_id and c.provider == "hubspot")
-    |> order_by([c], desc: c.inserted_at)
-    |> limit(1)
-    |> Repo.one()
-  end
 
-  @doc """
-  Gets the user's Salesforce credential if one exists.
+  ## Parameters
+    - `user_id` - The user's ID
+    - `provider` - The provider name (e.g., "hubspot", "salesforce")
 
-  If multiple Salesforce credentials exist for the same user, returns the most
-  recently created one (by `inserted_at`) to ensure deterministic behavior.
+  ## Examples
+
+      iex> get_user_latest_credential(user_id, "hubspot")
+      %UserCredential{provider: "hubspot", ...}
+
+      iex> get_user_latest_credential(user_id, "salesforce")
+      nil
   """
-  def get_user_salesforce_credential(user_id) do
+  @spec get_user_latest_credential(integer(), String.t()) :: UserCredential.t() | nil
+  def get_user_latest_credential(user_id, provider) when is_binary(provider) do
     UserCredential
-    |> where([c], c.user_id == ^user_id and c.provider == "salesforce")
-    |> order_by([c], desc: c.inserted_at)
+    |> where([c], c.user_id == ^user_id and c.provider == ^provider)
+    |> order_by([c], desc: c.inserted_at, desc: c.id)
     |> limit(1)
     |> Repo.one()
   end

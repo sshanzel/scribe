@@ -109,9 +109,15 @@ defmodule SocialScribe.CRM.PromptBuilder do
   # Private Helpers
   # =============================================================================
 
+  # Fixed category order to ensure deterministic prompt generation
+  @category_order ["basic", "phone", "work", "address", "online", "other"]
+
   defp build_field_list(fields) do
     fields
     |> Enum.group_by(&(&1[:category] || "other"))
+    |> Enum.sort_by(fn {category, _} ->
+      Enum.find_index(@category_order, &(&1 == category)) || 999
+    end)
     |> Enum.map(fn {category, category_fields} ->
       field_items =
         category_fields

@@ -262,8 +262,16 @@ defmodule SocialScribe.ContactsTest do
       calendar_event = calendar_event_fixture(%{user_id: user.id})
 
       attendees = [
-        %{"email" => "john@example.com", "displayName" => "John Doe", "responseStatus" => "accepted"},
-        %{"email" => "jane@example.com", "displayName" => "Jane Smith", "responseStatus" => "tentative"}
+        %{
+          "email" => "john@example.com",
+          "displayName" => "John Doe",
+          "responseStatus" => "accepted"
+        },
+        %{
+          "email" => "jane@example.com",
+          "displayName" => "Jane Smith",
+          "responseStatus" => "tentative"
+        }
       ]
 
       records = Contacts.create_attendees_from_event_data(calendar_event.id, attendees)

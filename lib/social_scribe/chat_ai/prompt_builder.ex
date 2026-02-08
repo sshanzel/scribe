@@ -65,7 +65,11 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
   @doc """
   Builds the system context prompt from gathered context.
   """
-  def build_system_context(%{contact: %Contact{} = contact, crm_data: crm_data, meetings: meetings})
+  def build_system_context(%{
+        contact: %Contact{} = contact,
+        crm_data: crm_data,
+        meetings: meetings
+      })
       when is_list(meetings) do
     """
     You are a helpful assistant that answers questions about business contacts based on meeting history and CRM data.

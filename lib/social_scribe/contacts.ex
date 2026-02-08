@@ -79,8 +79,10 @@ defmodule SocialScribe.Contacts do
 
   def list_contacts(user_id) when is_integer(user_id) do
     from(c in Contact,
-      join: cea in CalendarEventAttendee, on: cea.contact_id == c.id,
-      join: ce in CalendarEvent, on: ce.id == cea.calendar_event_id,
+      join: cea in CalendarEventAttendee,
+      on: cea.contact_id == c.id,
+      join: ce in CalendarEvent,
+      on: ce.id == cea.calendar_event_id,
       where: ce.user_id == ^user_id,
       distinct: true,
       order_by: [asc: c.name]
@@ -100,8 +102,10 @@ defmodule SocialScribe.Contacts do
     search_term = "%#{query}%"
 
     from(c in Contact,
-      join: cea in CalendarEventAttendee, on: cea.contact_id == c.id,
-      join: ce in CalendarEvent, on: ce.id == cea.calendar_event_id,
+      join: cea in CalendarEventAttendee,
+      on: cea.contact_id == c.id,
+      join: ce in CalendarEvent,
+      on: ce.id == cea.calendar_event_id,
       where: ce.user_id == ^user_id,
       where: ilike(c.name, ^search_term) or ilike(c.email, ^search_term),
       distinct: true,
@@ -212,7 +216,9 @@ defmodule SocialScribe.Contacts do
       email = Map.get(attendee, "email") || Map.get(attendee, :email)
       display_name = Map.get(attendee, "displayName") || Map.get(attendee, :displayName)
       response_status = Map.get(attendee, "responseStatus") || Map.get(attendee, :responseStatus)
-      is_organizer = Map.get(attendee, "organizer") == true || Map.get(attendee, :organizer) == true
+
+      is_organizer =
+        Map.get(attendee, "organizer") == true || Map.get(attendee, :organizer) == true
 
       with {:ok, contact} <- find_or_create_contact(%{email: email, name: display_name}),
            {:ok, attendee_record} <-
