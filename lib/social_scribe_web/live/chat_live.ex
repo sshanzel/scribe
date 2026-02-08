@@ -472,7 +472,7 @@ defmodule SocialScribeWeb.ChatLive do
               "email" => mention[:email],
               "source" => mention[:source],
               "crm_id" => mention[:crm_id],
-              "crm_data" => mention[:crm_data] || %{}
+              "crm_data" => mention[:crm_data]
             }
           end)
       }
@@ -560,10 +560,8 @@ defmodule SocialScribeWeb.ChatLive do
         |> assign(:pending_contact_query, nil)
         |> perform_contact_search(query)
       else
-        # Stale search: clear timer and searching state, but keep existing results.
+        # Stale search: ignore this message to avoid clearing the state of a newer search.
         socket
-        |> assign(:search_timer, nil)
-        |> assign(:searching, false)
       end
 
     {:noreply, socket}

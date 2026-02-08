@@ -10,6 +10,27 @@ defmodule SocialScribeWeb.ChatLiveTest do
 
   setup :verify_on_exit!
 
+  # Helper to wait for async operations with retries
+  defp eventually(view, assertion, opts \\ []) do
+    retries = Keyword.get(opts, :retries, 10)
+    delay = Keyword.get(opts, :delay, 50)
+
+    Enum.reduce_while(1..retries, nil, fn attempt, _acc ->
+      html = render(view)
+
+      if assertion.(html) do
+        {:halt, html}
+      else
+        if attempt < retries do
+          :timer.sleep(delay)
+          {:cont, nil}
+        else
+          {:halt, html}
+        end
+      end
+    end)
+  end
+
   describe "ChatLive rendering" do
     setup %{conn: conn} do
       # Stub mocks
@@ -300,12 +321,25 @@ defmodule SocialScribeWeb.ChatLiveTest do
       }
     end
 
-    test "escapes HTML in contact names in dropdown", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/dashboard")
+    test "escapes HTML in contact names in dropdown", %{user: user} do
+      {:ok, view, _html} =
+        Phoenix.LiveViewTest.live_isolated(build_conn(), SocialScribeWeb.ChatLive,
+          session: %{"user_token" => SocialScribe.Accounts.generate_user_session_token(user)}
+        )
 
-      # The contact name should not appear as raw HTML (would be executed)
-      # Phoenix templates auto-escape, so the literal <script> should appear escaped
+      # Trigger contact search to show the XSS contact in dropdown
+      view |> render_click("message_input_change", %{"value" => "@xss", "key" => "s"})
+
+      # Wait for results to appear with retry logic
+      html =
+        eventually(view, fn h ->
+          h =~ "xss@example.com"
+        end)
+
+      # The contact name should be escaped, not raw HTML
       refute html =~ "<script>alert('xss')</script>"
+      # The email should be visible (proves contact was found)
+      assert html =~ "xss@example.com"
     end
 
     test "contact search results escape malicious names", %{user: user} do
@@ -332,15 +366,21 @@ defmodule SocialScribeWeb.ChatLiveTest do
       # Trigger contact search via message_input_change with @ mention
       view |> render_click("message_input_change", %{"value" => "@test", "key" => "t"})
 
-      # Wait for debounced search to complete
-      :timer.sleep(400)
-
-      html = render(view)
+      # Wait for results with retry logic instead of fixed sleep
+      html =
+        eventually(
+          view,
+          fn h -> h =~ "malicious@example.com" end,
+          retries: 15,
+          delay: 50
+        )
 
       # The malicious HTML should be escaped, not rendered as raw HTML
       refute html =~ "<img src=x onerror="
-      # The escaped version should appear (HEEx auto-escapes)
-      assert html =~ "&lt;img src=x" or html =~ "malicious@example.com"
+      # The email proves the contact was found and rendered
+      assert html =~ "malicious@example.com"
+      # The escaped version should appear (HEEx auto-escapes angle brackets)
+      assert html =~ "&lt;img" or html =~ "&amp;lt;"
     end
   end
 end

@@ -51,44 +51,6 @@ defmodule SocialScribe.Seeds do
   ]
 
   @doc """
-  Deletes seeded contacts from Salesforce for clean setup.
-  Returns a summary of deleted contacts.
-  """
-  @spec cleanup_salesforce_contacts(User.t()) :: {:ok, map()} | {:error, any()}
-  def cleanup_salesforce_contacts(%User{} = user) do
-    case get_salesforce_credential(user) do
-      nil ->
-        {:error, :no_salesforce_credential}
-
-      credential ->
-        results =
-          Enum.map(@contacts_data, fn contact_data ->
-            email = contact_data.email
-
-            case SalesforceApi.search_contacts(credential, email) do
-              {:ok, [contact | _]} ->
-                case SalesforceApi.delete_contact(credential, contact.id) do
-                  {:ok, :deleted} -> {:deleted, email}
-                  {:error, reason} -> {:error, email, reason}
-                end
-
-              {:ok, []} ->
-                {:not_found, email}
-
-              {:error, reason} ->
-                {:error, email, reason}
-            end
-          end)
-
-        deleted = Enum.count(results, fn r -> match?({:deleted, _}, r) end)
-        not_found = Enum.count(results, fn r -> match?({:not_found, _}, r) end)
-        errors = Enum.filter(results, fn r -> match?({:error, _, _}, r) end)
-
-        {:ok, %{deleted: deleted, not_found: not_found, errors: errors}}
-    end
-  end
-
-  @doc """
   Seeds demo data for the given user.
 
   Creates:
@@ -247,7 +209,8 @@ defmodule SocialScribe.Seeds do
           topic2: "your deployment infrastructure",
           topic2_response:
             "We're on AWS, using ECS for containers. Our AWS bill is around $25,000/month. Actually, I'm now Co-founder and CTO since we restructured last quarter.",
-          contact_info: "Best way to reach me is my new number 510-555-3333. I also moved to our new SF office at 500 Howard Street."
+          contact_info:
+            "Best way to reach me is my new number 510-555-3333. I also moved to our new SF office at 500 Howard Street."
         }
       },
       %{
