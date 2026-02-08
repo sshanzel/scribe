@@ -19,6 +19,7 @@ defmodule SocialScribeWeb.ChatLive do
       |> assign(:open, false)
       |> assign(:animate, true)
       |> assign(:threads, [])
+      |> assign(:threads_loaded, false)
       |> assign(:current_thread, nil)
       |> assign(:messages, [])
       |> assign(:loading, false)
@@ -30,13 +31,10 @@ defmodule SocialScribeWeb.ChatLive do
       |> assign(:mention_search_start, nil)
       |> assign(:active_tab, :chat)
 
-    # Load threads if user is logged in
-    socket =
-      if socket.assigns[:current_user] do
-        assign(socket, :threads, Chat.list_threads(socket.assigns.current_user))
-      else
-        socket
-      end
+    # Load threads asynchronously if user is logged in
+    if socket.assigns[:current_user] do
+      send(self(), :load_threads)
+    end
 
     # No layout for embedded LiveView
     {:ok, socket, layout: false}
@@ -250,28 +248,36 @@ defmodule SocialScribeWeb.ChatLive do
             <% else %>
               <!-- History View -->
               <div class="flex-1 overflow-y-auto flex flex-col">
-                <div :for={thread <- @threads} class="border-b border-slate-100">
-                  <button
-                    phx-click="select_thread"
-                    phx-value-id={thread.id}
-                    class="w-full p-3 text-left hover:bg-slate-50 transition-colors"
-                  >
-                    <div class="font-medium text-sm text-slate-800 truncate">
-                      {thread.title || "New Chat"}
-                    </div>
-                    <div class="text-xs text-slate-500">
-                      {Calendar.strftime(thread.updated_at, "%b %d, %Y")}
-                    </div>
-                  </button>
-                </div>
+                <%= if !@threads_loaded do %>
+                  <!-- Loading state -->
+                  <div class="flex-1 flex flex-col items-center justify-center text-slate-400 py-6">
+                    <.icon name="hero-arrow-path" class="size-6 mb-2 animate-spin" />
+                    <p class="text-sm">Loading...</p>
+                  </div>
+                <% else %>
+                  <div :for={thread <- @threads} class="border-b border-slate-100">
+                    <button
+                      phx-click="select_thread"
+                      phx-value-id={thread.id}
+                      class="w-full p-3 text-left hover:bg-slate-50 transition-colors"
+                    >
+                      <div class="font-medium text-sm text-slate-800 truncate">
+                        {thread.title || "New Chat"}
+                      </div>
+                      <div class="text-xs text-slate-500">
+                        {Calendar.strftime(thread.updated_at, "%b %d, %Y")}
+                      </div>
+                    </button>
+                  </div>
 
-                <div
-                  :if={@threads == []}
-                  class="flex-1 flex flex-col items-center justify-center text-slate-400 py-6"
-                >
-                  <.icon name="hero-inbox" class="size-8 mb-2 -mt-32" />
-                  <p class="text-sm">No conversations yet</p>
-                </div>
+                  <div
+                    :if={@threads == []}
+                    class="flex-1 flex flex-col items-center justify-center text-slate-400 py-6"
+                  >
+                    <.icon name="hero-inbox" class="size-8 mb-2 -mt-32" />
+                    <p class="text-sm">No conversations yet</p>
+                  </div>
+                <% end %>
               </div>
             <% end %>
           </div>
@@ -508,6 +514,12 @@ defmodule SocialScribeWeb.ChatLive do
   @impl true
   def handle_info(:clear_animate, socket) do
     {:noreply, assign(socket, :animate, false)}
+  end
+
+  @impl true
+  def handle_info(:load_threads, socket) do
+    threads = Chat.list_threads(socket.assigns.current_user)
+    {:noreply, assign(socket, threads: threads, threads_loaded: true)}
   end
 
   # =============================================================================
