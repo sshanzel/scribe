@@ -8,6 +8,28 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
 
   setup :verify_on_exit!
 
+  # Helper to wait for async operations with retries
+  defp eventually(view, assertion, opts \\ []) do
+    retries = Keyword.get(opts, :retries, 10)
+    delay = Keyword.get(opts, :delay, 50)
+
+    Enum.reduce_while(1..retries, nil, fn attempt, _acc ->
+      html = render(view)
+
+      if assertion.(html) do
+        {:halt, html}
+      else
+        if attempt < retries do
+          :timer.sleep(delay)
+          {:cont, nil}
+        else
+          # Final attempt failed, return html for assertion error
+          {:halt, html}
+        end
+      end
+    end)
+  end
+
   describe "HubSpot Modal with mocked API" do
     setup %{conn: conn} do
       user = user_fixture()
@@ -57,11 +79,8 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       |> element("input[phx-keyup='contact_search']")
       |> render_keyup(%{"value" => "John"})
 
-      # Wait for async update
-      :timer.sleep(200)
-
-      # Re-render to see updates
-      html = render(view)
+      # Wait for async update with retries
+      html = eventually(view, fn html -> html =~ "John Doe" end)
 
       # Verify contacts are displayed
       assert html =~ "John Doe"
@@ -80,9 +99,8 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       |> element("input[phx-keyup='contact_search']")
       |> render_keyup(%{"value" => "Test"})
 
-      :timer.sleep(200)
-
-      html = render(view)
+      # Wait for async update with retries
+      html = eventually(view, fn html -> html =~ "Failed to search contacts" end)
 
       # Should show error message
       assert html =~ "Failed to search contacts"
@@ -125,14 +143,16 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       |> element("input[phx-keyup='contact_search']")
       |> render_keyup(%{"value" => "John"})
 
-      :timer.sleep(200)
+      # Wait for search results
+      eventually(view, fn html -> html =~ "John Doe" end)
 
       # Select the contact (it's a button, not li)
       view
       |> element("button[phx-click='select_contact'][phx-value-id='123']")
       |> render_click()
 
-      :timer.sleep(500)
+      # Wait for suggestions to load
+      eventually(view, fn _html -> has_element?(view, "#hubspot-modal-wrapper") end, retries: 15)
 
       # After selecting contact, suggestions should be generated
       # Modal should still be present
@@ -161,9 +181,8 @@ defmodule SocialScribeWeb.HubspotModalMoxTest do
       |> element("input[phx-keyup='contact_search']")
       |> render_keyup(%{"value" => "Test"})
 
-      :timer.sleep(200)
-
-      html = render(view)
+      # Wait for async update with retries
+      html = eventually(view, fn html -> html =~ "Test User" end)
 
       # Verify contact appears in dropdown
       assert html =~ "Test User"
