@@ -1,35 +1,19 @@
-defmodule SocialScribe.HubspotApi do
+defmodule SocialScribe.CRM.HubSpot.Api do
   @moduledoc """
   HubSpot CRM API client for contacts operations.
   Implements automatic token refresh on 401/expired token errors.
   """
 
-  @behaviour SocialScribe.HubspotApiBehaviour
+  @behaviour SocialScribe.CRM.HubSpot.ApiBehaviour
 
   alias SocialScribe.Accounts.UserCredential
-  alias SocialScribe.HubspotTokenRefresher
+  alias SocialScribe.CRM.FieldMapper
+  alias SocialScribe.CRM.HubSpot.FieldConfig
+  alias SocialScribe.CRM.HubSpot.TokenRefresher
 
   require Logger
 
   @base_url "https://api.hubapi.com"
-
-  @contact_properties [
-    "firstname",
-    "lastname",
-    "email",
-    "phone",
-    "mobilephone",
-    "company",
-    "jobtitle",
-    "address",
-    "city",
-    "state",
-    "zip",
-    "country",
-    "website",
-    "hs_linkedin_url",
-    "twitterhandle"
-  ]
 
   defp client(access_token) do
     Tesla.client([
@@ -53,7 +37,7 @@ defmodule SocialScribe.HubspotApi do
       body = %{
         query: query,
         limit: 10,
-        properties: @contact_properties
+        properties: FieldConfig.api_field_names()
       }
 
       case Tesla.post(client(cred.token), "/crm/v3/objects/contacts/search", body) do
@@ -76,7 +60,7 @@ defmodule SocialScribe.HubspotApi do
   """
   def get_contact(%UserCredential{} = credential, contact_id) do
     with_token_refresh(credential, fn cred ->
-      properties_param = Enum.join(@contact_properties, ",")
+      properties_param = FieldConfig.api_field_names() |> Enum.join(",")
       url = "/crm/v3/objects/contacts/#{contact_id}?properties=#{properties_param}"
 
       case Tesla.get(client(cred.token), url) do
@@ -103,7 +87,8 @@ defmodule SocialScribe.HubspotApi do
   def update_contact(%UserCredential{} = credential, contact_id, updates)
       when is_map(updates) do
     with_token_refresh(credential, fn cred ->
-      body = %{properties: updates}
+      mapped_updates = FieldMapper.map_fields_for_crm(:hubspot, updates)
+      body = %{properties: mapped_updates}
 
       case Tesla.patch(client(cred.token), "/crm/v3/objects/contacts/#{contact_id}", body) do
         {:ok, %Tesla.Env{status: 200, body: body}} ->
@@ -183,7 +168,7 @@ defmodule SocialScribe.HubspotApi do
   # Wrapper that handles token refresh on auth errors
   # Tries the API call, and if it fails with 401 or BAD_CLIENT_ID, refreshes token and retries once
   defp with_token_refresh(%UserCredential{} = credential, api_call) do
-    with {:ok, credential} <- HubspotTokenRefresher.ensure_valid_token(credential) do
+    with {:ok, credential} <- TokenRefresher.ensure_valid_token(credential) do
       case api_call.(credential) do
         {:error, {:api_error, status, body}} when status in [401, 400] ->
           if is_token_error?(body) do
@@ -201,7 +186,7 @@ defmodule SocialScribe.HubspotApi do
   end
 
   defp retry_with_fresh_token(credential, api_call) do
-    case HubspotTokenRefresher.refresh_credential(credential) do
+    case TokenRefresher.refresh_credential(credential) do
       {:ok, refreshed_credential} ->
         case api_call.(refreshed_credential) do
           {:error, {:api_error, status, body}} ->

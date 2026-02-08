@@ -1,4 +1,16 @@
 defmodule SocialScribe.FacebookApi do
+  @moduledoc """
+  Behaviour and facade for Facebook API operations.
+
+  This module defines callbacks for posting to Facebook pages and fetching
+  page information. Delegates to the configured implementation, using
+  `SocialScribe.Facebook` by default.
+
+  ## Configuration
+
+      config :social_scribe, :facebook_api, MyMockModule
+  """
+
   @callback post_message_to_page(
               page_id :: String.t(),
               page_access_token :: String.t(),

@@ -23,6 +23,115 @@ You are an expert Elixir developer. Below are the guidelines on using Elixir eff
 - Use @moduledoc and @doc annotations to provide documentation for modules and functions, enhancing code readability and maintainability.
 - Avoid using global state and mutable data structures; instead, embrace Elixir's immutable data and functional programming paradigm for better performance and reliability.
 
+# Return Values and State Communication
+
+Functions should return meaningful state information that allows consumers to understand and react to the current state. Use tagged tuples and descriptive atoms to communicate outcomes clearly.
+
+**Use tagged tuples for operations that can fail:**
+```elixir
+# GOOD: Clear success/failure states with context
+def fetch_user(id) do
+  case Repo.get(User, id) do
+    nil -> {:error, :not_found}
+    user -> {:ok, user}
+  end
+end
+
+# GOOD: Descriptive error atoms
+def validate_input(params) do
+  cond do
+    missing_required?(params) -> {:error, :missing_required_fields}
+    invalid_format?(params) -> {:error, :invalid_format}
+    true -> {:ok, params}
+  end
+end
+```
+
+**Return meaningful states, not just empty values:**
+```elixir
+# BAD: Caller can't distinguish between "no data" and "error"
+def format_for_display(nil), do: ""
+
+# GOOD: Caller knows the actual state
+def format_for_display(nil), do: "No transcript available"
+
+# GOOD: Or use tagged tuples for more control
+def get_transcript(meeting_id) do
+  case Repo.get(Transcript, meeting_id) do
+    nil -> {:error, :no_transcript}
+    transcript -> {:ok, transcript}
+  end
+end
+```
+
+**Use specific error atoms over generic ones:**
+```elixir
+# BAD: Generic, unhelpful - what failed? why?
+{:error, :failed}
+{:error, :invalid}
+
+# GOOD: Specific, actionable - consumer knows what happened
+{:error, :not_found}
+{:error, :no_participants}
+{:error, :no_transcript}
+{:error, :unauthorized}
+{:error, :api_rate_limited}
+```
+
+**Include context in error tuples when needed:**
+```elixir
+# For API errors - include status and response body
+{:error, {:api_error, 429, %{"message" => "Rate limit exceeded"}}}
+{:error, {:http_error, :timeout}}
+
+# For validation errors - include which field and why
+{:error, {:validation_error, field: :email, reason: :invalid_format}}
+
+# For config errors - include what's missing
+{:error, {:config_error, "Gemini API key is missing"}}
+
+# For multiple errors - include the list
+{:error, {:validation_errors, [email: "is invalid", name: "can't be blank"]}}
+```
+
+**Error messages should answer: What failed? Why? What can be done?**
+```elixir
+# BAD: No context
+def search_contacts(credential, query) do
+  case api_call(credential, query) do
+    {:error, _} -> {:error, :failed}  # What failed? Why?
+  end
+end
+
+# GOOD: Full context preserved
+def search_contacts(credential, query) do
+  case api_call(credential, query) do
+    {:ok, %{status: 401}} -> {:error, :unauthorized}
+    {:ok, %{status: 404}} -> {:error, :not_found}
+    {:ok, %{status: 429}} -> {:error, :rate_limited}
+    {:ok, %{status: status, body: body}} -> {:error, {:api_error, status, body}}
+    {:error, reason} -> {:error, {:http_error, reason}}
+  end
+end
+```
+
+**Document possible return states in @doc:**
+```elixir
+@doc """
+Generates a follow-up email for the meeting.
+
+## Returns
+- `{:ok, email_content}` - Successfully generated email
+- `{:error, :no_participants}` - Meeting has no participants
+- `{:error, :no_transcript}` - Meeting has no transcript
+- `{:error, {:config_error, message}}` - Missing configuration
+- `{:error, {:api_error, status, body}}` - External API failure
+"""
+def generate_follow_up_email(meeting) do
+  # ...
+end
+```
+
 # Elixir Pattern Matching Guide
 
 - Use pattern matching to destructure data types.
@@ -92,6 +201,28 @@ def change do
   end
 end
 ```
+
+# Ecto Schema Types
+
+For Ecto schemas, always define a simple type `t` to satisfy dialyzer and enable typespecs:
+
+```elixir
+defmodule MyApp.Accounts.User do
+  use Ecto.Schema
+
+  @type t :: %__MODULE__{}
+
+  schema "users" do
+    field :email, :string
+    # ...
+  end
+end
+```
+
+**Guidelines:**
+- Use `@type t :: %__MODULE__{}` - keep it simple, don't enumerate all fields
+- Place the `@type` definition before the `schema` block
+- This enables using `User.t()` in function specs throughout the codebase
 
 # Testing Guidelines
 

@@ -7,7 +7,9 @@ defmodule SocialScribeWeb.CRMModalComponents do
   """
   use Phoenix.Component
 
-  import SocialScribeWeb.ModalComponents, only: [suggestion_card: 1, modal_footer: 1, empty_state: 1]
+  import SocialScribeWeb.ModalComponents,
+    only: [suggestion_card: 1, modal_footer: 1, empty_state: 1]
+
   import SocialScribeWeb.CoreComponents, only: [icon: 1]
 
   @doc """
@@ -27,7 +29,9 @@ defmodule SocialScribeWeb.CRMModalComponents do
   def crm_modal_header(assigns) do
     assigns =
       if is_nil(assigns.description) do
-        assign(assigns, :description,
+        assign(
+          assigns,
+          :description,
           "Here are suggested updates to sync with your integrations based on this meeting"
         )
       else

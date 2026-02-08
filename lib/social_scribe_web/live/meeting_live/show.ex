@@ -5,13 +5,13 @@ defmodule SocialScribeWeb.MeetingLive.Show do
   import SocialScribeWeb.ClipboardButton
   import SocialScribeWeb.ModalComponents, only: [hubspot_modal: 1, salesforce_modal: 1]
 
-  alias SocialScribe.Meetings
+  alias SocialScribe.Accounts.Credentials
   alias SocialScribe.Automations
-  alias SocialScribe.Accounts
-  alias SocialScribe.HubspotApiBehaviour, as: HubspotApi
-  alias SocialScribe.HubspotSuggestions
-  alias SocialScribe.SalesforceApiBehaviour, as: SalesforceApi
-  alias SocialScribe.SalesforceSuggestions
+  alias SocialScribe.CRM.HubSpot.ApiBehaviour, as: HubspotApi
+  alias SocialScribe.CRM.HubSpot.Suggestions, as: HubspotSuggestions
+  alias SocialScribe.CRM.Salesforce.ApiBehaviour, as: SalesforceApi
+  alias SocialScribe.CRM.Salesforce.Suggestions, as: SalesforceSuggestions
+  alias SocialScribe.Meetings
 
   @impl true
   def mount(%{"id" => meeting_id}, _session, socket) do
@@ -45,10 +45,11 @@ defmodule SocialScribeWeb.MeetingLive.Show do
 
       {:ok, socket}
     else
-      hubspot_credential = Accounts.get_user_hubspot_credential(socket.assigns.current_user.id)
+      hubspot_credential =
+        Credentials.get_user_latest_credential(socket.assigns.current_user.id, "hubspot")
 
       salesforce_credential =
-        Accounts.get_user_salesforce_credential(socket.assigns.current_user.id)
+        Credentials.get_user_latest_credential(socket.assigns.current_user.id, "salesforce")
 
       socket =
         socket

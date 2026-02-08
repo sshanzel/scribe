@@ -3,8 +3,9 @@ defmodule SocialScribe.AIContentGenerator do
 
   @behaviour SocialScribe.AIContentGeneratorApi
 
-  alias SocialScribe.Meetings
   alias SocialScribe.Automations
+  alias SocialScribe.CRM.PromptBuilder
+  alias SocialScribe.Meetings
 
   @gemini_model "gemini-2.0-flash-lite"
   @gemini_api_base_url "https://generativelanguage.googleapis.com/v1beta/models"
@@ -46,180 +47,21 @@ defmodule SocialScribe.AIContentGenerator do
   end
 
   @impl SocialScribe.AIContentGeneratorApi
-  def generate_hubspot_suggestions(meeting) do
+  def generate_crm_suggestions(crm, meeting) do
     case Meetings.generate_prompt_for_meeting(meeting) do
       {:error, reason} ->
         {:error, reason}
 
       {:ok, meeting_prompt} ->
-        prompt = """
-        You are an AI assistant that extracts contact information updates from meeting transcripts.
-
-        Analyze the following meeting transcript and extract any information that could be used to update a CRM contact record.
-
-        Look for mentions of:
-        - Phone numbers (phone, mobilephone)
-        - Email addresses (email)
-        - Company name (company)
-        - Job title/role (jobtitle)
-        - Physical address details (address, city, state, zip, country)
-        - Website URLs (website)
-        - LinkedIn profile (linkedin_url)
-        - Twitter handle (twitter_handle)
-
-        IMPORTANT: Only extract information that is EXPLICITLY mentioned in the transcript. Do not infer or guess.
-
-        The transcript includes timestamps in [MM:SS] format at the start of each line.
-
-        Return your response as a JSON array of objects. Each object should have:
-        - "field": the CRM field name (use exactly: firstname, lastname, email, phone, mobilephone, company, jobtitle, address, city, state, zip, country, website, linkedin_url, twitter_handle)
-        - "value": the extracted value
-        - "context": a brief quote of where this was mentioned
-        - "timestamp": the timestamp in MM:SS format where this was mentioned
-
-        If no contact information updates are found, return an empty array: []
-
-        Example response format:
-        [
-          {"field": "phone", "value": "555-123-4567", "context": "John mentioned 'you can reach me at 555-123-4567'", "timestamp": "01:23"},
-          {"field": "company", "value": "Acme Corp", "context": "Sarah said she just joined Acme Corp", "timestamp": "05:47"}
-        ]
-
-        ONLY return valid JSON, no other text.
-
-        Meeting transcript:
-        #{meeting_prompt}
-        """
+        prompt = PromptBuilder.build_extraction_prompt(crm, meeting_prompt)
 
         case call_gemini(prompt) do
           {:ok, response} ->
-            parse_hubspot_suggestions(response)
+            PromptBuilder.parse_response(response)
 
           {:error, reason} ->
             {:error, reason}
         end
-    end
-  end
-
-  @impl SocialScribe.AIContentGeneratorApi
-  def generate_salesforce_suggestions(meeting) do
-    case Meetings.generate_prompt_for_meeting(meeting) do
-      {:error, reason} ->
-        {:error, reason}
-
-      {:ok, meeting_prompt} ->
-        prompt = """
-        You are an AI assistant that extracts contact information updates from meeting transcripts.
-
-        Analyze the following meeting transcript and extract any information that could be used to update a Salesforce Contact record.
-
-        Look for mentions of:
-        - Phone numbers (phone, mobilephone)
-        - Email addresses (email)
-        - Company name (company)
-        - Job title/role (title)
-        - Department (department)
-        - Physical address details (address, city, state, zip, country)
-
-        IMPORTANT: Only extract information that is EXPLICITLY mentioned in the transcript. Do not infer or guess.
-
-        The transcript includes timestamps in [MM:SS] format at the start of each line.
-
-        Return your response as a JSON array of objects. Each object should have:
-        - "field": the Salesforce field name (use exactly: firstname, lastname, email, phone, mobilephone, company, title, department, address, city, state, zip, country)
-        - "value": the extracted value
-        - "context": a brief quote of where this was mentioned
-        - "timestamp": the timestamp in MM:SS format where this was mentioned
-
-        If no contact information updates are found, return an empty array: []
-
-        Example response format:
-        [
-          {"field": "phone", "value": "555-123-4567", "context": "John mentioned 'you can reach me at 555-123-4567'", "timestamp": "01:23"},
-          {"field": "company", "value": "Acme Corp", "context": "Sarah said she just joined Acme Corp", "timestamp": "05:47"}
-        ]
-
-        ONLY return valid JSON, no other text.
-
-        Meeting transcript:
-        #{meeting_prompt}
-        """
-
-        case call_gemini(prompt) do
-          {:ok, response} ->
-            parse_salesforce_suggestions(response)
-
-          {:error, reason} ->
-            {:error, reason}
-        end
-    end
-  end
-
-  defp parse_salesforce_suggestions(response) do
-    cleaned =
-      response
-      |> String.trim()
-      |> String.replace(~r/^```json\n?/, "")
-      |> String.replace(~r/\n?```$/, "")
-      |> String.trim()
-
-    case Jason.decode(cleaned) do
-      {:ok, suggestions} when is_list(suggestions) ->
-        formatted =
-          suggestions
-          |> Enum.filter(&is_map/1)
-          |> Enum.map(fn s ->
-            %{
-              field: s["field"],
-              value: s["value"],
-              context: s["context"],
-              timestamp: s["timestamp"]
-            }
-          end)
-          |> Enum.filter(fn s -> s.field != nil and s.value != nil end)
-
-        {:ok, formatted}
-
-      {:ok, _} ->
-        {:ok, []}
-
-      {:error, _} ->
-        {:ok, []}
-    end
-  end
-
-  defp parse_hubspot_suggestions(response) do
-    # Clean up the response - remove markdown code blocks if present
-    cleaned =
-      response
-      |> String.trim()
-      |> String.replace(~r/^```json\n?/, "")
-      |> String.replace(~r/\n?```$/, "")
-      |> String.trim()
-
-    case Jason.decode(cleaned) do
-      {:ok, suggestions} when is_list(suggestions) ->
-        formatted =
-          suggestions
-          |> Enum.filter(&is_map/1)
-          |> Enum.map(fn s ->
-            %{
-              field: s["field"],
-              value: s["value"],
-              context: s["context"],
-              timestamp: s["timestamp"]
-            }
-          end)
-          |> Enum.filter(fn s -> s.field != nil and s.value != nil end)
-
-        {:ok, formatted}
-
-      {:ok, _} ->
-        {:ok, []}
-
-      {:error, _} ->
-        # If JSON parsing fails, return empty suggestions
-        {:ok, []}
     end
   end
 

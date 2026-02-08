@@ -1,4 +1,21 @@
 defmodule SocialScribe.Accounts.UserToken do
+  @moduledoc """
+  Schema for session and authentication tokens.
+
+  Manages session tokens stored in the database to allow explicit session
+  expiration. Tokens are valid for 60 days and can be individually revoked.
+
+  ## Fields
+
+  - `token` - The session token (binary)
+  - `context` - Token context (e.g., "session")
+  - `sent_to` - Email address the token was sent to (for email tokens)
+
+  ## Security
+
+  Tokens are securely generated using `:crypto.strong_rand_bytes/1` and
+  automatically expire after the configured validity period.
+  """
   use Ecto.Schema
   import Ecto.Query
   alias SocialScribe.Accounts.UserToken

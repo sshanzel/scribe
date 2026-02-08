@@ -1,4 +1,24 @@
 defmodule SocialScribe.Accounts.UserCredential do
+  @moduledoc """
+  Schema for OAuth credentials from various providers.
+
+  Stores access tokens, refresh tokens, and provider-specific information
+  for OAuth integrations like Google, LinkedIn, HubSpot, and Salesforce.
+
+  ## Fields
+
+  - `provider` - The OAuth provider name (e.g., "google", "hubspot")
+  - `uid` - Unique identifier from the provider
+  - `token` - Current access token
+  - `refresh_token` - Token used to refresh the access token
+  - `expires_at` - When the access token expires
+  - `email` - Email address from the provider
+  - `instance_url` - Salesforce-specific instance URL
+
+  ## Associations
+
+  - `user` - The user who owns this credential
+  """
   use Ecto.Schema
   import Ecto.Changeset
 

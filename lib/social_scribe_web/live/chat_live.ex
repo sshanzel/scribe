@@ -118,13 +118,10 @@ defmodule SocialScribeWeb.ChatLive do
                   </div>
                   
     <!-- Timestamp for first message -->
-                  <div :if={@messages != []} class="flex items-center gap-3 pb-1 mx-1">
-                    <div class="flex-1 h-px bg-slate-200"></div>
-                    <span class="text-xs text-slate-400 whitespace-nowrap">
-                      {format_thread_timestamp(List.first(@messages).inserted_at)}
-                    </span>
-                    <div class="flex-1 h-px bg-slate-200"></div>
-                  </div>
+                  <.timestamp_separator
+                    :if={@messages != []}
+                    datetime={List.first(@messages).inserted_at}
+                  />
 
                   <div
                     :for={{message, index} <- Enum.with_index(@messages)}
@@ -135,50 +132,19 @@ defmodule SocialScribeWeb.ChatLive do
                         {raw(render_message_content(message))}
                       </div>
                       <!-- Sources for the last assistant message -->
-                      <div
-                        :if={message.role != "user" && index == length(@messages) - 1}
-                        class="flex items-center gap-1.5 mt-2"
-                      >
-                        <span class="text-xs text-slate-400">Sources</span>
-                        <div
-                          class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center"
-                          title="Jump AI Meetings"
-                        >
-                          <img src={~p"/images/jump-logo.svg"} class="w-3 h-3" />
-                        </div>
-                      </div>
+                      <.sources_indicator :if={
+                        message.role != "user" && index == length(@messages) - 1
+                      } />
                     </div>
                   </div>
 
-                  <div :if={@loading} class="flex justify-start">
-                    <div class="bg-slate-100 rounded-lg px-3 py-1.5 text-slate-500">
-                      <span class="animate-pulse text-sm">Thinking...</span>
-                    </div>
-                  </div>
-
-                  <div :if={@error_message} class="flex justify-start">
-                    <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-red-700 max-w-[85%]">
-                      <div class="flex items-start gap-1.5">
-                        <.icon name="hero-exclamation-circle" class="size-4 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p class="text-sm">{@error_message}</p>
-                          <button
-                            phx-click="dismiss_error"
-                            class="text-xs text-red-600 hover:text-red-800 mt-1 underline"
-                          >
-                            Dismiss
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <.loading_indicator loading={@loading} />
+                  <.error_alert :if={@error_message} message={@error_message} />
                 <% else %>
-                  <!-- Empty state when no thread selected -->
-                  <div class="flex-1 flex flex-col items-center justify-center text-slate-400 py-6">
-                    <.icon name="hero-chat-bubble-left-right" class="size-10 mb-2" />
-                    <p class="text-sm">Start a new conversation</p>
-                    <p class="text-xs mt-1">Type @ to mention a contact</p>
-                  </div>
+                  <.empty_state
+                    title="Start a new conversation"
+                    subtitle="Type @ to mention a contact"
+                  />
                 <% end %>
               </div>
               
@@ -548,6 +514,92 @@ defmodule SocialScribeWeb.ChatLive do
   @impl true
   def handle_info(:clear_animate, socket) do
     {:noreply, assign(socket, :animate, false)}
+  end
+
+  # =============================================================================
+  # Function Components
+  # =============================================================================
+
+  # Renders the loading indicator shown when AI is generating a response.
+  attr :loading, :boolean, required: true
+
+  defp loading_indicator(assigns) do
+    ~H"""
+    <div :if={@loading} class="flex justify-start">
+      <div class="bg-slate-100 rounded-lg px-3 py-1.5 text-slate-500">
+        <span class="animate-pulse text-sm">Thinking...</span>
+      </div>
+    </div>
+    """
+  end
+
+  # Renders an error message with dismiss button.
+  attr :message, :string, required: true
+
+  defp error_alert(assigns) do
+    ~H"""
+    <div class="flex justify-start">
+      <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-red-700 max-w-[85%]">
+        <div class="flex items-start gap-1.5">
+          <.icon name="hero-exclamation-circle" class="size-4 flex-shrink-0 mt-0.5" />
+          <div>
+            <p class="text-sm">{@message}</p>
+            <button
+              phx-click="dismiss_error"
+              class="text-xs text-red-600 hover:text-red-800 mt-1 underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  # Renders an empty state message.
+  attr :icon, :string, default: "hero-chat-bubble-left-right"
+  attr :title, :string, required: true
+  attr :subtitle, :string, default: nil
+
+  defp empty_state(assigns) do
+    ~H"""
+    <div class="flex-1 flex flex-col items-center justify-center text-slate-400 py-6">
+      <.icon name={@icon} class="size-10 mb-2" />
+      <p class="text-sm">{@title}</p>
+      <p :if={@subtitle} class="text-xs mt-1">{@subtitle}</p>
+    </div>
+    """
+  end
+
+  # Renders the timestamp separator between messages.
+  attr :datetime, :any, required: true
+
+  defp timestamp_separator(assigns) do
+    ~H"""
+    <div class="flex items-center gap-3 pb-1 mx-1">
+      <div class="flex-1 h-px bg-slate-200"></div>
+      <span class="text-xs text-slate-400 whitespace-nowrap">
+        {format_thread_timestamp(@datetime)}
+      </span>
+      <div class="flex-1 h-px bg-slate-200"></div>
+    </div>
+    """
+  end
+
+  # Renders the sources indicator for assistant messages.
+  defp sources_indicator(assigns) do
+    ~H"""
+    <div class="flex items-center gap-1.5 mt-2">
+      <span class="text-xs text-slate-400">Sources</span>
+      <div
+        class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center"
+        title="Jump AI Meetings"
+      >
+        <img src={~p"/images/jump-logo.svg"} class="w-3 h-3" />
+      </div>
+    </div>
+    """
   end
 
   # =============================================================================

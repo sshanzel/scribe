@@ -3,10 +3,12 @@ defmodule SocialScribe.AIContentGeneratorApi do
   Behaviour for generating AI content for meetings.
   """
 
+  alias SocialScribe.CRM.FieldConfig
+
   @callback generate_follow_up_email(map()) :: {:ok, String.t()} | {:error, any()}
   @callback generate_automation(map(), map()) :: {:ok, String.t()} | {:error, any()}
-  @callback generate_hubspot_suggestions(map()) :: {:ok, list(map())} | {:error, any()}
-  @callback generate_salesforce_suggestions(map()) :: {:ok, list(map())} | {:error, any()}
+  @callback generate_crm_suggestions(FieldConfig.crm(), map()) ::
+              {:ok, list(map())} | {:error, any()}
 
   def generate_follow_up_email(meeting) do
     impl().generate_follow_up_email(meeting)
@@ -16,12 +18,8 @@ defmodule SocialScribe.AIContentGeneratorApi do
     impl().generate_automation(automation, meeting)
   end
 
-  def generate_hubspot_suggestions(meeting) do
-    impl().generate_hubspot_suggestions(meeting)
-  end
-
-  def generate_salesforce_suggestions(meeting) do
-    impl().generate_salesforce_suggestions(meeting)
+  def generate_crm_suggestions(crm, meeting) do
+    impl().generate_crm_suggestions(crm, meeting)
   end
 
   defp impl do

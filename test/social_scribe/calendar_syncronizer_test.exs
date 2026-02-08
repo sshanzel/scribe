@@ -82,12 +82,16 @@ defmodule SocialScribe.CalendarSyncronizerTest do
       events = Repo.all(from e in CalendarEvent, where: e.user_id == ^user.id)
       assert length(events) == 2
 
-      zoom_event = Repo.get_by!(CalendarEvent, google_event_id: "zoom-event-123", user_id: user.id)
+      zoom_event =
+        Repo.get_by!(CalendarEvent, google_event_id: "zoom-event-123", user_id: user.id)
+
       assert zoom_event.summary == "Zoom Meeting"
       assert zoom_event.user_id == user.id
       assert zoom_event.user_credential_id == credential.id
 
-      meet_event = Repo.get_by!(CalendarEvent, google_event_id: "meet-event-456", user_id: user.id)
+      meet_event =
+        Repo.get_by!(CalendarEvent, google_event_id: "meet-event-456", user_id: user.id)
+
       assert meet_event.summary == "Google Meet Call"
 
       assert Repo.get_by(CalendarEvent, google_event_id: "no-link-event-789") == nil

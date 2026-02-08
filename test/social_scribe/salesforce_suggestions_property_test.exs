@@ -2,7 +2,7 @@ defmodule SocialScribe.SalesforceSuggestionsPropertyTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  alias SocialScribe.SalesforceSuggestions
+  alias SocialScribe.CRM.Salesforce.Suggestions, as: SalesforceSuggestions
 
   @salesforce_fields [
     "firstname",

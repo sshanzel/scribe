@@ -46,7 +46,7 @@ defmodule SocialScribe.AccountsFixtures do
         uid: "some uid #{System.unique_integer([:positive])}",
         email: "some email"
       })
-      |> SocialScribe.Accounts.create_user_credential()
+      |> SocialScribe.Accounts.Credentials.create_user_credential()
 
     user_credential
   end
@@ -74,7 +74,7 @@ defmodule SocialScribe.AccountsFixtures do
         uid: "hub_#{System.unique_integer([:positive])}",
         email: "hubspot_user@example.com"
       })
-      |> SocialScribe.Accounts.create_user_credential()
+      |> SocialScribe.Accounts.Credentials.create_user_credential()
 
     credential
   end
@@ -127,7 +127,7 @@ defmodule SocialScribe.AccountsFixtures do
         user_id: user_id,
         user_credential_id: user_credential_id
       })
-      |> SocialScribe.Accounts.create_facebook_page_credential()
+      |> SocialScribe.Accounts.Credentials.create_facebook_page_credential()
 
     facebook_page_credential
   end

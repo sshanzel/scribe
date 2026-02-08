@@ -1,7 +1,7 @@
 defmodule SocialScribe.Poster do
   alias SocialScribe.LinkedInApi
   alias SocialScribe.FacebookApi
-  alias SocialScribe.Accounts
+  alias SocialScribe.Accounts.Credentials
 
   def post_on_social_media(platform, generated_content, current_user) do
     case platform do
@@ -12,7 +12,7 @@ defmodule SocialScribe.Poster do
   end
 
   defp post_on_linkedin(generated_content, current_user) do
-    case Accounts.get_user_linkedin_credential(current_user) do
+    case Credentials.get_user_linkedin_credential(current_user) do
       nil ->
         {:error, "LinkedIn credential not found"}
 
@@ -26,7 +26,7 @@ defmodule SocialScribe.Poster do
   end
 
   defp post_on_facebook(generated_content, current_user) do
-    case Accounts.get_user_selected_facebook_page_credential(current_user) do
+    case Credentials.get_user_selected_facebook_page_credential(current_user) do
       nil ->
         {:error, "Facebook page credential not found"}
 

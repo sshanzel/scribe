@@ -4,35 +4,38 @@ defmodule SocialScribe.ChatAI do
 
   This module handles:
   - Resolving contacts from message metadata
-  - Gathering meeting context for contacts
-  - Fetching CRM data from HubSpot/Salesforce
-  - Building Gemini multi-turn payloads
-  - Generating AI responses
+  - Generating AI responses via Gemini
   - Generating thread titles
+
+  For context building, see `SocialScribe.ChatAI.ContextBuilder`.
+  For prompt building, see `SocialScribe.ChatAI.PromptBuilder`.
   """
 
   @behaviour SocialScribe.ChatAIApi
 
-  import Ecto.Query, warn: false
-
-  alias SocialScribe.Repo
   alias SocialScribe.Chat
   alias SocialScribe.Chat.{ChatThread, ChatMessage}
   alias SocialScribe.Contacts
   alias SocialScribe.Contacts.Contact
-  alias SocialScribe.Accounts
   alias SocialScribe.Accounts.User
-  alias SocialScribe.Meetings.Meeting
-  alias SocialScribe.Meetings.MeetingTranscript
-  alias SocialScribe.Meetings.MeetingParticipant
-  alias SocialScribe.Calendar.CalendarEventAttendee
-  alias SocialScribe.TranscriptParser
+  alias SocialScribe.ChatAI.{ContextBuilder, PromptBuilder}
 
   require Logger
 
   @gemini_model "gemini-2.0-flash-lite"
   @gemini_api_base_url "https://generativelanguage.googleapis.com/v1/models"
-  @max_meetings 10
+
+  # Type definitions
+  @type metadata :: %{optional(String.t()) => term()}
+  @type error_reason ::
+          {:config_error, String.t()}
+          | {:api_error, String.t()}
+          | {:rate_limited, String.t()}
+          | {:service_unavailable, String.t()}
+          | {:http_error, String.t()}
+          | {:parsing_error, String.t(), term()}
+          | :contact_not_found
+          | term()
 
   # =============================================================================
   # Public API
@@ -53,14 +56,16 @@ defmodule SocialScribe.ChatAI do
   Returns {:ok, response_content, response_metadata} or {:error, reason}
   """
   @impl SocialScribe.ChatAIApi
+  @spec generate_response(ChatThread.t(), User.t(), String.t(), metadata()) ::
+          {:ok, String.t(), map()} | {:error, error_reason()}
   def generate_response(%ChatThread{} = thread, %User{} = user, content, metadata)
       when is_binary(content) and is_map(metadata) do
     with {:ok, user_message} <- Chat.create_user_message(thread, content, metadata),
          {:ok, contact} <- resolve_contact_from_metadata(metadata),
-         {:ok, context} <- gather_context(user, contact),
+         {:ok, context} <- ContextBuilder.gather_context(user, contact),
          messages <- Chat.list_messages(thread),
          {:ok, response} <- call_gemini_chat(context, messages, content),
-         response_metadata <- build_response_metadata(context),
+         response_metadata <- PromptBuilder.build_response_metadata(context),
          {:ok, _assistant_message} <-
            Chat.create_assistant_message(thread, response, response_metadata) do
       # Generate title if this is the first user message
@@ -74,6 +79,7 @@ defmodule SocialScribe.ChatAI do
   Generates a title for a thread based on its messages.
   """
   @impl SocialScribe.ChatAIApi
+  @spec generate_thread_title(ChatThread.t()) :: {:ok, String.t()}
   def generate_thread_title(%ChatThread{} = thread) do
     messages = Chat.list_messages(thread)
 
@@ -103,6 +109,8 @@ defmodule SocialScribe.ChatAI do
 
   Expects metadata with mentions containing contact_id as integer.
   """
+  @spec resolve_contact_from_metadata(map()) ::
+          {:ok, Contact.t() | nil} | {:error, :contact_not_found}
   def resolve_contact_from_metadata(%{"mentions" => [%{"contact_id" => id} | _]})
       when is_integer(id) do
     case Contacts.get_contact(id) do
@@ -124,107 +132,20 @@ defmodule SocialScribe.ChatAI do
   def resolve_contact_from_metadata(_), do: {:ok, nil}
 
   # =============================================================================
-  # Context Gathering
+  # Context Gathering - Delegated to ContextBuilder
   # =============================================================================
-
-  defp gather_context(%User{} = user, %Contact{} = contact) do
-    crm_data = gather_crm_data(user, contact)
-    meetings = find_meetings_for_contact(user, contact)
-
-    {:ok,
-     %{
-       contact: contact,
-       crm_data: crm_data,
-       meetings: meetings
-     }}
-  end
-
-  defp gather_context(%User{} = user, nil) do
-    meetings = find_recent_meetings_for_user(user)
-
-    {:ok,
-     %{
-       contact: nil,
-       crm_data: nil,
-       meetings: meetings
-     }}
-  end
-
-  defp gather_crm_data(%User{} = user, %Contact{email: email}) when is_binary(email) do
-    # Try HubSpot first, then Salesforce
-    case get_hubspot_contact_data(user, email) do
-      {:ok, data} when is_map(data) ->
-        data
-
-      _ ->
-        case get_salesforce_contact_data(user, email) do
-          {:ok, data} when is_map(data) -> data
-          _ -> nil
-        end
-    end
-  end
-
-  defp get_hubspot_contact_data(%User{} = user, email) when is_binary(email) do
-    case Accounts.get_user_credential(user, "hubspot") do
-      nil ->
-        {:error, :no_hubspot_credential}
-
-      credential ->
-        hubspot_api().search_contacts(credential, email)
-        |> case do
-          {:ok, [contact | _]} when is_map(contact) -> {:ok, contact}
-          {:ok, []} -> {:ok, nil}
-          {:error, _} = error -> error
-        end
-    end
-  end
-
-  defp get_salesforce_contact_data(%User{} = user, email) when is_binary(email) do
-    case Accounts.get_user_credential(user, "salesforce") do
-      nil ->
-        {:error, :no_salesforce_credential}
-
-      credential ->
-        salesforce_api().search_contacts(credential, email)
-        |> case do
-          {:ok, [contact | _]} when is_map(contact) -> {:ok, contact}
-          {:ok, []} -> {:ok, nil}
-          {:error, _} = error -> error
-        end
-    end
-  end
 
   @doc """
   Finds meetings where a contact was an attendee.
-  Returns up to @max_meetings most recent meetings.
+  Delegated to ContextBuilder.
   """
-  def find_meetings_for_contact(user, %Contact{id: contact_id}) do
-    Meeting
-    |> join(:inner, [m], ce in assoc(m, :calendar_event))
-    |> join(:inner, [m, ce], cea in CalendarEventAttendee, on: cea.calendar_event_id == ce.id)
-    |> where([m, ce, cea], ce.user_id == ^user.id)
-    |> where([m, ce, cea], cea.contact_id == ^contact_id)
-    |> order_by([m, ce, cea], desc: m.recorded_at)
-    |> limit(@max_meetings)
-    |> preload([:meeting_transcript, :meeting_participants, :calendar_event])
-    |> Repo.all()
-  end
-
-  def find_meetings_for_contact(_user, _contact), do: []
+  defdelegate find_meetings_for_contact(user, contact), to: ContextBuilder
 
   @doc """
   Finds the most recent meetings for a user when no specific contact is tagged.
-  Returns up to @max_meetings most recent meetings.
+  Delegated to ContextBuilder.
   """
-  def find_recent_meetings_for_user(%User{id: user_id}) do
-    Meeting
-    |> join(:inner, [m], ce in assoc(m, :calendar_event))
-    |> where([m, ce], ce.user_id == ^user_id)
-    |> order_by([m, ce], desc: m.recorded_at)
-    |> limit(@max_meetings)
-    |> preload([:meeting_transcript, :meeting_participants, :calendar_event])
-    |> Repo.all()
-  end
+  defdelegate find_recent_meetings_for_user(user), to: ContextBuilder
 
   # =============================================================================
   # Gemini API Integration
@@ -236,7 +157,7 @@ defmodule SocialScribe.ChatAI do
     if is_nil(api_key) or api_key == "" do
       {:error, {:config_error, "Gemini API key is missing"}}
     else
-      payload = build_gemini_payload(context, thread_messages, current_question)
+      payload = PromptBuilder.build_gemini_payload(context, thread_messages, current_question)
       path = "/#{@gemini_model}:generateContent?key=#{api_key}"
 
       case Tesla.post(client(), path, payload) do
@@ -245,181 +166,33 @@ defmodule SocialScribe.ChatAI do
 
         {:ok, %Tesla.Env{status: 429, body: _error_body}} ->
           Logger.warning("Gemini API rate limited")
-          {:error, {:rate_limited, "I'm receiving too many requests right now. Please wait a moment and try again."}}
+
+          {:error,
+           {:rate_limited,
+            "I'm receiving too many requests right now. Please wait a moment and try again."}}
 
         {:ok, %Tesla.Env{status: 503, body: _error_body}} ->
           Logger.warning("Gemini API service unavailable")
-          {:error, {:service_unavailable, "The AI service is temporarily unavailable. Please try again in a few moments."}}
+
+          {:error,
+           {:service_unavailable,
+            "The AI service is temporarily unavailable. Please try again in a few moments."}}
 
         {:ok, %Tesla.Env{status: status, body: error_body}} ->
           Logger.error("Gemini API error: #{status} - #{inspect(error_body)}")
-          {:error, {:api_error, "Something went wrong while generating a response. Please try again."}}
+
+          {:error,
+           {:api_error, "Something went wrong while generating a response. Please try again."}}
 
         {:error, reason} ->
           Logger.error("Gemini HTTP error: #{inspect(reason)}")
-          {:error, {:http_error, "Unable to connect to the AI service. Please check your connection and try again."}}
+
+          {:error,
+           {:http_error,
+            "Unable to connect to the AI service. Please check your connection and try again."}}
       end
     end
   end
-
-  defp build_gemini_payload(context, thread_messages, current_question)
-       when is_map(context) and is_list(thread_messages) and is_binary(current_question) do
-    system_context = build_system_context(context)
-
-    # Start with system context injection
-    contents = [
-      %{role: "user", parts: [%{text: system_context}]},
-      %{
-        role: "model",
-        parts: [
-          %{
-            text:
-              "I understand. I'll answer questions based only on the provided context about this contact."
-          }
-        ]
-      }
-    ]
-
-    # Add thread history (excluding the current message which was just saved)
-    # Filter out the current question if it's already in thread_messages
-    history_messages =
-      thread_messages
-      |> Enum.reject(fn
-        %ChatMessage{content: content, role: "user"} -> content == current_question
-        _ -> false
-      end)
-
-    thread_contents =
-      Enum.map(history_messages, fn %ChatMessage{role: role, content: content} ->
-        gemini_role = if role == "user", do: "user", else: "model"
-        %{role: gemini_role, parts: [%{text: content}]}
-      end)
-
-    # Add current question
-    current = %{role: "user", parts: [%{text: current_question}]}
-
-    %{contents: contents ++ thread_contents ++ [current]}
-  end
-
-  defp build_system_context(%{contact: %Contact{} = contact, crm_data: crm_data, meetings: meetings})
-       when is_list(meetings) do
-    """
-    You are a helpful assistant that answers questions about business contacts based on meeting history and CRM data.
-
-    RULES:
-    - Be concise and direct
-    - Base your answers ONLY on the context provided below
-    - If information is not in the meeting transcripts or contact data, clearly state that you don't have that information
-    - Never guess, infer, or make up information
-    - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
-    - Format responses in markdown
-
-    CONTACT INFORMATION:
-    #{format_contact_info(contact, crm_data)}
-
-    MEETING HISTORY (most recent first, last #{length(meetings)} meetings):
-    #{format_meetings(meetings)}
-    """
-  end
-
-  defp build_system_context(%{contact: nil, crm_data: nil, meetings: meetings})
-       when is_list(meetings) do
-    """
-    You are a helpful assistant that answers questions about the user's recent meetings.
-
-    RULES:
-    - Be concise and direct
-    - Base your answers ONLY on the context provided below
-    - If information is not in the meeting transcripts, clearly state that you don't have that information
-    - Never guess, infer, or make up information
-    - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
-    - Format responses in markdown
-
-    RECENT MEETING HISTORY (most recent first, last #{length(meetings)} meetings):
-    #{format_meetings(meetings)}
-    """
-  end
-
-  defp format_contact_info(%Contact{name: name, email: email}, nil) do
-    """
-    Name: #{name || "Unknown"}
-    Email: #{email}
-    """
-  end
-
-  defp format_contact_info(%Contact{name: name, email: email}, crm_data) when is_map(crm_data) do
-    """
-    Name: #{crm_data[:display_name] || crm_data["display_name"] || name || "Unknown"}
-    Email: #{email}
-    Company: #{crm_data[:company] || crm_data["company"] || "Unknown"}
-    Title: #{crm_data[:jobtitle] || crm_data["jobtitle"] || crm_data[:title] || crm_data["title"] || "Unknown"}
-    Phone: #{crm_data[:phone] || crm_data["phone"] || "Unknown"}
-    """
-  end
-
-  defp format_meetings([]), do: "No meetings found with this contact."
-
-  defp format_meetings(meetings) do
-    meetings
-    |> Enum.map(&format_single_meeting/1)
-    |> Enum.join("\n\n---\n\n")
-  end
-
-  defp format_single_meeting(%Meeting{} = meeting) do
-    transcript_text =
-      case meeting.meeting_transcript do
-        nil -> "No transcript available"
-        %MeetingTranscript{content: content} -> format_transcript_content(content)
-      end
-
-    participants =
-      case meeting.meeting_participants do
-        nil ->
-          ""
-
-        [] ->
-          ""
-
-        [%MeetingParticipant{} | _] = participants ->
-          names = Enum.map(participants, & &1.name) |> Enum.join(", ")
-          "Participants: #{names}"
-      end
-
-    date =
-      case meeting.recorded_at do
-        %DateTime{} = dt -> Calendar.strftime(dt, "%Y-%m-%d")
-        %NaiveDateTime{} = ndt -> Calendar.strftime(ndt, "%Y-%m-%d")
-        nil -> "Unknown date"
-      end
-
-    """
-    ### Meeting: #{meeting.title || "Untitled Meeting"}
-    ID: #{meeting.id}
-    Date: #{date}
-    Duration: #{format_duration(meeting.duration_seconds)}
-    #{participants}
-
-    Transcript:
-    #{transcript_text}
-    """
-  end
-
-  defp format_transcript_content(nil), do: "No transcript available"
-
-  defp format_transcript_content(%{"data" => data}) when is_list(data) do
-    TranscriptParser.format_segments_for_display(data)
-  end
-
-  defp format_transcript_content(_), do: "No transcript available"
-
-  defp format_duration(nil), do: "Unknown"
-
-  defp format_duration(seconds) when is_integer(seconds) do
-    minutes = div(seconds, 60)
-    "#{minutes} minutes"
-  end
-
-  defp format_duration(_), do: "Unknown"
 
   defp extract_gemini_response(body) do
     text_path = [
@@ -435,27 +208,6 @@ defmodule SocialScribe.ChatAI do
       nil -> {:error, {:parsing_error, "No text content found in Gemini response", body}}
       text_content -> {:ok, text_content}
     end
-  end
-
-  defp build_response_metadata(%{meetings: meetings}) when is_list(meetings) do
-    meeting_refs =
-      meetings
-      |> Enum.map(fn %Meeting{id: id, title: title, recorded_at: recorded_at} ->
-        date =
-          case recorded_at do
-            %DateTime{} = dt -> Calendar.strftime(dt, "%Y-%m-%d")
-            %NaiveDateTime{} = ndt -> Calendar.strftime(ndt, "%Y-%m-%d")
-            nil -> nil
-          end
-
-        %{
-          "meeting_id" => id,
-          "title" => title,
-          "date" => date
-        }
-      end)
-
-    %{"meeting_refs" => meeting_refs}
   end
 
   # =============================================================================
@@ -543,14 +295,5 @@ defmodule SocialScribe.ChatAI do
       {Tesla.Middleware.BaseUrl, @gemini_api_base_url},
       Tesla.Middleware.JSON
     ])
-  end
-
-  # API module getters for mocking
-  defp hubspot_api do
-    Application.get_env(:social_scribe, :hubspot_api, SocialScribe.HubspotApi)
-  end
-
-  defp salesforce_api do
-    Application.get_env(:social_scribe, :salesforce_api, SocialScribe.SalesforceApi)
   end
 end

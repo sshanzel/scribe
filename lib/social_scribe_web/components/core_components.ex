@@ -736,8 +736,8 @@ defmodule SocialScribeWeb.CoreComponents do
         phx-click={@on_close}
         aria-hidden="true"
       />
-
-      <!-- Drawer Panel -->
+      
+    <!-- Drawer Panel -->
       <div class={[
         "fixed inset-y-0 bg-white shadow-2xl flex flex-col overflow-hidden",
         "sm:relative sm:inset-auto sm:rounded-xl sm:border sm:border-slate-200",
@@ -755,16 +755,12 @@ defmodule SocialScribeWeb.CoreComponents do
           <div class="flex-1">
             {render_slot(@header)}
           </div>
-          <button
-            phx-click={@on_close}
-            class="text-slate-400 hover:text-slate-600"
-            title="Close"
-          >
+          <button phx-click={@on_close} class="text-slate-400 hover:text-slate-600" title="Close">
             <.icon name="hero-chevron-double-right" class="size-5" />
           </button>
         </div>
-
-        <!-- Body -->
+        
+    <!-- Body -->
         <div class="flex-1 overflow-hidden flex flex-col">
           {render_slot(@body)}
         </div>

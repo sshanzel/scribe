@@ -6,9 +6,9 @@ defmodule SocialScribe.Workers.HubspotTokenRefresher do
 
   use Oban.Worker, queue: :default, max_attempts: 3
 
-  alias SocialScribe.Repo
   alias SocialScribe.Accounts.UserCredential
-  alias SocialScribe.HubspotTokenRefresher
+  alias SocialScribe.CRM.HubSpot.TokenRefresher, as: HubspotTokenRefresher
+  alias SocialScribe.Repo
 
   import Ecto.Query
 

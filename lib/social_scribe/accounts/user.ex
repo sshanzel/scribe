@@ -1,6 +1,26 @@
 defmodule SocialScribe.Accounts.User do
+  @moduledoc """
+  Schema for user accounts.
+
+  Users can authenticate via email/password or OAuth providers (Google, LinkedIn,
+  HubSpot, Salesforce). Each user can have multiple OAuth credentials for
+  different integrations.
+
+  ## Fields
+
+  - `email` - User's email address (unique)
+  - `password` - Virtual field for password input
+  - `hashed_password` - Bcrypt hashed password
+  - `confirmed_at` - Timestamp when email was confirmed
+
+  ## Associations
+
+  - `user_credentials` - OAuth credentials for various providers
+  """
   use Ecto.Schema
   import Ecto.Changeset
+
+  @type t :: %__MODULE__{}
 
   schema "users" do
     field :email, :string

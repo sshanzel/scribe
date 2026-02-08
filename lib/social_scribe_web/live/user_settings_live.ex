@@ -1,22 +1,22 @@
 defmodule SocialScribeWeb.UserSettingsLive do
   use SocialScribeWeb, :live_view
 
-  alias SocialScribe.Accounts
+  alias SocialScribe.Accounts.Credentials
   alias SocialScribe.Bots
 
   @impl true
   def mount(_params, _session, socket) do
     current_user = socket.assigns.current_user
 
-    google_accounts = Accounts.list_user_credentials(current_user, provider: "google")
+    google_accounts = Credentials.list_user_credentials(current_user, provider: "google")
 
-    linkedin_accounts = Accounts.list_user_credentials(current_user, provider: "linkedin")
+    linkedin_accounts = Credentials.list_user_credentials(current_user, provider: "linkedin")
 
-    facebook_accounts = Accounts.list_user_credentials(current_user, provider: "facebook")
+    facebook_accounts = Credentials.list_user_credentials(current_user, provider: "facebook")
 
-    hubspot_accounts = Accounts.list_user_credentials(current_user, provider: "hubspot")
+    hubspot_accounts = Credentials.list_user_credentials(current_user, provider: "hubspot")
 
-    salesforce_accounts = Accounts.list_user_credentials(current_user, provider: "salesforce")
+    salesforce_accounts = Credentials.list_user_credentials(current_user, provider: "salesforce")
 
     user_bot_preference =
       Bots.get_user_bot_preference(current_user.id) || %Bots.UserBotPreference{}
@@ -43,7 +43,7 @@ defmodule SocialScribeWeb.UserSettingsLive do
       :facebook_pages ->
         facebook_page_options =
           socket.assigns.current_user
-          |> Accounts.list_linked_facebook_pages()
+          |> Credentials.list_linked_facebook_pages()
           |> Enum.map(&{&1.page_name, &1.id})
 
         socket =
@@ -91,9 +91,9 @@ defmodule SocialScribeWeb.UserSettingsLive do
 
   @impl true
   def handle_event("select_facebook_page", %{"facebook_page" => facebook_page}, socket) do
-    facebook_page_credential = Accounts.get_facebook_page_credential!(facebook_page)
+    facebook_page_credential = Credentials.get_facebook_page_credential!(facebook_page)
 
-    case Accounts.update_facebook_page_credential(facebook_page_credential, %{selected: true}) do
+    case Credentials.update_facebook_page_credential(facebook_page_credential, %{selected: true}) do
       {:ok, _} ->
         socket =
           socket

@@ -8,7 +8,7 @@ defmodule SocialScribe.CalendarSyncronizer do
   alias SocialScribe.GoogleCalendarApi
   alias SocialScribe.Calendar
   alias SocialScribe.Contacts
-  alias SocialScribe.Accounts
+  alias SocialScribe.Accounts.Credentials
   alias SocialScribe.Accounts.UserCredential
   alias SocialScribe.TokenRefresherApi
 
@@ -21,7 +21,7 @@ defmodule SocialScribe.CalendarSyncronizer do
   """
   def sync_events_for_user(user) do
     user
-    |> Accounts.list_user_credentials(provider: "google")
+    |> Credentials.list_user_credentials(provider: "google")
     |> Task.async_stream(&fetch_and_sync_for_credential/1, ordered: false, on_timeout: :kill_task)
     |> Stream.run()
 
@@ -52,7 +52,7 @@ defmodule SocialScribe.CalendarSyncronizer do
       case TokenRefresherApi.refresh_token(credential.refresh_token) do
         {:ok, new_token_data} ->
           {:ok, updated_credential} =
-            Accounts.update_credential_tokens(credential, new_token_data)
+            Credentials.update_credential_tokens(credential, new_token_data)
 
           {:ok, updated_credential.token}
 

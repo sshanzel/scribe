@@ -17,7 +17,7 @@ alias SocialScribe.Calendar.CalendarEvent
 alias SocialScribe.Bots.RecallBot
 alias SocialScribe.Meetings.{Meeting, MeetingTranscript, MeetingParticipant}
 alias SocialScribe.Contacts
-alias SocialScribe.SalesforceApi
+alias SocialScribe.CRM.Salesforce.Api, as: SalesforceApi
 
 # =============================================================================
 # Configuration - Update these to match your test environment

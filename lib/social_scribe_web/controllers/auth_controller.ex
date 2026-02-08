@@ -3,6 +3,7 @@ defmodule SocialScribeWeb.AuthController do
 
   alias SocialScribe.FacebookApi
   alias SocialScribe.Accounts
+  alias SocialScribe.Accounts.Credentials
   alias SocialScribeWeb.UserAuth
   plug Ueberauth
 
@@ -26,7 +27,7 @@ defmodule SocialScribeWeb.AuthController do
     Logger.info("Google OAuth")
     Logger.info(auth)
 
-    case Accounts.find_or_create_user_credential(user, auth) do
+    case Credentials.find_or_create_user_credential(user, auth) do
       {:ok, _credential} ->
         conn
         |> put_flash(:info, "Google account added successfully.")
@@ -45,7 +46,7 @@ defmodule SocialScribeWeb.AuthController do
     Logger.info("LinkedIn OAuth")
     Logger.info(auth)
 
-    case Accounts.find_or_create_user_credential(user, auth) do
+    case Credentials.find_or_create_user_credential(user, auth) do
       {:ok, credential} ->
         Logger.info("credential")
         Logger.info(credential)
@@ -70,13 +71,13 @@ defmodule SocialScribeWeb.AuthController do
     Logger.info("Facebook OAuth")
     Logger.info(auth)
 
-    case Accounts.find_or_create_user_credential(user, auth) do
+    case Credentials.find_or_create_user_credential(user, auth) do
       {:ok, credential} ->
         case FacebookApi.fetch_user_pages(credential.uid, credential.token) do
           {:ok, facebook_pages} ->
             facebook_pages
             |> Enum.each(fn page ->
-              Accounts.link_facebook_page(user, credential, page)
+              Credentials.link_facebook_page(user, credential, page)
             end)
 
           _ ->
@@ -118,7 +119,7 @@ defmodule SocialScribeWeb.AuthController do
       email: auth.info.email
     }
 
-    case Accounts.find_or_create_hubspot_credential(user, credential_attrs) do
+    case Credentials.find_or_create_hubspot_credential(user, credential_attrs) do
       {:ok, _credential} ->
         Logger.info("HubSpot account connected for user #{user.id}, hub_id: #{hub_id}")
 
@@ -155,7 +156,7 @@ defmodule SocialScribeWeb.AuthController do
       instance_url: auth.extra.raw_info.instance_url
     }
 
-    case Accounts.find_or_create_salesforce_credential(user, credential_attrs) do
+    case Credentials.find_or_create_salesforce_credential(user, credential_attrs) do
       {:ok, _credential} ->
         Logger.info("Salesforce account connected for user #{user.id}")
 

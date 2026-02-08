@@ -267,7 +267,11 @@ defmodule SocialScribeWeb.MeetingLive.CRMModalHelpers do
                 auto_select_query: single_participant.name
               )
 
-            send(self(), {config.search_message, single_participant.name, socket.assigns.credential})
+            send(
+              self(),
+              {config.search_message, single_participant.name, socket.assigns.credential}
+            )
+
             socket
 
           [first | _rest] ->

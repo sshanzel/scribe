@@ -1,8 +1,8 @@
 defmodule SocialScribe.HubspotTokenRefresherTest do
   use SocialScribe.DataCase
 
-  alias SocialScribe.HubspotTokenRefresher
-  alias SocialScribe.Accounts
+  alias SocialScribe.CRM.HubSpot.TokenRefresher, as: HubspotTokenRefresher
+  alias SocialScribe.Accounts.Credentials
 
   import SocialScribe.AccountsFixtures
 
@@ -58,7 +58,7 @@ defmodule SocialScribe.HubspotTokenRefresherTest do
         expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
       }
 
-      {:ok, updated} = Accounts.update_user_credential(credential, attrs)
+      {:ok, updated} = Credentials.update_user_credential(credential, attrs)
 
       assert updated.token == "new_access_token"
       assert updated.refresh_token == "new_refresh_token"

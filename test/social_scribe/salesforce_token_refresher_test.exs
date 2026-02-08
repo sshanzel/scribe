@@ -1,8 +1,8 @@
 defmodule SocialScribe.SalesforceTokenRefresherTest do
   use SocialScribe.DataCase
 
-  alias SocialScribe.SalesforceTokenRefresher
-  alias SocialScribe.Accounts
+  alias SocialScribe.CRM.Salesforce.TokenRefresher, as: SalesforceTokenRefresher
+  alias SocialScribe.Accounts.Credentials
 
   import SocialScribe.AccountsFixtures
 
@@ -77,7 +77,7 @@ defmodule SocialScribe.SalesforceTokenRefresherTest do
         instance_url: "https://updated.salesforce.com"
       }
 
-      {:ok, updated} = Accounts.update_salesforce_credential(credential, attrs)
+      {:ok, updated} = Credentials.update_salesforce_credential(credential, attrs)
 
       assert updated.token == "new_access_token"
       assert updated.refresh_token == credential.refresh_token
@@ -99,7 +99,7 @@ defmodule SocialScribe.SalesforceTokenRefresherTest do
         expires_at: DateTime.add(DateTime.utc_now(), 7200, :second)
       }
 
-      {:ok, updated} = Accounts.update_user_credential(credential, attrs)
+      {:ok, updated} = Credentials.update_user_credential(credential, attrs)
 
       assert updated.token == "new_access_token"
       assert updated.instance_url == "https://original.salesforce.com"

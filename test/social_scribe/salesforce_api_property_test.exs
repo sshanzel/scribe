@@ -1,4 +1,4 @@
-defmodule SocialScribe.SalesforceApiPropertyTest do
+defmodule SocialScribe.CRM.Salesforce.ApiPropertyTest do
   use SocialScribe.DataCase, async: true
   use ExUnitProperties
 
@@ -31,14 +31,16 @@ defmodule SocialScribe.SalesforceApiPropertyTest do
       credential: credential
     } do
       check all(updates <- list_of(update_generator(apply: false), min_length: 1, max_length: 10)) do
-        result = SocialScribe.SalesforceApi.apply_updates(credential, "003XXXXXXXXXXXX", updates)
+        result =
+          SocialScribe.CRM.Salesforce.Api.apply_updates(credential, "003XXXXXXXXXXXX", updates)
+
         assert result == {:ok, :no_updates}
       end
     end
 
     property "returns {:ok, :no_updates} for empty updates list", %{credential: credential} do
       check all(contact_id <- salesforce_contact_id_generator()) do
-        result = SocialScribe.SalesforceApi.apply_updates(credential, contact_id, [])
+        result = SocialScribe.CRM.Salesforce.Api.apply_updates(credential, contact_id, [])
         assert result == {:ok, :no_updates}
       end
     end

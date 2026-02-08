@@ -1,34 +1,22 @@
-defmodule SocialScribe.SalesforceApi do
+defmodule SocialScribe.CRM.Salesforce.Api do
   @moduledoc """
   Salesforce CRM API client for contacts operations.
   Implements automatic token refresh on 401/expired token errors.
   """
 
-  @behaviour SocialScribe.SalesforceApiBehaviour
+  @behaviour SocialScribe.CRM.Salesforce.ApiBehaviour
 
   alias SocialScribe.Accounts.UserCredential
-  alias SocialScribe.SalesforceTokenRefresher
+  alias SocialScribe.CRM.FieldMapper
+  alias SocialScribe.CRM.Salesforce.FieldConfig
+  alias SocialScribe.CRM.Salesforce.TokenRefresher
 
   require Logger
 
-  @api_version "v59.0"
+  @api_version Application.compile_env(:social_scribe, :salesforce_api_version, "v59.0")
 
-  @contact_fields [
-    "Id",
-    "FirstName",
-    "LastName",
-    "Email",
-    "Phone",
-    "MobilePhone",
-    "Title",
-    "Department",
-    "MailingStreet",
-    "MailingCity",
-    "MailingState",
-    "MailingPostalCode",
-    "MailingCountry",
-    "Account.Name"
-  ]
+  # Build contact fields list: Id + configured fields + Account.Name for display
+  @contact_fields ["Id"] ++ FieldConfig.api_field_names() ++ ["Account.Name"]
 
   defp client(access_token) do
     Tesla.client([
@@ -136,7 +124,8 @@ defmodule SocialScribe.SalesforceApi do
 
   @doc """
   Updates a contact's properties.
-  `updates` should be a map of Salesforce field names to new values.
+  `updates` should be a map of internal field names to new values.
+  Fields are automatically mapped to Salesforce API field names.
   Automatically refreshes token on 401/expired errors and retries once.
   """
   @impl true
@@ -144,8 +133,9 @@ defmodule SocialScribe.SalesforceApi do
       when is_map(updates) do
     with_token_refresh(credential, fn cred ->
       url = "#{api_base_url(cred.instance_url)}/sobjects/Contact/#{contact_id}"
+      mapped_updates = FieldMapper.map_fields_for_crm(:salesforce, updates)
 
-      case Tesla.patch(client(cred.token), url, updates) do
+      case Tesla.patch(client(cred.token), url, mapped_updates) do
         # Salesforce returns 204 No Content on successful PATCH
         {:ok, %Tesla.Env{status: 204}} ->
           # Fetch the updated contact
@@ -224,7 +214,7 @@ defmodule SocialScribe.SalesforceApi do
   # Wrapper that handles token refresh on auth errors
   # Tries the API call, and if it fails with 401, refreshes token and retries once
   defp with_token_refresh(%UserCredential{} = credential, api_call) do
-    with {:ok, credential} <- SalesforceTokenRefresher.ensure_valid_token(credential) do
+    with {:ok, credential} <- TokenRefresher.ensure_valid_token(credential) do
       case api_call.(credential) do
         {:error, {:api_error, 401, _body}} ->
           Logger.info("Salesforce token expired, refreshing and retrying...")
@@ -246,7 +236,7 @@ defmodule SocialScribe.SalesforceApi do
   end
 
   defp retry_with_fresh_token(credential, api_call) do
-    case SalesforceTokenRefresher.refresh_credential(credential) do
+    case TokenRefresher.refresh_credential(credential) do
       {:ok, refreshed_credential} ->
         case api_call.(refreshed_credential) do
           {:error, {:api_error, status, body}} ->

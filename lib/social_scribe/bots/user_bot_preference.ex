@@ -1,4 +1,15 @@
 defmodule SocialScribe.Bots.UserBotPreference do
+  @moduledoc """
+  Schema for user preferences related to Recall.ai bot behavior.
+
+  Stores user-specific settings for how bots should behave, such as when
+  they should join meetings relative to the scheduled start time.
+
+  ## Fields
+
+  - `join_minute_offset` - Minutes before/after the meeting start when the bot joins (0-10)
+  - `user_id` - The user these preferences belong to
+  """
   use Ecto.Schema
   import Ecto.Changeset
 
