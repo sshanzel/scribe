@@ -7,6 +7,7 @@ defmodule SocialScribeWeb.ChatLive do
 
   on_mount {SocialScribeWeb.UserAuth, :mount_current_user}
 
+  alias Phoenix.LiveView.AsyncResult
   alias SocialScribe.Chat
   alias SocialScribe.Contacts
   alias SocialScribe.ChatAIApi
@@ -18,8 +19,6 @@ defmodule SocialScribeWeb.ChatLive do
       socket
       |> assign(:open, false)
       |> assign(:animate, true)
-      |> assign(:threads, [])
-      |> assign(:threads_loaded, false)
       |> assign(:current_thread, nil)
       |> assign(:messages, [])
       |> assign(:loading, false)
@@ -31,10 +30,14 @@ defmodule SocialScribeWeb.ChatLive do
       |> assign(:mention_search_start, nil)
       |> assign(:active_tab, :chat)
 
-    # Load threads asynchronously if user is logged in
-    if socket.assigns[:current_user] do
-      send(self(), :load_threads)
-    end
+    # Load threads asynchronously using assign_async
+    socket =
+      if socket.assigns[:current_user] do
+        user = socket.assigns.current_user
+        assign_async(socket, :threads, fn -> {:ok, %{threads: Chat.list_threads(user)}} end)
+      else
+        assign(socket, :threads, AsyncResult.ok(%{threads: []}))
+      end
 
     # No layout for embedded LiveView
     {:ok, socket, layout: false}
@@ -248,14 +251,15 @@ defmodule SocialScribeWeb.ChatLive do
             <% else %>
               <!-- History View -->
               <div class="flex-1 overflow-y-auto flex flex-col">
-                <%= if !@threads_loaded do %>
+                <%= if @threads.loading do %>
                   <!-- Loading state -->
                   <div class="flex-1 flex flex-col items-center justify-center text-slate-400 py-6">
                     <.icon name="hero-arrow-path" class="size-6 mb-2 animate-spin" />
                     <p class="text-sm">Loading...</p>
                   </div>
                 <% else %>
-                  <div :for={thread <- @threads} class="border-b border-slate-100">
+                  <% threads = get_threads(@threads) %>
+                  <div :for={thread <- threads} class="border-b border-slate-100">
                     <button
                       phx-click="select_thread"
                       phx-value-id={thread.id}
@@ -271,7 +275,7 @@ defmodule SocialScribeWeb.ChatLive do
                   </div>
 
                   <div
-                    :if={@threads == []}
+                    :if={threads == []}
                     class="flex-1 flex flex-col items-center justify-center text-slate-400 py-6"
                   >
                     <.icon name="hero-inbox" class="size-8 mb-2 -mt-32" />
@@ -312,11 +316,14 @@ defmodule SocialScribeWeb.ChatLive do
   def handle_event("new_thread", _params, socket) do
     {:ok, thread} = Chat.create_thread(socket.assigns.current_user)
 
+    # Get current threads from async result
+    current_threads = get_threads(socket.assigns.threads)
+
     socket =
       socket
       |> assign(:current_thread, thread)
       |> assign(:messages, [])
-      |> assign(:threads, [thread | socket.assigns.threads])
+      |> assign(:threads, AsyncResult.ok(%{threads: [thread | current_threads]}))
       |> assign(:active_tab, :chat)
       |> assign(:mentions, [])
       |> assign(:message_input, "")
@@ -420,11 +427,12 @@ defmodule SocialScribeWeb.ChatLive do
         case socket.assigns.current_thread do
           nil ->
             {:ok, new_thread} = Chat.create_thread(socket.assigns.current_user)
+            current_threads = get_threads(socket.assigns.threads)
 
             socket =
               socket
               |> assign(:current_thread, new_thread)
-              |> assign(:threads, [new_thread | socket.assigns.threads])
+              |> assign(:threads, AsyncResult.ok(%{threads: [new_thread | current_threads]}))
 
             {new_thread, socket}
 
@@ -516,12 +524,6 @@ defmodule SocialScribeWeb.ChatLive do
     {:noreply, assign(socket, :animate, false)}
   end
 
-  @impl true
-  def handle_info(:load_threads, socket) do
-    threads = Chat.list_threads(socket.assigns.current_user)
-    {:noreply, assign(socket, threads: threads, threads_loaded: true)}
-  end
-
   # =============================================================================
   # Function Components
   # =============================================================================
@@ -611,6 +613,9 @@ defmodule SocialScribeWeb.ChatLive do
   # =============================================================================
   # Private Helpers
   # =============================================================================
+
+  defp get_threads(%AsyncResult{ok?: true, result: %{threads: threads}}), do: threads
+  defp get_threads(_), do: []
 
   defp maybe_search_contacts(%{assigns: %{current_user: nil}} = socket, _value) do
     socket
