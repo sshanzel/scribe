@@ -84,8 +84,7 @@ defmodule SocialScribeWeb.ChatLive do
               </button>
             </div>
             <button
-              :if={@messages != []}
-              phx-click="new_thread"
+              phx-click="reset_chat"
               class="p-1 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
               title="New chat"
             >
@@ -305,18 +304,17 @@ defmodule SocialScribeWeb.ChatLive do
   end
 
   @impl true
-  def handle_event("new_thread", _params, socket) do
-    {:ok, thread} = Chat.create_thread(socket.assigns.current_user)
-    current_threads = get_threads(socket.assigns.threads)
-
+  def handle_event("reset_chat", _params, socket) do
+    # Reset chat state without creating a thread entity
+    # Thread will be created when user sends first message
     socket =
       socket
-      |> assign(:current_thread, thread)
+      |> assign(:current_thread, nil)
       |> assign(:messages, [])
-      |> assign(:threads, AsyncResult.ok([thread | current_threads]))
       |> assign(:active_tab, :chat)
       |> assign(:mentions, [])
       |> assign(:message_input, "")
+      |> assign(:error_message, nil)
       |> push_event("clear_input", %{})
 
     {:noreply, socket}

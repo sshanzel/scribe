@@ -61,6 +61,7 @@ Hooks.MentionInput = {
         this.handleEvent('clear_input', () => {
             this.el.innerHTML = ''
             this.mentions = []
+            this.el.focus()
         })
     },
 
