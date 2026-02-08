@@ -67,8 +67,9 @@ defmodule SocialScribe.ChatAI.ContextBuilderTest do
 
   describe "gather_context_from_metadata/2" do
     test "priority 1: uses contact_id when available" do
-      user = user_fixture()
-      contact = contact_fixture(name: "John Doe", email: "john@example.com")
+      # Contact must be linked to user via calendar event to be visible
+      %{contact: contact, user: user} =
+        contact_with_event_fixture(%{name: "John Doe", email: "john@example.com"})
 
       metadata = %{
         "contact_id" => contact.id,

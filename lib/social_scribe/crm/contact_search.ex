@@ -62,10 +62,24 @@ defmodule SocialScribe.CRM.ContactSearch do
   defp search_all_sources_parallel(user, hubspot_cred, salesforce_cred, query) do
     tasks = build_search_tasks(user, hubspot_cred, salesforce_cred, query)
 
+    # Use yield_many + shutdown to gracefully handle timeouts/crashes
+    # instead of await_many which raises on timeout/exit
     all_results =
       tasks
-      |> Task.await_many(5_000)
-      |> List.flatten()
+      |> Task.yield_many(5_000)
+      |> Enum.flat_map(fn
+        {_task, {:ok, results}} ->
+          results || []
+
+        {task, {:exit, _reason}} ->
+          Task.shutdown(task, :brutal_kill)
+          []
+
+        {task, nil} ->
+          # Timeout - shutdown the task and return empty
+          Task.shutdown(task, :brutal_kill)
+          []
+      end)
       |> Enum.reject(&is_nil/1)
 
     merge_and_deduplicate(all_results)
@@ -105,15 +119,21 @@ defmodule SocialScribe.CRM.ContactSearch do
     # Add contacts without email (shouldn't happen but be safe)
     no_email = Enum.filter(results, &(&1[:email] == nil))
 
-    merged ++ no_email
+    # Sort deterministically by name to prevent dropdown order flickering
+    (merged ++ no_email)
+    |> Enum.sort_by(&String.downcase(&1[:name] || ""))
   end
 
   # Merge contacts with same email - prefer CRM data but keep local contact_id
+  # Priority: Salesforce > HubSpot > Local (explicit order to prevent non-determinism)
   defp merge_contacts([single]), do: single
 
   defp merge_contacts(contacts) do
     local = Enum.find(contacts, &(&1.source == :local))
-    crm = Enum.find(contacts, &(&1.source in [:hubspot, :salesforce]))
+    # Explicit priority: Salesforce first (primary CRM), then HubSpot
+    salesforce = Enum.find(contacts, &(&1.source == :salesforce))
+    hubspot = Enum.find(contacts, &(&1.source == :hubspot))
+    crm = salesforce || hubspot
 
     case {local, crm} do
       {nil, crm} ->

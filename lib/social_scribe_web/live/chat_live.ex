@@ -555,20 +555,37 @@ defmodule SocialScribeWeb.ChatLive do
 
   @impl true
   def handle_info({:search_contacts, query}, socket) do
+    # Only apply search results if this query still matches the current input.
+    # This prevents stale debounced messages from overwriting newer results.
     socket =
-      socket
-      |> assign(:search_timer, nil)
-      |> perform_contact_search(query)
+      if query == socket.assigns.message_input do
+        socket
+        |> assign(:search_timer, nil)
+        |> perform_contact_search(query)
+      else
+        # Stale search: clear timer and searching state, but keep existing results.
+        socket
+        |> assign(:search_timer, nil)
+        |> assign(:searching, false)
+      end
 
     {:noreply, socket}
   end
 
   defp perform_contact_search(%{assigns: %{current_user: user}} = socket, query) do
-    {:ok, results} = ContactSearch.search(user, query)
+    # Wrap in try to prevent LiveView crash on unexpected errors
+    try do
+      {:ok, results} = ContactSearch.search(user, query)
 
-    socket
-    |> assign(:searching, false)
-    |> assign(:contact_results, results)
+      socket
+      |> assign(:searching, false)
+      |> assign(:contact_results, results)
+    rescue
+      _ ->
+        socket
+        |> assign(:searching, false)
+        |> assign(:contact_results, [])
+    end
   end
 
   defp find_contact_in_results(results, compound_id) do
@@ -579,13 +596,22 @@ defmodule SocialScribeWeb.ChatLive do
   end
 
   defp build_mention_from_contact(%{source: source} = contact) do
+    # Set crm_data to nil for local contacts so PromptBuilder doesn't show
+    # "Unknown" for Company/Title/Phone fields
+    crm_data =
+      if source == :local do
+        nil
+      else
+        contact[:crm_data]
+      end
+
     %{
       contact_id: contact[:contact_id],
       name: contact[:name],
       email: contact[:email],
       source: to_string(source),
       crm_id: contact[:crm_id],
-      crm_data: contact[:crm_data] || %{}
+      crm_data: crm_data
     }
   end
 
@@ -797,7 +823,11 @@ defmodule SocialScribeWeb.ChatLive do
     source_atom = source_to_atom(source)
     logo_path = source_logo_path(source_atom)
 
-    ~s(<span class="mention-chip inline-flex items-center gap-1 bg-slate-200 text-slate-700 px-1 py-px rounded-full text-xs font-medium"><span class="relative"><span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">#{initial}</span><img src="#{logo_path}" class="absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0" /></span><span>#{display_name}</span></span>)
+    # Escape user-provided values to prevent XSS
+    safe_initial = escape_html(initial)
+    safe_display_name = escape_html(display_name)
+
+    ~s(<span class="mention-chip inline-flex items-center gap-1 bg-slate-200 text-slate-700 px-1 py-px rounded-full text-xs font-medium"><span class="relative"><span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">#{safe_initial}</span><img src="#{logo_path}" class="absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0" /></span><span>#{safe_display_name}</span></span>)
   end
 
   defp source_to_atom("hubspot"), do: :hubspot

@@ -213,7 +213,7 @@ defmodule SocialScribe.ChatAI.PromptBuilderTest do
       1. Only use information from these meetings if the context (topic, company, participants) clearly matches the contact
       2. Look for the meeting with strong contextual evidence when reviewing the details against the questions being asked to determine if it's likely to be the same person
       3. You can't answer certainly and must say that you found meetings with a contact that matches the name but not the email.
-      4. The email mismatched which is why we should not use it to compare whether this was the user or not
+      4. Do not treat email addresses as matching here; the contact's email does not match any participant, so name-only matches are unreliable for confirming identity
       5. Mention in your response that these meetings were based on the participant's name only and may not be the same person in a concise manner
       6. If there is any uncertainty, it's better to state that you don't have enough information rather than risk providing inaccurate information
 

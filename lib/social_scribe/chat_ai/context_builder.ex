@@ -46,7 +46,9 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   # Priority 1: contact_id available (direct lookup, most reliable)
   def gather_context_from_metadata(%User{} = user, %{"contact_id" => contact_id} = metadata)
       when is_integer(contact_id) do
-    case Repo.get(Contact, contact_id) do
+    # Verify contact is visible to user through their calendar events to prevent
+    # leaking other users' contact data via crafted contact_id
+    case get_user_visible_contact(user, contact_id) do
       %Contact{} = contact ->
         meetings = find_meetings_for_contact(user, contact)
         crm_data = metadata["crm_data"]
@@ -62,7 +64,7 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
          }}
 
       nil ->
-        # Contact was deleted, fall back to email lookup
+        # Contact not found or not visible to user, fall back to email lookup
         gather_context_from_metadata(user, Map.delete(metadata, "contact_id"))
     end
   end
@@ -187,6 +189,22 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   end
 
   def find_meetings_for_contact(_user, _contact), do: []
+
+  @doc """
+  Gets a contact only if visible to the user through their calendar events.
+  Returns nil if the contact doesn't exist or isn't associated with the user.
+  """
+  def get_user_visible_contact(%User{id: user_id}, contact_id) when is_integer(contact_id) do
+    Contact
+    |> join(:inner, [c], cea in CalendarEventAttendee, on: cea.contact_id == c.id)
+    |> join(:inner, [c, cea], ce in assoc(cea, :calendar_event))
+    |> where([c, cea, ce], c.id == ^contact_id)
+    |> where([c, cea, ce], ce.user_id == ^user_id)
+    |> limit(1)
+    |> Repo.one()
+  end
+
+  def get_user_visible_contact(_user, _contact_id), do: nil
 
   @doc """
   Finds meetings for a contact by email.

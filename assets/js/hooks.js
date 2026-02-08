@@ -81,7 +81,8 @@ Hooks.MentionInput = {
         // Get logo path based on source
         const logoPath = this.getSourceLogoPath(source)
 
-        // Create the mention chip - keep in sync with chat_live.ex mention_chip_html/2
+        // Create the mention chip - keep in sync with chat_live.ex mention_chip_html/3
+        // Use DOM APIs to prevent XSS from contact names
         const chip = document.createElement('span')
         chip.className = 'mention-chip inline-flex items-center gap-1 bg-slate-200 text-slate-700 px-1 py-px rounded-full text-xs font-medium mx-0.5'
         chip.contentEditable = 'false'
@@ -89,13 +90,27 @@ Hooks.MentionInput = {
         chip.dataset.name = contactName
         chip.dataset.source = source || 'local'
         const firstName = contactName.split(' ')[0] || contactName
-        chip.innerHTML = `
-            <span class="relative">
-                <span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">${contactName.charAt(0).toUpperCase()}</span>
-                <img src="${logoPath}" class="absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0" />
-            </span>
-            <span>${firstName}</span>
-        `
+
+        // Build chip structure safely using DOM APIs
+        const relativeSpan = document.createElement('span')
+        relativeSpan.className = 'relative'
+
+        const initialSpan = document.createElement('span')
+        initialSpan.className = 'w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium'
+        initialSpan.textContent = contactName.charAt(0).toUpperCase()
+
+        const logoImg = document.createElement('img')
+        logoImg.src = logoPath
+        logoImg.className = 'absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0'
+
+        relativeSpan.appendChild(initialSpan)
+        relativeSpan.appendChild(logoImg)
+
+        const nameSpan = document.createElement('span')
+        nameSpan.textContent = firstName
+
+        chip.appendChild(relativeSpan)
+        chip.appendChild(nameSpan)
 
         this.replaceAtQuery(chip)
         this.mentions.push({ id: contactId, name: contactName, source: source })
