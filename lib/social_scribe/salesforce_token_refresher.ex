@@ -12,7 +12,7 @@ defmodule SocialScribe.SalesforceTokenRefresher do
     token_url: "https://login.salesforce.com/services/oauth2/token",
     oauth_config_key: Ueberauth.Strategy.Salesforce.OAuth
 
-  alias SocialScribe.Accounts
+  alias SocialScribe.Accounts.Credentials
 
   @impl SocialScribe.TokenRefresher.Base
   def parse_token_response(response, credential) do
@@ -41,6 +41,6 @@ defmodule SocialScribe.SalesforceTokenRefresher do
 
   @impl SocialScribe.TokenRefresher.Base
   def update_credential(credential, attrs) do
-    Accounts.update_salesforce_credential(credential, attrs)
+    Credentials.update_salesforce_credential(credential, attrs)
   end
 end

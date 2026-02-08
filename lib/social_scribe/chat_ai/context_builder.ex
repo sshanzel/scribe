@@ -11,7 +11,7 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   import Ecto.Query, warn: false
 
   alias SocialScribe.Repo
-  alias SocialScribe.Accounts
+  alias SocialScribe.Accounts.Credentials
   alias SocialScribe.Accounts.User
   alias SocialScribe.Contacts.Contact
   alias SocialScribe.Meetings.Meeting
@@ -112,7 +112,7 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   end
 
   defp get_hubspot_contact_data(%User{} = user, email) when is_binary(email) do
-    case Accounts.get_user_credential(user, "hubspot") do
+    case Credentials.get_user_credential(user, "hubspot") do
       nil ->
         {:error, :no_hubspot_credential}
 
@@ -127,7 +127,7 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   end
 
   defp get_salesforce_contact_data(%User{} = user, email) when is_binary(email) do
-    case Accounts.get_user_credential(user, "salesforce") do
+    case Credentials.get_user_credential(user, "salesforce") do
       nil ->
         {:error, :no_salesforce_credential}
 

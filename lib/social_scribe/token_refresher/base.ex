@@ -23,7 +23,7 @@ defmodule SocialScribe.TokenRefresher.Base do
 
         @impl true
         def update_credential(credential, attrs) do
-          Accounts.update_user_credential(credential, attrs)
+          Credentials.update_user_credential(credential, attrs)
         end
       end
 

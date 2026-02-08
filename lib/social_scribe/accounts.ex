@@ -107,20 +107,6 @@ defmodule SocialScribe.Accounts do
     :ok
   end
 
-  ## User Credentials
-  ## Delegated to SocialScribe.Accounts.Credentials
-
-  defdelegate list_user_credentials(), to: Credentials
-  defdelegate list_user_credentials(user, where \\ []), to: Credentials
-  defdelegate get_user_credential!(id), to: Credentials
-  defdelegate get_user_credential(user, provider, uid), to: Credentials
-  defdelegate get_user_credential(user, provider), to: Credentials
-  defdelegate get_user_linkedin_credential(user), to: Credentials
-  defdelegate create_user_credential(attrs \\ %{}), to: Credentials
-  defdelegate update_user_credential(user_credential, attrs), to: Credentials
-  defdelegate delete_user_credential(user_credential), to: Credentials
-  defdelegate change_user_credential(user_credential, attrs \\ %{}), to: Credentials
-
   ## OAuth
 
   def find_or_create_user_from_oauth(%Auth{} = auth) do
@@ -166,28 +152,4 @@ defmodule SocialScribe.Accounts do
     |> Repo.one()
   end
 
-  ## OAuth Credential Management
-  ## Delegated to SocialScribe.Accounts.Credentials
-
-  defdelegate find_or_create_user_credential(user, auth), to: Credentials
-  defdelegate find_or_create_hubspot_credential(user, attrs), to: Credentials
-  defdelegate find_or_create_salesforce_credential(user, attrs), to: Credentials
-  defdelegate get_user_hubspot_credential(user_id), to: Credentials
-  defdelegate get_user_salesforce_credential(user_id), to: Credentials
-  defdelegate update_salesforce_credential(credential, attrs), to: Credentials
-  defdelegate update_credential_tokens(credential, tokens), to: Credentials
-
-  ## Facebook Page Credentials
-  ## Delegated to SocialScribe.Accounts.Credentials
-
-  defdelegate list_facebook_page_credentials(), to: Credentials
-  defdelegate get_facebook_page_credential!(id), to: Credentials
-  defdelegate get_user_selected_facebook_page_credential(user), to: Credentials
-  defdelegate create_facebook_page_credential(attrs \\ %{}), to: Credentials
-  defdelegate update_facebook_page_credential(credential, attrs), to: Credentials
-  defdelegate delete_facebook_page_credential(credential), to: Credentials
-  defdelegate change_facebook_page_credential(credential, attrs \\ %{}), to: Credentials
-  defdelegate link_facebook_page(user, user_credential, page_data), to: Credentials
-  defdelegate list_linked_facebook_pages(user), to: Credentials
-  defdelegate get_linked_facebook_page(user, facebook_page_id), to: Credentials
 end

@@ -2,6 +2,7 @@ defmodule SocialScribe.AccountsTest do
   use SocialScribe.DataCase
 
   alias SocialScribe.Accounts
+  alias SocialScribe.Accounts.Credentials
 
   import SocialScribe.AccountsFixtures
   alias SocialScribe.Accounts.{User, UserToken, UserCredential}
@@ -161,14 +162,14 @@ defmodule SocialScribe.AccountsTest do
     test "returns all user_credentials" do
       user = user_fixture()
       user_credential = user_credential_fixture(%{user_id: user.id})
-      assert Accounts.list_user_credentials(user) == [user_credential]
+      assert Credentials.list_user_credentials(user) == [user_credential]
     end
 
     test "returns user_credentials filtered by provider" do
       user = user_fixture()
       user_credential = user_credential_fixture(%{user_id: user.id, provider: "google"})
-      assert Accounts.list_user_credentials(user, provider: "google") == [user_credential]
-      assert Accounts.list_user_credentials(user, provider: "facebook") == []
+      assert Credentials.list_user_credentials(user, provider: "google") == [user_credential]
+      assert Credentials.list_user_credentials(user, provider: "facebook") == []
     end
   end
 
@@ -181,19 +182,19 @@ defmodule SocialScribe.AccountsTest do
 
     test "list_user_credentials/0 returns all user_credentials" do
       user_credential = user_credential_fixture()
-      assert Accounts.list_user_credentials() == [user_credential]
+      assert Credentials.list_user_credentials() == [user_credential]
     end
 
     test "get_user_credential!/1 returns the user_credential with given id" do
       user_credential = user_credential_fixture()
-      assert Accounts.get_user_credential!(user_credential.id) == user_credential
+      assert Credentials.get_user_credential!(user_credential.id) == user_credential
     end
 
     test "get_user_credential/3 returns the user_credential with given user, provider, and uid" do
       user = user_fixture()
       user_credential = user_credential_fixture(%{user_id: user.id})
 
-      assert Accounts.get_user_credential(user, user_credential.provider, user_credential.uid) ==
+      assert Credentials.get_user_credential(user, user_credential.provider, user_credential.uid) ==
                user_credential
     end
 
@@ -211,7 +212,7 @@ defmodule SocialScribe.AccountsTest do
       }
 
       assert {:ok, %UserCredential{} = user_credential} =
-               Accounts.create_user_credential(valid_attrs)
+               Credentials.create_user_credential(valid_attrs)
 
       assert user_credential.token == "some token"
       assert user_credential.uid == "some uid"
@@ -221,7 +222,7 @@ defmodule SocialScribe.AccountsTest do
     end
 
     test "create_user_credential/1 with invalid data returns error changeset" do
-      assert {:error, %Ecto.Changeset{}} = Accounts.create_user_credential(@invalid_attrs)
+      assert {:error, %Ecto.Changeset{}} = Credentials.create_user_credential(@invalid_attrs)
     end
 
     test "update_user_credential/2 with valid data updates the user_credential" do
@@ -236,7 +237,7 @@ defmodule SocialScribe.AccountsTest do
       }
 
       assert {:ok, %UserCredential{} = user_credential} =
-               Accounts.update_user_credential(user_credential, update_attrs)
+               Credentials.update_user_credential(user_credential, update_attrs)
 
       assert user_credential.token == "some updated token"
       assert user_credential.uid == "some updated uid"
@@ -249,23 +250,23 @@ defmodule SocialScribe.AccountsTest do
       user_credential = user_credential_fixture()
 
       assert {:error, %Ecto.Changeset{}} =
-               Accounts.update_user_credential(user_credential, @invalid_attrs)
+               Credentials.update_user_credential(user_credential, @invalid_attrs)
 
-      assert user_credential == Accounts.get_user_credential!(user_credential.id)
+      assert user_credential == Credentials.get_user_credential!(user_credential.id)
     end
 
     test "delete_user_credential/1 deletes the user_credential" do
       user_credential = user_credential_fixture()
-      assert {:ok, %UserCredential{}} = Accounts.delete_user_credential(user_credential)
+      assert {:ok, %UserCredential{}} = Credentials.delete_user_credential(user_credential)
 
       assert_raise Ecto.NoResultsError, fn ->
-        Accounts.get_user_credential!(user_credential.id)
+        Credentials.get_user_credential!(user_credential.id)
       end
     end
 
     test "change_user_credential/1 returns a user_credential changeset" do
       user_credential = user_credential_fixture()
-      assert %Ecto.Changeset{} = Accounts.change_user_credential(user_credential)
+      assert %Ecto.Changeset{} = Credentials.change_user_credential(user_credential)
     end
   end
 
@@ -373,7 +374,7 @@ defmodule SocialScribe.AccountsTest do
         }
       }
 
-      {:ok, credential} = Accounts.find_or_create_user_credential(user, auth)
+      {:ok, credential} = Credentials.find_or_create_user_credential(user, auth)
 
       assert credential.provider == "linkedin"
       assert credential.uid == "urn:li:person:linkedin-uid-12345"
@@ -411,7 +412,7 @@ defmodule SocialScribe.AccountsTest do
         }
       }
 
-      {:ok, updated_credential} = Accounts.find_or_create_user_credential(user, auth)
+      {:ok, updated_credential} = Credentials.find_or_create_user_credential(user, auth)
 
       assert updated_credential.id == existing_credential.id
       assert updated_credential.token == "new-token"
@@ -433,7 +434,7 @@ defmodule SocialScribe.AccountsTest do
         }
       }
 
-      {:ok, credential} = Accounts.find_or_create_user_credential(user, auth)
+      {:ok, credential} = Credentials.find_or_create_user_credential(user, auth)
 
       assert credential.provider == "google"
       assert credential.uid == "google-uid-12345"
@@ -465,7 +466,7 @@ defmodule SocialScribe.AccountsTest do
         }
       }
 
-      {:ok, updated_credential} = Accounts.find_or_create_user_credential(user, auth)
+      {:ok, updated_credential} = Credentials.find_or_create_user_credential(user, auth)
 
       assert updated_credential.id == existing_credential.id
       assert updated_credential.token == "new-token"
@@ -487,7 +488,7 @@ defmodule SocialScribe.AccountsTest do
         email: "user@hubspot.com"
       }
 
-      {:ok, credential} = Accounts.find_or_create_hubspot_credential(user, attrs)
+      {:ok, credential} = Credentials.find_or_create_hubspot_credential(user, attrs)
 
       assert credential.provider == "hubspot"
       assert credential.uid == "hub_123456"
@@ -517,7 +518,7 @@ defmodule SocialScribe.AccountsTest do
         email: "user@hubspot.com"
       }
 
-      {:ok, updated_credential} = Accounts.find_or_create_hubspot_credential(user, new_attrs)
+      {:ok, updated_credential} = Credentials.find_or_create_hubspot_credential(user, new_attrs)
 
       assert updated_credential.id == existing_credential.id
       assert updated_credential.token == "new_token"
@@ -528,7 +529,7 @@ defmodule SocialScribe.AccountsTest do
       user = user_fixture()
       credential = hubspot_credential_fixture(%{user_id: user.id})
 
-      found_credential = Accounts.get_user_hubspot_credential(user.id)
+      found_credential = Credentials.get_user_hubspot_credential(user.id)
 
       assert found_credential.id == credential.id
       assert found_credential.provider == "hubspot"
@@ -537,7 +538,7 @@ defmodule SocialScribe.AccountsTest do
     test "get_user_hubspot_credential/1 returns nil when no credential exists" do
       user = user_fixture()
 
-      assert Accounts.get_user_hubspot_credential(user.id) == nil
+      assert Credentials.get_user_hubspot_credential(user.id) == nil
     end
 
     test "list_user_credentials/2 filters by hubspot provider" do
@@ -545,7 +546,7 @@ defmodule SocialScribe.AccountsTest do
       _google_credential = user_credential_fixture(%{user_id: user.id, provider: "google"})
       hubspot_credential = hubspot_credential_fixture(%{user_id: user.id})
 
-      hubspot_credentials = Accounts.list_user_credentials(user, provider: "hubspot")
+      hubspot_credentials = Credentials.list_user_credentials(user, provider: "hubspot")
 
       assert length(hubspot_credentials) == 1
       assert hd(hubspot_credentials).id == hubspot_credential.id
@@ -561,13 +562,13 @@ defmodule SocialScribe.AccountsTest do
 
     test "list_facebook_page_credentials/0 returns all facebook_page_credentials" do
       facebook_page_credential = facebook_page_credential_fixture()
-      assert Accounts.list_facebook_page_credentials() == [facebook_page_credential]
+      assert Credentials.list_facebook_page_credentials() == [facebook_page_credential]
     end
 
     test "get_facebook_page_credential!/1 returns the facebook_page_credential with given id" do
       facebook_page_credential = facebook_page_credential_fixture()
 
-      assert Accounts.get_facebook_page_credential!(facebook_page_credential.id) ==
+      assert Credentials.get_facebook_page_credential!(facebook_page_credential.id) ==
                facebook_page_credential
     end
 
@@ -585,7 +586,7 @@ defmodule SocialScribe.AccountsTest do
       }
 
       assert {:ok, %FacebookPageCredential{} = facebook_page_credential} =
-               Accounts.create_facebook_page_credential(valid_attrs)
+               Credentials.create_facebook_page_credential(valid_attrs)
 
       assert facebook_page_credential.category == "some category"
       assert facebook_page_credential.facebook_page_id == "some facebook_page_id"
@@ -595,7 +596,7 @@ defmodule SocialScribe.AccountsTest do
 
     test "create_facebook_page_credential/1 with invalid data returns error changeset" do
       assert {:error, %Ecto.Changeset{}} =
-               Accounts.create_facebook_page_credential(@invalid_attrs)
+               Credentials.create_facebook_page_credential(@invalid_attrs)
     end
 
     test "update_facebook_page_credential/2 with valid data updates the facebook_page_credential" do
@@ -609,7 +610,7 @@ defmodule SocialScribe.AccountsTest do
       }
 
       assert {:ok, %FacebookPageCredential{} = facebook_page_credential} =
-               Accounts.update_facebook_page_credential(facebook_page_credential, update_attrs)
+               Credentials.update_facebook_page_credential(facebook_page_credential, update_attrs)
 
       assert facebook_page_credential.category == "some updated category"
       assert facebook_page_credential.facebook_page_id == "some updated facebook_page_id"
@@ -621,20 +622,20 @@ defmodule SocialScribe.AccountsTest do
       facebook_page_credential = facebook_page_credential_fixture()
 
       assert {:error, %Ecto.Changeset{}} =
-               Accounts.update_facebook_page_credential(facebook_page_credential, @invalid_attrs)
+               Credentials.update_facebook_page_credential(facebook_page_credential, @invalid_attrs)
 
       assert facebook_page_credential ==
-               Accounts.get_facebook_page_credential!(facebook_page_credential.id)
+               Credentials.get_facebook_page_credential!(facebook_page_credential.id)
     end
 
     test "delete_facebook_page_credential/1 deletes the facebook_page_credential" do
       facebook_page_credential = facebook_page_credential_fixture()
 
       assert {:ok, %FacebookPageCredential{}} =
-               Accounts.delete_facebook_page_credential(facebook_page_credential)
+               Credentials.delete_facebook_page_credential(facebook_page_credential)
 
       assert_raise Ecto.NoResultsError, fn ->
-        Accounts.get_facebook_page_credential!(facebook_page_credential.id)
+        Credentials.get_facebook_page_credential!(facebook_page_credential.id)
       end
     end
 
@@ -642,7 +643,7 @@ defmodule SocialScribe.AccountsTest do
       facebook_page_credential = facebook_page_credential_fixture()
 
       assert %Ecto.Changeset{} =
-               Accounts.change_facebook_page_credential(facebook_page_credential)
+               Credentials.change_facebook_page_credential(facebook_page_credential)
     end
 
     test "user cant have 2 selected facebook page credentials" do
@@ -657,7 +658,7 @@ defmodule SocialScribe.AccountsTest do
         })
 
       assert {:error, %Ecto.Changeset{}} =
-               Accounts.create_facebook_page_credential(%{
+               Credentials.create_facebook_page_credential(%{
                  category: "some category",
                  facebook_page_id: "some facebook_page_id",
                  page_name: "some page_name",

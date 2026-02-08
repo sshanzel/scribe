@@ -7,7 +7,7 @@ defmodule SocialScribeWeb.MeetingLive.Show do
 
   alias SocialScribe.Meetings
   alias SocialScribe.Automations
-  alias SocialScribe.Accounts
+  alias SocialScribe.Accounts.Credentials
   alias SocialScribe.HubspotApiBehaviour, as: HubspotApi
   alias SocialScribe.HubspotSuggestions
   alias SocialScribe.SalesforceApiBehaviour, as: SalesforceApi
@@ -45,10 +45,10 @@ defmodule SocialScribeWeb.MeetingLive.Show do
 
       {:ok, socket}
     else
-      hubspot_credential = Accounts.get_user_hubspot_credential(socket.assigns.current_user.id)
+      hubspot_credential = Credentials.get_user_hubspot_credential(socket.assigns.current_user.id)
 
       salesforce_credential =
-        Accounts.get_user_salesforce_credential(socket.assigns.current_user.id)
+        Credentials.get_user_salesforce_credential(socket.assigns.current_user.id)
 
       socket =
         socket

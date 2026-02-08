@@ -8,7 +8,7 @@
 # - Pass your user email as an argument or set it below
 
 alias SocialScribe.Repo
-alias SocialScribe.Accounts
+alias SocialScribe.Accounts.Credentials
 alias SocialScribe.Accounts.User
 alias SocialScribe.Calendar.CalendarEvent
 alias SocialScribe.Bots.RecallBot
@@ -21,7 +21,7 @@ user_email = System.get_env("SEED_USER_EMAIL") || "your-email@example.com"
 user = Repo.get_by!(User, email: user_email)
 IO.puts("Found user: #{user.email}")
 
-credential = Accounts.get_user_salesforce_credential(user.id)
+credential = Credentials.get_user_salesforce_credential(user.id)
 
 if is_nil(credential) do
   IO.puts("ERROR: No Salesforce credential found for user. Please connect Salesforce first.")

@@ -9,7 +9,7 @@ defmodule SocialScribe.HubspotTokenRefresher do
     token_url: "https://api.hubapi.com/oauth/v1/token",
     oauth_config_key: Ueberauth.Strategy.Hubspot.OAuth
 
-  alias SocialScribe.Accounts
+  alias SocialScribe.Accounts.Credentials
 
   @impl SocialScribe.TokenRefresher.Base
   def parse_token_response(response, _credential) do
@@ -22,6 +22,6 @@ defmodule SocialScribe.HubspotTokenRefresher do
 
   @impl SocialScribe.TokenRefresher.Base
   def update_credential(credential, attrs) do
-    Accounts.update_user_credential(credential, attrs)
+    Credentials.update_user_credential(credential, attrs)
   end
 end
