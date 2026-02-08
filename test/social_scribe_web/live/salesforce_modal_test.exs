@@ -142,7 +142,12 @@ defmodule SocialScribeWeb.SalesforceModalTest do
                                                                                 _meeting ->
         {:ok,
          [
-           %{field: "phone", value: "555-9999", context: "Mentioned new phone number"}
+           %{
+             field: "phone",
+             value: "555-9999",
+             context: "John said 'my new number is 555-9999'",
+             timestamp: "01:23"
+           }
          ]}
       end)
 
@@ -160,8 +165,11 @@ defmodule SocialScribeWeb.SalesforceModalTest do
 
       html = wait_for(view, fn h -> h =~ "555-9999" end)
 
+      # Modal should show suggestions with transcript reference
       assert html =~ "555-9999"
       assert html =~ "salesforce-modal-wrapper"
+      assert html =~ "Found in transcript"
+      assert html =~ "(01:23)"
     end
 
     test "contact dropdown shows search results", %{conn: conn, meeting: meeting} do
@@ -208,7 +216,12 @@ defmodule SocialScribeWeb.SalesforceModalTest do
                                                                                 _meeting ->
         {:ok,
          [
-           %{field: "phone", value: "999-8888", context: "Bob mentioned new number"}
+           %{
+             field: "phone",
+             value: "999-8888",
+             context: "Bob said 'call me at 999-8888'",
+             timestamp: "02:45"
+           }
          ]}
       end)
 
