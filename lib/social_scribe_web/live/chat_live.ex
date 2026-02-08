@@ -9,6 +9,7 @@ defmodule SocialScribeWeb.ChatLive do
 
   alias Phoenix.LiveView.AsyncResult
   alias SocialScribe.Chat
+  alias SocialScribe.ChatAI.PromptBuilder
   alias SocialScribe.ChatAIApi
   alias SocialScribe.CRM.ContactSearch
 
@@ -807,10 +808,10 @@ defmodule SocialScribeWeb.ChatLive do
   defp render_meeting_links(content, []), do: content
 
   defp render_meeting_links(content, _meeting_refs) do
-    # Convert [Meeting: title (date)](meeting:123) to clickable links
+    # Uses shared regex from PromptBuilder to stay in sync with AI instructions
     # Use data-phx-link="redirect" for LiveView navigation (no full page reload)
     Regex.replace(
-      ~r/\[Meeting:\s*(.+?)\]\(meeting:(\d+)\)/,
+      PromptBuilder.meeting_link_regex(),
       content,
       ~s(<a href="/dashboard/meetings/\\2" data-phx-link="redirect" data-phx-link-state="push" class="text-slate-600 hover:text-slate-800 underline font-medium">\\1</a><img src="/images/jump-logo.svg" class="w-3 h-3 inline ml-1 align-baseline" />)
     )

@@ -22,7 +22,8 @@ defmodule SocialScribe.ChatAI.PromptBuilderTest do
       - Base your answers ONLY on the context provided below
       - If information is not in the meeting transcripts or contact data, clearly state that you don't have that information
       - Never guess, infer, or make up information
-      - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
+      - When referencing a meeting, mention the date naturally as a link using format: [Month Day, Year](meeting:{meeting_id})
+        Example: "In a meeting on [January 15, 2025](meeting:123), they discussed..." or "During the [November 3, 2025](meeting:456) call..."
       - Format responses in markdown
 
       CONTACT INFORMATION:
@@ -62,7 +63,8 @@ defmodule SocialScribe.ChatAI.PromptBuilderTest do
       - Base your answers ONLY on the context provided below
       - If information is not in the meeting transcripts or contact data, clearly state that you don't have that information
       - Never guess, infer, or make up information
-      - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
+      - When referencing a meeting, mention the date naturally as a link using format: [Month Day, Year](meeting:{meeting_id})
+        Example: "In a meeting on [January 15, 2025](meeting:123), they discussed..." or "During the [November 3, 2025](meeting:456) call..."
       - Format responses in markdown
 
       CONTACT INFORMATION:
@@ -99,7 +101,8 @@ defmodule SocialScribe.ChatAI.PromptBuilderTest do
       - Base your answers ONLY on the context provided below
       - If information is not in the meeting transcripts or contact data, clearly state that you don't have that information
       - Never guess, infer, or make up information
-      - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
+      - When referencing a meeting, mention the date naturally as a link using format: [Month Day, Year](meeting:{meeting_id})
+        Example: "In a meeting on [January 15, 2025](meeting:123), they discussed..." or "During the [November 3, 2025](meeting:456) call..."
       - Format responses in markdown
 
       CONTACT INFORMATION:
@@ -140,7 +143,8 @@ defmodule SocialScribe.ChatAI.PromptBuilderTest do
       - Base your answers ONLY on the context provided below
       - If information is not in the meeting transcripts, clearly state that you don't have that information
       - Never guess, infer, or make up information
-      - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
+      - When referencing a meeting, mention the date naturally as a link using format: [Month Day, Year](meeting:{meeting_id})
+        Example: "In a meeting on [January 15, 2025](meeting:123), they discussed..." or "During the [November 3, 2025](meeting:456) call..."
       - Format responses in markdown
 
       RECENT MEETING HISTORY (most recent first, last 2 meetings):
@@ -185,7 +189,8 @@ defmodule SocialScribe.ChatAI.PromptBuilderTest do
       - Base your answers ONLY on the context provided below
       - If information is not in the meeting transcripts or contact data, clearly state that you don't have that information
       - Never guess, infer, or make up information
-      - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
+      - When referencing a meeting, mention the date naturally as a link using format: [Month Day, Year](meeting:{meeting_id})
+        Example: "In a meeting on [January 15, 2025](meeting:123), they discussed..." or "During the [November 3, 2025](meeting:456) call..."
       - Format responses in markdown
 
       CONTACT INFORMATION:
@@ -208,7 +213,7 @@ defmodule SocialScribe.ChatAI.PromptBuilderTest do
       1. Only use information from these meetings if the context (topic, company, participants) clearly matches the contact
       2. Look for the meeting with strong contextual evidence when reviewing the details against the questions being asked to determine if it's likely to be the same person
       3. The email mismatched which is why we should not use it to compare whether this was the user or not
-      4. Mention in your response that these meetings were based on the participant's name only and may not be the same person, so the information should be used with caution
+      4. Mention in your response that these meetings were based on the participant's name only and may not be the same person in a concise manner
       5. If there is any uncertainty, it's better to state that you don't have enough information rather than risk providing inaccurate information
 
       ### Meeting: Q4 Planning with Sarah
@@ -252,7 +257,8 @@ defmodule SocialScribe.ChatAI.PromptBuilderTest do
       - Base your answers ONLY on the context provided below
       - If information is not in the meeting transcripts or contact data, clearly state that you don't have that information
       - Never guess, infer, or make up information
-      - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
+      - When referencing a meeting, mention the date naturally as a link using format: [Month Day, Year](meeting:{meeting_id})
+        Example: "In a meeting on [January 15, 2025](meeting:123), they discussed..." or "During the [November 3, 2025](meeting:456) call..."
       - Format responses in markdown
 
       CONTACT INFORMATION:

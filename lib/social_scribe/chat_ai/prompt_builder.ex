@@ -6,12 +6,34 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
   - Building system context from meetings and CRM data
   - Formatting meeting transcripts for AI consumption
   - Building Gemini API payloads
+  - Meeting link format definition (used by both AI prompts and rendering)
   """
 
   alias SocialScribe.Contacts.Contact
   alias SocialScribe.Meetings.{Meeting, MeetingTranscript, MeetingParticipant}
   alias SocialScribe.Chat.ChatMessage
   alias SocialScribe.TranscriptParser
+
+  # =============================================================================
+  # Meeting Link Format
+  # =============================================================================
+
+  @meeting_link_regex ~r/\[([^\]]+)\]\(meeting:(\d+)\)/
+  @meeting_link_instruction """
+  - When referencing a meeting, mention the date naturally as a link using format: [Month Day, Year](meeting:{meeting_id})
+    Example: "In a meeting on [January 15, 2025](meeting:123), they discussed..." or "During the [November 3, 2025](meeting:456) call..."\
+  """
+
+  @doc """
+  Returns the regex pattern for matching meeting links in AI responses.
+  Format: [link text](meeting:id)
+  """
+  def meeting_link_regex, do: @meeting_link_regex
+
+  @doc """
+  Returns the instruction text for the AI on how to format meeting links.
+  """
+  def meeting_link_instruction, do: @meeting_link_instruction
 
   # =============================================================================
   # Gemini Payload Building
@@ -108,7 +130,7 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
     - Base your answers ONLY on the context provided below
     - If information is not in the meeting transcripts#{info_source}, clearly state that you don't have that information
     - Never guess, infer, or make up information
-    - When referencing a meeting, use this format: [Meeting: {title} ({date})](meeting:{meeting_id})
+    #{@meeting_link_instruction}
     - Format responses in markdown
     #{contact_info}
     #{meeting_label} HISTORY (most recent first, last #{length(meetings)} meetings):
@@ -248,7 +270,7 @@ defmodule SocialScribe.ChatAI.PromptBuilder do
     1. Only use information from these meetings if the context (topic, company, participants) clearly matches the contact
     2. Look for the meeting with strong contextual evidence when reviewing the details against the questions being asked to determine if it's likely to be the same person
     3. The email mismatched which is why we should not use it to compare whether this was the user or not
-    4. Mention in your response that these meetings were based on the participant's name only and may not be the same person, so the information should be used with caution
+    4. Mention in your response that these meetings were based on the participant's name only and may not be the same person in a concise manner
     5. If there is any uncertainty, it's better to state that you don't have enough information rather than risk providing inaccurate information
 
     #{format_meetings(meetings)}
