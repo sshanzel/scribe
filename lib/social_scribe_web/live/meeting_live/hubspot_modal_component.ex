@@ -3,7 +3,7 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
 
   import SocialScribeWeb.CRM.ModalComponents
 
-  alias SocialScribeWeb.MeetingLive.CRMModalHelpers
+  alias SocialScribeWeb.CRM.ModalHelpers
 
   # CRM-specific configuration
   @crm_config %{
@@ -51,58 +51,58 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
 
   @impl true
   def mount(socket) do
-    {:ok, assign(socket, CRMModalHelpers.default_assigns())}
+    {:ok, assign(socket, ModalHelpers.default_assigns())}
   end
 
   @impl true
   def update(assigns, socket) do
-    CRMModalHelpers.handle_update(socket, assigns, @crm_config)
+    ModalHelpers.handle_update(socket, assigns, @crm_config)
   end
 
   # Event handlers delegate to shared helpers
 
   @impl true
   def handle_event("contact_search", params, socket) do
-    CRMModalHelpers.handle_contact_search(socket, params, @crm_config)
+    ModalHelpers.handle_contact_search(socket, params, @crm_config)
   end
 
   @impl true
   def handle_event("open_contact_dropdown", _params, socket) do
-    CRMModalHelpers.handle_open_contact_dropdown(socket)
+    ModalHelpers.handle_open_contact_dropdown(socket)
   end
 
   @impl true
   def handle_event("close_contact_dropdown", _params, socket) do
-    CRMModalHelpers.handle_close_contact_dropdown(socket)
+    ModalHelpers.handle_close_contact_dropdown(socket)
   end
 
   @impl true
   def handle_event("toggle_contact_dropdown", _params, socket) do
-    CRMModalHelpers.handle_toggle_contact_dropdown(socket, @crm_config)
+    ModalHelpers.handle_toggle_contact_dropdown(socket, @crm_config)
   end
 
   @impl true
   def handle_event("select_contact", params, socket) do
-    CRMModalHelpers.handle_select_contact(socket, params, @crm_config)
+    ModalHelpers.handle_select_contact(socket, params, @crm_config)
   end
 
   @impl true
   def handle_event("clear_contact", _params, socket) do
-    CRMModalHelpers.handle_clear_contact(socket)
+    ModalHelpers.handle_clear_contact(socket)
   end
 
   @impl true
   def handle_event("toggle_suggestion", params, socket) do
-    CRMModalHelpers.handle_toggle_suggestion(socket, params)
+    ModalHelpers.handle_toggle_suggestion(socket, params)
   end
 
   @impl true
   def handle_event("apply_updates", %{"apply" => _selected, "values" => _values} = params, socket) do
-    CRMModalHelpers.handle_apply_updates(socket, params, @crm_config)
+    ModalHelpers.handle_apply_updates(socket, params, @crm_config)
   end
 
   @impl true
   def handle_event("apply_updates", _params, socket) do
-    CRMModalHelpers.handle_apply_updates_empty(socket)
+    ModalHelpers.handle_apply_updates_empty(socket)
   end
 end

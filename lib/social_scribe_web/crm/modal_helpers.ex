@@ -1,4 +1,4 @@
-defmodule SocialScribeWeb.MeetingLive.CRMModalHelpers do
+defmodule SocialScribeWeb.CRM.ModalHelpers do
   @moduledoc """
   Shared helpers for CRM modal components (HubSpot, Salesforce).
 
@@ -54,7 +54,7 @@ defmodule SocialScribeWeb.MeetingLive.CRMModalHelpers do
   ## Example
 
       def update(assigns, socket) do
-        CRMModalHelpers.handle_update(socket, assigns, @crm_config)
+        ModalHelpers.handle_update(socket, assigns, @crm_config)
       end
   """
   def handle_update(socket, assigns, config) do
