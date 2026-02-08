@@ -288,11 +288,10 @@ defmodule SocialScribeWeb.ChatLive do
 
     socket =
       if new_open do
-        # Load threads when opening - animate the opening
-        threads = Chat.list_threads(socket.assigns.current_user)
+        # Threads already loaded on mount, just open with animation
         # Clear animation flag after render to prevent re-animation on navigation
         Process.send_after(self(), :clear_animate, 300)
-        assign(socket, threads: threads, open: true, animate: true)
+        assign(socket, open: true, animate: true)
       else
         assign(socket, open: false)
       end
