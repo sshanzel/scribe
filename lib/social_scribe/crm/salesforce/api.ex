@@ -126,7 +126,6 @@ defmodule SocialScribe.CRM.Salesforce.Api do
   Updates a contact's properties.
   `updates` should be a map of internal field names to new values.
   Fields are automatically mapped to Salesforce API field names.
-  Read-only fields (like company) are filtered out.
   Automatically refreshes token on 401/expired errors and retries once.
   """
   @impl true

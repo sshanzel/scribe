@@ -59,7 +59,7 @@ defmodule SocialScribe.TranscriptParser do
     format_segments_for_display(transcript_segments)
   end
 
-  def format_for_display(_), do: ""
+  def format_for_display(_), do: "No transcript available"
 
   @doc """
   Formats transcript segments for display (no timestamps).

@@ -82,7 +82,7 @@ defmodule SocialScribe.TranscriptParserTest do
     end
 
     test "returns 'No transcript available' for nil" do
-      assert TranscriptParser.format_for_display(nil) == ""
+      assert TranscriptParser.format_for_display(nil) == "No transcript available"
     end
   end
 

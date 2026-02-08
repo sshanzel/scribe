@@ -137,7 +137,7 @@ defmodule SocialScribeWeb.ChatLive do
                   </div>
 
                   <.loading_indicator loading={@loading} />
-                  <.error_alert message={@error_message} />
+                  <.error_alert :if={@error_message} message={@error_message} />
                 <% else %>
                   <.empty_state
                     title="Start a new conversation"
@@ -536,7 +536,7 @@ defmodule SocialScribeWeb.ChatLive do
 
   defp error_alert(assigns) do
     ~H"""
-    <div :if={@message} class="flex justify-start">
+    <div class="flex justify-start">
       <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-red-700 max-w-[85%]">
         <div class="flex items-start gap-1.5">
           <.icon name="hero-exclamation-circle" class="size-4 flex-shrink-0 mt-0.5" />
