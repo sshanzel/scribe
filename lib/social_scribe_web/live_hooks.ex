@@ -10,11 +10,14 @@ defmodule SocialScribeWeb.LiveHooks do
     user = socket.assigns[:current_user]
     seeded = user && Map.get(user, :has_seeded, false)
 
-    # Only show seed button if env is set AND user has Salesforce connected
-    has_salesforce =
-      user && Credentials.get_user_latest_credential(user.id, "salesforce") != nil
-
-    show_seed_button = env_enabled and has_salesforce
+    # Only query DB if env is enabled AND user exists AND hasn't seeded yet
+    # This avoids unnecessary DB queries on every page load
+    show_seed_button =
+      if env_enabled && user && !seeded do
+        Credentials.get_user_latest_credential(user.id, "salesforce") != nil
+      else
+        false
+      end
 
     socket =
       socket

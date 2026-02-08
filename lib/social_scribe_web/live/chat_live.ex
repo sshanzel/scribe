@@ -340,25 +340,17 @@ defmodule SocialScribeWeb.ChatLive do
   end
 
   def handle_event("switch_tab", %{"tab" => "history"}, socket) do
-    threads = Chat.list_threads(socket.assigns.current_user)
-
-    socket =
-      socket
-      |> assign(:active_tab, :history)
-      |> assign(:threads, threads)
-
-    {:noreply, socket}
+    # Threads already in socket, just switch tab
+    {:noreply, assign(socket, :active_tab, :history)}
   end
 
   @impl true
   def handle_event("back_to_threads", _params, socket) do
-    threads = Chat.list_threads(socket.assigns.current_user)
-
+    # Threads already updated when created/modified, no need to reload
     socket =
       socket
       |> assign(:current_thread, nil)
       |> assign(:messages, [])
-      |> assign(:threads, threads)
       |> assign(:mentions, [])
       |> assign(:message_input, "")
       |> assign(:show_mention_dropdown, false)
