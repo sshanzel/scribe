@@ -249,7 +249,7 @@ defmodule SocialScribeWeb.ChatLive do
               </div>
             <% else %>
               <!-- History View -->
-              <div class="flex-1 overflow-y-auto">
+              <div class="flex-1 overflow-y-auto flex flex-col">
                 <div :for={thread <- @threads} class="border-b border-slate-100">
                   <button
                     phx-click="select_thread"
@@ -265,8 +265,11 @@ defmodule SocialScribeWeb.ChatLive do
                   </button>
                 </div>
 
-                <div :if={@threads == []} class="p-6 text-center text-slate-400">
-                  <.icon name="hero-inbox" class="size-8 mx-auto mb-2" />
+                <div
+                  :if={@threads == []}
+                  class="flex-1 flex flex-col items-center justify-center text-slate-400 py-6"
+                >
+                  <.icon name="hero-inbox" class="size-8 mb-2 -mt-32" />
                   <p class="text-sm">No conversations yet</p>
                 </div>
               </div>
