@@ -4,7 +4,7 @@ defmodule SocialScribeWeb.CRM.ModalComponents do
 
   These components are shared between HubSpot, Salesforce, and other CRM modals.
   For generic modal components, see `SocialScribeWeb.ModalComponents`.
-  Aliased as `SocialScribeWeb.CRM.ModalComponents` for namespacing.
+  This module lives under the `SocialScribeWeb.CRM` namespace to group CRM-specific components.
   """
   use Phoenix.Component
 
@@ -44,12 +44,16 @@ defmodule SocialScribeWeb.CRM.ModalComponents do
   def contact_select(assigns) do
     ~H"""
     <div class="space-y-1">
-      <label for={"#{@id}-input"} class="block text-sm font-medium text-slate-700">
+      <label
+        for={if @selected_contact, do: "#{@id}-button", else: "#{@id}-input"}
+        class="block text-sm font-medium text-slate-700"
+      >
         Select Contact
       </label>
       <div class="relative">
         <%= if @selected_contact do %>
           <button
+            id={"#{@id}-button"}
             type="button"
             phx-click="toggle_contact_dropdown"
             phx-target={@target}
