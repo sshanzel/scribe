@@ -9,8 +9,11 @@ defmodule SocialScribeWeb.ChatLive do
 
   alias Phoenix.LiveView.AsyncResult
   alias SocialScribe.Chat
-  alias SocialScribe.Contacts
+  alias SocialScribe.ChatAI.PromptBuilder
   alias SocialScribe.ChatAIApi
+  alias SocialScribe.CRM.ContactSearch
+
+  @search_debounce_ms 300
 
   @impl true
   def mount(_params, _session, socket) do
@@ -33,6 +36,9 @@ defmodule SocialScribeWeb.ChatLive do
       |> assign(:active_tab, :chat)
       # Threads not loaded yet - will be fetched when history tab opens
       |> assign(:threads, nil)
+      # Contact search debounce and loading state
+      |> assign(:search_timer, nil)
+      |> assign(:searching, false)
 
     # No layout for embedded LiveView
     {:ok, socket, layout: false}
@@ -42,7 +48,6 @@ defmodule SocialScribeWeb.ChatLive do
   def render(assigns) do
     ~H"""
     <div id="chat-container" class="fixed bottom-4 right-4 z-50">
-      <!-- Chat Bubble -->
       <button
         :if={!@open}
         phx-click="toggle_chat"
@@ -57,7 +62,6 @@ defmodule SocialScribeWeb.ChatLive do
           <h3 class="font-semibold text-slate-800 text-base">Ask Anything</h3>
         </:header>
         <:body>
-          <!-- Tab Bar -->
           <div class="flex items-center justify-between px-3 py-1.5">
             <div class="flex gap-1">
               <button
@@ -91,25 +95,21 @@ defmodule SocialScribeWeb.ChatLive do
               <.icon name="hero-plus" class="size-4" />
             </button>
           </div>
-          
-    <!-- Content Area -->
+
           <div class="flex-1 overflow-hidden flex flex-col">
             <%= if @active_tab == :chat do %>
-              <!-- Messages View -->
               <div
                 id="messages-container"
                 class="flex-1 overflow-y-auto p-3 space-y-3 flex flex-col"
                 phx-hook="ScrollToBottom"
               >
-                <!-- Timestamp -->
                 <.timestamp_separator datetime={
                   cond do
                     @current_thread -> @current_thread.inserted_at
                     true -> DateTime.utc_now()
                   end
                 } />
-                
-    <!-- Persistent welcome message (always first) -->
+
                 <div class="flex justify-start">
                   <div class="text-slate-800 px-3 py-2 max-w-[85%]">
                     <div class="text-sm leading-relaxed">
@@ -128,7 +128,6 @@ defmodule SocialScribeWeb.ChatLive do
                       <div class="text-sm leading-relaxed">
                         {raw(render_message_content(message))}
                       </div>
-                      <!-- Sources for the last assistant message -->
                       <.sources_indicator :if={
                         message.role != "user" && index == length(@messages) - 1
                       } />
@@ -139,11 +138,9 @@ defmodule SocialScribeWeb.ChatLive do
                   <.error_alert :if={@error_message} message={@error_message} />
                 <% end %>
               </div>
-              
-    <!-- Message Input Container -->
+
               <div class="p-2">
                 <div class="rounded-lg border border-slate-200 bg-white">
-                  <!-- Row 1: Add context button -->
                   <div class="px-2.5 pt-1.5">
                     <button
                       type="button"
@@ -153,8 +150,7 @@ defmodule SocialScribeWeb.ChatLive do
                       <span>Add context</span>
                     </button>
                   </div>
-                  
-    <!-- Row 2: Input field (plain) -->
+
                   <div class="relative">
                     <div
                       id="mention-input"
@@ -164,60 +160,77 @@ defmodule SocialScribeWeb.ChatLive do
                       data-placeholder="Type @ to mention a contact..."
                       class="min-h-[50px] max-h-[100px] overflow-y-auto w-full focus:outline-none text-sm px-2.5 py-1.5 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
                     ></div>
-                    
-    <!-- Contact Mention Dropdown -->
+
                     <div
-                      :if={@show_mention_dropdown && length(@contact_results) > 0}
+                      :if={@show_mention_dropdown}
                       class="absolute bottom-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto z-10"
                     >
+                      <div :if={@searching} class="px-3 py-4 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                          <.icon name="hero-arrow-path" class="h-4 w-4 text-slate-400 animate-spin" />
+                          <span class="text-sm text-slate-500">Searching CRM...</span>
+                        </div>
+                      </div>
+                      <div
+                        :if={!@searching && length(@contact_results) == 0}
+                        class="px-3 py-4 text-center"
+                      >
+                        <p class="text-sm text-slate-500">
+                          Type to search your CRM contacts
+                        </p>
+                      </div>
                       <button
                         :for={contact <- @contact_results}
+                        :if={!@searching}
                         type="button"
                         phx-click="select_contact"
                         phx-value-id={contact.id}
                         class="w-full px-2.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2"
                       >
-                        <img
-                          src={"https://ui-avatars.com/api/?name=#{URI.encode(contact.name)}&size=24&background=475569&color=fff"}
-                          class="w-6 h-6 rounded-full"
-                          alt={contact.name}
-                        />
-                        <div>
-                          <div class="text-sm font-medium text-slate-800">{contact.name}</div>
-                          <div class="text-xs text-slate-500">{contact.email}</div>
+                        <div class="relative flex-shrink-0">
+                          <div class="w-6 h-6 rounded-full bg-slate-600 text-white text-xs flex items-center justify-center font-medium">
+                            {get_initials(contact.name)}
+                          </div>
+                          <img
+                            src={source_logo_path(contact.source)}
+                            class="absolute -bottom-0.5 -right-1 w-3 h-3 bg-white rounded-full p-px"
+                            alt={Atom.to_string(contact.source)}
+                          />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <div class="text-sm font-medium text-slate-800 truncate">
+                            {contact.name}
+                          </div>
+                          <div class="text-xs text-slate-500 truncate">
+                            {contact.email}
+                          </div>
                         </div>
                       </button>
                     </div>
                   </div>
-                  
-    <!-- Row 3: Sources + Submit button -->
+
                   <div class="px-2.5 py-1.5 flex items-center justify-between">
-                    <!-- Sources - always displayed -->
                     <div class="flex items-center gap-1.5">
                       <span class="text-xs text-slate-400">Sources</span>
                       <div class="flex -space-x-2">
-                        <!-- Jump AI logo -->
                         <div
                           class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center ring-1 ring-white z-40"
                           title="Jump AI Meetings"
                         >
                           <img src={~p"/images/jump-logo.svg"} class="w-3 h-3" />
                         </div>
-                        <!-- Gmail logo -->
                         <div
                           class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center ring-1 ring-white z-30"
                           title="Gmail"
                         >
                           <img src={~p"/images/gmail-logo.svg"} class="w-3 h-3" />
                         </div>
-                        <!-- HubSpot logo -->
                         <div
                           class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center ring-1 ring-white z-20"
                           title="HubSpot"
                         >
                           <img src={~p"/images/hubspot-logo.svg"} class="w-3 h-3" />
                         </div>
-                        <!-- Salesforce logo -->
                         <div
                           class="w-5 h-5 rounded-full bg-[#f0f5f5] flex items-center justify-center ring-1 ring-white z-10"
                           title="Salesforce"
@@ -240,10 +253,8 @@ defmodule SocialScribeWeb.ChatLive do
                 </div>
               </div>
             <% else %>
-              <!-- History View -->
               <div class="flex-1 overflow-y-auto flex flex-col">
                 <%= if is_nil(@threads) or @threads.loading do %>
-                  <!-- Loading state -->
                   <div class="flex-1 flex flex-col items-center justify-center text-slate-400 py-6">
                     <.icon name="hero-arrow-path" class="size-6 mb-2 animate-spin" />
                     <p class="text-sm">Loading...</p>
@@ -393,21 +404,28 @@ defmodule SocialScribeWeb.ChatLive do
   end
 
   @impl true
-  def handle_event("select_contact", %{"id" => id}, socket) do
-    contact_id = String.to_integer(id)
-    contact = Contacts.get_contact!(contact_id)
+  def handle_event("select_contact", %{"id" => compound_id}, socket) do
+    case find_contact_in_results(socket.assigns.contact_results, compound_id) do
+      {:ok, contact} ->
+        mention = build_mention_from_contact(contact)
+        mentions = socket.assigns.mentions ++ [mention]
 
-    # Add contact to mentions list
-    mentions = socket.assigns.mentions ++ [contact]
+        socket =
+          socket
+          |> assign(:mentions, mentions)
+          |> assign(:show_mention_dropdown, false)
+          |> assign(:contact_results, [])
+          |> push_event("insert_mention", %{
+            id: compound_id,
+            name: contact.name,
+            source: Atom.to_string(contact.source)
+          })
 
-    socket =
-      socket
-      |> assign(:mentions, mentions)
-      |> assign(:show_mention_dropdown, false)
-      |> assign(:contact_results, [])
-      |> push_event("insert_mention", %{id: contact.id, name: contact.name})
+        {:noreply, socket}
 
-    {:noreply, socket}
+      {:error, :not_found} ->
+        {:noreply, socket}
+    end
   end
 
   @impl true
@@ -441,13 +459,18 @@ defmodule SocialScribeWeb.ChatLive do
         end
 
       # Build metadata from mentions
+      # contact_id enables direct meeting lookup for local contacts
+      # crm_data provides enriched info from CRM
       metadata = %{
         "mentions" =>
-          Enum.map(socket.assigns.mentions, fn contact ->
+          Enum.map(socket.assigns.mentions, fn mention ->
             %{
-              "contact_id" => contact.id,
-              "name" => contact.name,
-              "email" => contact.email
+              "contact_id" => mention[:contact_id],
+              "name" => mention[:name],
+              "email" => mention[:email],
+              "source" => mention[:source],
+              "crm_id" => mention[:crm_id],
+              "crm_data" => mention[:crm_data]
             }
           end)
       }
@@ -522,6 +545,83 @@ defmodule SocialScribeWeb.ChatLive do
   @impl true
   def handle_info(:clear_animate, socket) do
     {:noreply, assign(socket, :animate, false)}
+  end
+
+  @impl true
+  def handle_info({:search_contacts, query}, socket) do
+    # Only start search if this query matches the pending query.
+    # This prevents stale debounced messages from triggering searches.
+    if query == socket.assigns[:pending_contact_query] do
+      # Run search async to keep LiveView responsive during slow CRM calls
+      user = socket.assigns.current_user
+      parent = self()
+
+      Task.start(fn ->
+        result =
+          try do
+            ContactSearch.search(user, query)
+          rescue
+            _ -> {:ok, []}
+          end
+
+        send(parent, {:contact_search_complete, query, result})
+      end)
+
+      {:noreply, assign(socket, :search_timer, nil)}
+    else
+      # Stale search: ignore this message
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_info({:contact_search_complete, query, result}, socket) do
+    # Only apply results if this query is still the pending query
+    socket =
+      if query == socket.assigns[:pending_contact_query] do
+        results =
+          case result do
+            {:ok, r} -> r
+            _ -> []
+          end
+
+        socket
+        |> assign(:searching, false)
+        |> assign(:contact_results, results)
+        |> assign(:pending_contact_query, nil)
+      else
+        # Stale result: ignore
+        socket
+      end
+
+    {:noreply, socket}
+  end
+
+  defp find_contact_in_results(results, compound_id) do
+    case Enum.find(results, &(&1.id == compound_id)) do
+      nil -> {:error, :not_found}
+      contact -> {:ok, contact}
+    end
+  end
+
+  defp build_mention_from_contact(%{source: source} = contact) do
+    # Set crm_data to nil for local contacts so PromptBuilder doesn't show
+    # "Unknown" for Company/Title/Phone fields
+    crm_data =
+      if source == :local do
+        nil
+      else
+        contact[:crm_data]
+      end
+
+    %{
+      contact_id: contact[:contact_id],
+      name: contact[:name],
+      email: contact[:email],
+      source: to_string(source),
+      crm_id: contact[:crm_id],
+      crm_data: crm_data
+    }
   end
 
   # =============================================================================
@@ -628,27 +728,67 @@ defmodule SocialScribeWeb.ChatLive do
   end
 
   defp maybe_search_contacts(socket, value) do
-    # Check if there's an @ mention at the end
+    # Cancel any existing search timer
+    socket = cancel_search_timer(socket)
+
     case Regex.run(~r/@(\S*)$/, value) do
       [_, query] when byte_size(query) >= 1 ->
-        results = Contacts.search_contacts(socket.assigns.current_user, query)
-
-        socket
-        |> assign(:show_mention_dropdown, true)
-        |> assign(:contact_results, results)
+        schedule_contact_search(socket, query)
 
       [_, ""] ->
-        # Just @ with no query yet - show first 5 contacts
-        results = Contacts.list_contacts(socket.assigns.current_user) |> Enum.take(5)
-
+        # Just @ with no query yet - show dropdown but don't search (CRM calls are expensive)
         socket
         |> assign(:show_mention_dropdown, true)
-        |> assign(:contact_results, results)
+        |> assign(:searching, false)
+        |> assign(:contact_results, [])
 
       nil ->
         socket
         |> assign(:show_mention_dropdown, false)
+        |> assign(:searching, false)
         |> assign(:contact_results, [])
+        |> assign(:pending_contact_query, nil)
+    end
+  end
+
+  defp cancel_search_timer(%{assigns: %{search_timer: nil}} = socket), do: socket
+
+  defp cancel_search_timer(%{assigns: %{search_timer: timer}} = socket) do
+    Process.cancel_timer(timer)
+
+    socket
+    |> assign(:search_timer, nil)
+    |> assign(:pending_contact_query, nil)
+  end
+
+  defp schedule_contact_search(socket, query) do
+    timer = Process.send_after(self(), {:search_contacts, query}, @search_debounce_ms)
+
+    socket
+    |> assign(:search_timer, timer)
+    |> assign(:pending_contact_query, query)
+    |> assign(:show_mention_dropdown, true)
+    |> assign(:searching, true)
+  end
+
+  defp source_logo_path(:hubspot), do: ~p"/images/hubspot-logo.svg"
+  defp source_logo_path(:salesforce), do: ~p"/images/salesforce-logo.svg"
+  defp source_logo_path(:local), do: ~p"/images/jump-logo.svg"
+  defp source_logo_path(_), do: ~p"/images/jump-logo.svg"
+
+  defp get_initials(nil), do: "?"
+  defp get_initials(""), do: "?"
+
+  defp get_initials(name) when is_binary(name) do
+    name
+    |> String.trim()
+    |> String.split(~r/\s+/, parts: 2)
+    |> Enum.map(&String.first/1)
+    |> Enum.join()
+    |> String.upcase()
+    |> case do
+      "" -> "?"
+      initials -> initials
     end
   end
 
@@ -694,30 +834,44 @@ defmodule SocialScribeWeb.ChatLive do
     Enum.reduce(mentions, content, fn mention, acc ->
       name = mention["name"] || ""
       first_name = name |> String.split() |> List.first() || name
-      initial = String.first(name) |> String.upcase()
+      initial = if name != "", do: String.first(name) |> String.upcase(), else: "?"
+      source = mention["source"] || "local"
 
       # The @ was already escaped, so match the escaped version
       pattern = "@#{escape_html(name)}"
 
       # Use same styling as the input mention chip (hooks.js)
-      avatar_html = mention_chip_html(initial, first_name)
+      avatar_html = mention_chip_html(initial, first_name, source)
 
       String.replace(acc, pattern, avatar_html)
     end)
   end
 
   # Shared mention chip HTML - keep in sync with assets/js/hooks.js MentionInput
-  defp mention_chip_html(initial, display_name) do
-    ~s(<span class="mention-chip inline-flex items-center gap-1 bg-slate-200 text-slate-700 px-1 py-px rounded-full text-xs font-medium"><span class="relative"><span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">#{initial}</span><img src="/images/jump-logo.svg" class="absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0" /></span><span>#{display_name}</span></span>)
+  defp mention_chip_html(initial, display_name, source) do
+    # Convert string source to atom for logo lookup
+    source_atom = source_to_atom(source)
+    logo_path = source_logo_path(source_atom)
+
+    # Escape user-provided values to prevent XSS
+    safe_initial = escape_html(initial)
+    safe_display_name = escape_html(display_name)
+
+    ~s(<span class="mention-chip inline-flex items-center gap-1 bg-slate-200 text-slate-700 px-1 py-px rounded-full text-xs font-medium"><span class="relative"><span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">#{safe_initial}</span><img src="#{logo_path}" class="absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0" /></span><span>#{safe_display_name}</span></span>)
   end
+
+  defp source_to_atom("hubspot"), do: :hubspot
+  defp source_to_atom("salesforce"), do: :salesforce
+  defp source_to_atom("local"), do: :local
+  defp source_to_atom(_), do: :local
 
   defp render_meeting_links(content, []), do: content
 
   defp render_meeting_links(content, _meeting_refs) do
-    # Convert [Meeting: title (date)](meeting:123) to clickable links
+    # Uses shared regex from PromptBuilder to stay in sync with AI instructions
     # Use data-phx-link="redirect" for LiveView navigation (no full page reload)
     Regex.replace(
-      ~r/\[Meeting:\s*(.+?)\]\(meeting:(\d+)\)/,
+      PromptBuilder.meeting_link_regex(),
       content,
       ~s(<a href="/dashboard/meetings/\\2" data-phx-link="redirect" data-phx-link-state="push" class="text-slate-600 hover:text-slate-800 underline font-medium">\\1</a><img src="/images/jump-logo.svg" class="w-3 h-3 inline ml-1 align-baseline" />)
     )

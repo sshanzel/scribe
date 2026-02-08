@@ -57,11 +57,8 @@ defmodule SocialScribeWeb.Sidebar do
 
     ~H"""
     <div id={@id} class="hidden fixed inset-0 z-50 md:hidden">
-      <!-- Backdrop -->
       <div class="fixed inset-0 bg-black/20" phx-click={JS.hide(to: "##{@id}")} />
-      <!-- Drawer panel -->
       <div class="fixed inset-y-0 left-0 w-[212px] bg-white shadow-2xl animate-slide-in-left flex flex-col">
-        <!-- Close button -->
         <div class="flex justify-end px-4 py-3">
           <button
             phx-click={JS.hide(to: "##{@id}")}
@@ -71,7 +68,6 @@ defmodule SocialScribeWeb.Sidebar do
             <.icon name="hero-x-mark" class="size-5" />
           </button>
         </div>
-        <!-- Navigation -->
         <.sidebar_nav
           base_path={@base_path}
           current_path={@current_path}

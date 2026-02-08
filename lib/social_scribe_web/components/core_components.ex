@@ -768,15 +768,13 @@ defmodule SocialScribeWeb.CoreComponents do
   def drawer(assigns) do
     ~H"""
     <div id={@id} class={["fixed inset-0 z-50 sm:relative sm:inset-auto", !@open && "hidden"]}>
-      <!-- Backdrop (mobile only) -->
       <div
         :if={@open}
         class="fixed inset-0 bg-black/20 sm:hidden transition-opacity"
         phx-click={@on_close}
         aria-hidden="true"
       />
-      
-    <!-- Drawer Panel -->
+
       <div class={[
         "fixed inset-y-0 bg-white shadow-2xl flex flex-col overflow-hidden",
         "sm:relative sm:inset-auto sm:rounded-xl sm:border sm:border-slate-200",
@@ -789,7 +787,6 @@ defmodule SocialScribeWeb.CoreComponents do
         @full_width && "w-full",
         !@full_width && "w-80 max-w-[85vw]"
       ]}>
-        <!-- Header -->
         <div :if={@header != []} class="flex items-center justify-between px-4 py-3">
           <div class="flex-1">
             {render_slot(@header)}
@@ -798,8 +795,7 @@ defmodule SocialScribeWeb.CoreComponents do
             <.icon name="hero-chevron-double-right" class="size-5" />
           </button>
         </div>
-        
-    <!-- Body -->
+
         <div class="flex-1 overflow-hidden flex flex-col">
           {render_slot(@body)}
         </div>

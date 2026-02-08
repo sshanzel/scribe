@@ -16,7 +16,7 @@ defmodule SocialScribe.Seeds do
     %{
       first_name: "Sarah",
       last_name: "Chen",
-      email: "sarah.chen@techcorp.io",
+      email: "sarah@techcorp.io",
       phone: "415-555-0123",
       title: "Head of Product"
     },
@@ -170,9 +170,9 @@ defmodule SocialScribe.Seeds do
             "We're aiming to have the API updates done by end of January, dashboard by mid-February, and mobile beta by March 15th.",
           topic2: "the team structure for this",
           topic2_response:
-            "We've got 3 engineers on the API team, 2 on dashboard, and 4 on mobile. I'm leading the mobile effort directly.",
+            "We've got 3 engineers on the API team, 2 on dashboard, and 4 on mobile. I'm leading the mobile effort directly. By the way, I just got promoted to VP of Product last week!",
           contact_info:
-            "Best to reach me on my cell at 415-555-0123, or you can email me at sarah.chen@techcorp.io."
+            "Best to reach me on my new cell at 415-555-9999. My old number doesn't work anymore."
         }
       },
       %{
@@ -189,9 +189,9 @@ defmodule SocialScribe.Seeds do
             "We'd use your REST API to sync data in real-time. We estimate about 3 weeks for a basic integration.",
           topic2: "the commercial terms",
           topic2_response:
-            "We're thinking a revenue share model - 15% of any upsells that come through the integration.",
+            "We're thinking a revenue share model - 15% of any upsells that come through the integration. I should mention, I was just promoted to Chief Partnership Officer last month.",
           contact_info:
-            "My direct line is 628-555-0456. I'm also on LinkedIn - just search Marcus Johnson Innovate."
+            "My new direct line is 628-555-7777. We moved offices so the old number doesn't work. Also, I go by Marc now professionally."
         }
       },
       %{
@@ -208,8 +208,9 @@ defmodule SocialScribe.Seeds do
             "We've looked at PgBouncer for connection pooling and potentially moving to a distributed database.",
           topic2: "your deployment infrastructure",
           topic2_response:
-            "We're on AWS, using ECS for containers. Our AWS bill is around $25,000/month.",
-          contact_info: "You can reach me at emily.r@startup.dev or on my cell 510-555-0789."
+            "We're on AWS, using ECS for containers. Our AWS bill is around $25,000/month. Actually, I'm now Co-founder and CTO since we restructured last quarter.",
+          contact_info:
+            "Best way to reach me is my new number 510-555-3333. I also moved to our new SF office at 500 Howard Street."
         }
       },
       %{
@@ -226,9 +227,9 @@ defmodule SocialScribe.Seeds do
           response: "Our CISO needs to sign off, which typically takes 4-6 weeks.",
           topic2: "data residency requirements",
           topic2_response:
-            "All data must stay within US data centers. We have customers in regulated industries.",
+            "All data must stay within US data centers. We have customers in regulated industries. I'm now CISO by the way - got the promotion effective this month.",
           contact_info:
-            "Best to go through our procurement team. But you can reach me directly at david.kim@enterprise.com or 408-555-0234."
+            "I have a new direct line now: 408-555-8888. The procurement team can be slow, so feel free to call me directly. We also moved to the new building at 1 Enterprise Way, San Jose."
         }
       },
       %{
@@ -244,9 +245,9 @@ defmodule SocialScribe.Seeds do
             "Minimal right now - about 50 customers, mostly in the UK. Revenue from Europe is about $200K ARR.",
           topic2: "the budget and timeline",
           topic2_response:
-            "We've allocated $150,000 for the consulting engagement over 6 months.",
+            "We've allocated $150,000 for the consulting engagement over 6 months. I should mention, I'm now Senior Partner - we just announced the promotion last week.",
           contact_info:
-            "My mobile is 917-555-0890 or email lisa.t@consulting.biz. I check emails even on weekends."
+            "My new mobile is 917-555-4444. I switched carriers last month. Our firm also rebranded, so my new email is lisa.thompson@globalconsulting.com."
         }
       },
       %{
@@ -263,9 +264,8 @@ defmodule SocialScribe.Seeds do
             "A few crashes on older Android devices, specifically Samsung Galaxy S9 and earlier. We're prioritizing those fixes.",
           topic2: "the launch timeline",
           topic2_response:
-            "Still on track for March 15th. We'll do a soft launch first - 10% of users.",
-          contact_info:
-            "Same as before - 415-555-0123. Oh, and I changed my email to sarah@techcorp.io."
+            "Still on track for March 15th. We'll do a soft launch first - 10% of users. As VP of Product, I'm personally overseeing this launch.",
+          contact_info: "You can reach me at my new number 415-555-9999. I changed it last month."
         }
       }
     ]

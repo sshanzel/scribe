@@ -13,15 +13,124 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   alias SocialScribe.Repo
   alias SocialScribe.Accounts.Credentials
   alias SocialScribe.Accounts.User
+  alias SocialScribe.Contacts
   alias SocialScribe.Contacts.Contact
   alias SocialScribe.Meetings.Meeting
+  alias SocialScribe.Meetings.MeetingParticipant
   alias SocialScribe.Calendar.CalendarEventAttendee
 
   @max_meetings Application.compile_env(:social_scribe, :chat_max_meetings, 10)
+  @max_name_matched_meetings 5
 
   # =============================================================================
   # Public API
   # =============================================================================
+
+  @doc """
+  Gathers context from message metadata.
+
+  Prioritizes contact_id for direct meeting lookup (most efficient),
+  falls back to email lookup if contact_id is not available.
+  CRM data is included when available for enriched AI context.
+
+  Also finds potential name-matched meetings when email matches are insufficient.
+  These are tagged separately so the AI knows they're potential (not confirmed) matches.
+
+  ## Returns
+  - `{:ok, context}` where context includes:
+    - `:contact` - Contact struct or nil
+    - `:crm_data` - CRM data map or nil
+    - `:meetings` - Email-matched meetings (confirmed)
+    - `:name_matched_meetings` - First name matched meetings (potential)
+  """
+  # Priority 1: contact_id available (direct lookup, most reliable)
+  def gather_context_from_metadata(%User{} = user, %{"contact_id" => contact_id} = metadata)
+      when is_integer(contact_id) do
+    # Verify contact is visible to user through their calendar events to prevent
+    # leaking other users' contact data via crafted contact_id
+    case get_user_visible_contact(user, contact_id) do
+      %Contact{} = contact ->
+        meetings = find_meetings_for_contact(user, contact)
+        crm_data = metadata["crm_data"]
+        first_name = extract_first_name(metadata["name"])
+        name_matched = maybe_find_name_matched_meetings(user, first_name, meetings)
+
+        {:ok,
+         %{
+           contact: contact,
+           crm_data: crm_data,
+           meetings: meetings,
+           name_matched_meetings: name_matched
+         }}
+
+      nil ->
+        # Contact not found or not visible to user, fall back to email lookup
+        gather_context_from_metadata(user, Map.delete(metadata, "contact_id"))
+    end
+  end
+
+  # Priority 2: email with CRM data
+  def gather_context_from_metadata(
+        %User{} = user,
+        %{"crm_data" => crm_data, "email" => email} = metadata
+      )
+      when is_map(crm_data) and is_binary(email) and email != "" do
+    meetings = find_meetings_by_email(user, email)
+    first_name = extract_first_name(metadata["name"])
+    name_matched = maybe_find_name_matched_meetings(user, first_name, meetings)
+
+    {:ok,
+     %{
+       contact: nil,
+       crm_data: crm_data,
+       meetings: meetings,
+       name_matched_meetings: name_matched
+     }}
+  end
+
+  # Priority 3: CRM data only (no email, rare case)
+  def gather_context_from_metadata(%User{} = user, %{"crm_data" => crm_data} = metadata)
+      when is_map(crm_data) do
+    first_name = extract_first_name(metadata["name"])
+    name_matched = find_name_matched_meetings(user, first_name, [])
+
+    {:ok,
+     %{
+       contact: nil,
+       crm_data: crm_data,
+       meetings: [],
+       name_matched_meetings: name_matched
+     }}
+  end
+
+  # Priority 4: email only
+  def gather_context_from_metadata(%User{} = user, %{"email" => email} = metadata)
+      when is_binary(email) and email != "" do
+    meetings = find_meetings_by_email(user, email)
+    first_name = extract_first_name(metadata["name"])
+    name_matched = maybe_find_name_matched_meetings(user, first_name, meetings)
+
+    {:ok,
+     %{
+       contact: nil,
+       crm_data: nil,
+       meetings: meetings,
+       name_matched_meetings: name_matched
+     }}
+  end
+
+  # Fallback: no contact info, show recent meetings
+  def gather_context_from_metadata(%User{} = user, _metadata) do
+    meetings = find_recent_meetings_for_user(user)
+
+    {:ok,
+     %{
+       contact: nil,
+       crm_data: nil,
+       meetings: meetings,
+       name_matched_meetings: []
+     }}
+  end
 
   @doc """
   Gathers context for a user and contact.
@@ -29,17 +138,21 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   Returns a map with:
   - `:contact` - The contact struct (or nil)
   - `:crm_data` - CRM data from HubSpot/Salesforce (or nil)
-  - `:meetings` - List of relevant meetings
+  - `:meetings` - List of email-matched meetings (confirmed)
+  - `:name_matched_meetings` - List of name-matched meetings (potential)
   """
   def gather_context(%User{} = user, %Contact{} = contact) do
     crm_data = gather_crm_data(user, contact)
     meetings = find_meetings_for_contact(user, contact)
+    first_name = extract_first_name(contact.name)
+    name_matched = maybe_find_name_matched_meetings(user, first_name, meetings)
 
     {:ok,
      %{
        contact: contact,
        crm_data: crm_data,
-       meetings: meetings
+       meetings: meetings,
+       name_matched_meetings: name_matched
      }}
   end
 
@@ -50,7 +163,8 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
      %{
        contact: nil,
        crm_data: nil,
-       meetings: meetings
+       meetings: meetings,
+       name_matched_meetings: []
      }}
   end
 
@@ -75,6 +189,37 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
   end
 
   def find_meetings_for_contact(_user, _contact), do: []
+
+  @doc """
+  Gets a contact only if visible to the user through their calendar events.
+  Returns nil if the contact doesn't exist or isn't associated with the user.
+  """
+  def get_user_visible_contact(%User{id: user_id}, contact_id) when is_integer(contact_id) do
+    Contact
+    |> join(:inner, [c], cea in CalendarEventAttendee, on: cea.contact_id == c.id)
+    |> join(:inner, [c, cea], ce in assoc(cea, :calendar_event))
+    |> where([c, cea, ce], c.id == ^contact_id)
+    |> where([c, cea, ce], ce.user_id == ^user_id)
+    |> limit(1)
+    |> Repo.one()
+  end
+
+  def get_user_visible_contact(_user, _contact_id), do: nil
+
+  @doc """
+  Finds meetings for a contact by email.
+
+  Looks up the contact in the local contacts table by email, then finds
+  meetings where that contact was an attendee.
+  """
+  def find_meetings_by_email(%User{} = user, email) when is_binary(email) do
+    case Contacts.get_contact_by_email(email) do
+      nil -> []
+      contact -> find_meetings_for_contact(user, contact)
+    end
+  end
+
+  def find_meetings_by_email(_user, _email), do: []
 
   @doc """
   Finds the most recent meetings for a user when no specific contact is tagged.
@@ -140,6 +285,63 @@ defmodule SocialScribe.ChatAI.ContextBuilder do
           {:ok, []} -> {:ok, nil}
           {:error, _} = error -> error
         end
+    end
+  end
+
+  # =============================================================================
+  # Name-Based Meeting Search
+  # =============================================================================
+
+  # Only search by name when there are no email-matched meetings
+  defp maybe_find_name_matched_meetings(_user, _first_name, [_ | _]), do: []
+
+  defp maybe_find_name_matched_meetings(user, first_name, []) do
+    find_name_matched_meetings(user, first_name, [])
+  end
+
+  @doc """
+  Finds meetings where a participant's first name matches.
+  Returns up to #{@max_name_matched_meetings} meetings.
+
+  These are "potential" matches since name matching is less reliable than email.
+  """
+  def find_name_matched_meetings(_user, nil, _email_meetings), do: []
+  def find_name_matched_meetings(_user, "", _email_meetings), do: []
+
+  def find_name_matched_meetings(%User{id: user_id}, first_name, _email_meetings)
+      when is_binary(first_name) do
+    name_pattern = "#{first_name}%"
+
+    # Subquery to get distinct meeting IDs that match
+    matching_ids =
+      Meeting
+      |> join(:inner, [m], ce in assoc(m, :calendar_event))
+      |> join(:inner, [m, ce], mp in MeetingParticipant, on: mp.meeting_id == m.id)
+      |> where([m, ce, mp], ce.user_id == ^user_id)
+      |> where([m, ce, mp], ilike(mp.name, ^name_pattern))
+      |> select([m, ce, mp], m.id)
+      |> distinct(true)
+
+    # Query meetings by those IDs, ordered by most recent
+    Meeting
+    |> where([m], m.id in subquery(matching_ids))
+    |> order_by([m], desc: m.recorded_at)
+    |> limit(@max_name_matched_meetings)
+    |> preload([:meeting_transcript, :meeting_participants, :calendar_event])
+    |> Repo.all()
+  end
+
+  @doc """
+  Extracts the first name from a full name string.
+  Returns nil if the name is nil, empty, or whitespace-only.
+  """
+  def extract_first_name(nil), do: nil
+  def extract_first_name(""), do: nil
+
+  def extract_first_name(name) when is_binary(name) do
+    case String.trim(name) do
+      "" -> nil
+      trimmed -> trimmed |> String.split(~r/\s+/, parts: 2) |> List.first()
     end
   end
 

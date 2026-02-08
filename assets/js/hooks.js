@@ -30,13 +30,11 @@ Hooks.MentionInput = {
         this.mentionStartPos = null
         this.mentions = []
 
-        // Handle input events
         this.el.addEventListener('input', (e) => {
             const text = this.getTextContent()
             this.pushEvent('message_input_change', { value: text })
         })
 
-        // Handle keydown for special keys
         this.el.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
@@ -47,17 +45,14 @@ Hooks.MentionInput = {
             }
         })
 
-        // Listen for submit button click via custom event
         this.el.addEventListener('chat:submit', () => {
             this.submitMessage()
         })
 
-        // Listen for mention insertion from server
-        this.handleEvent('insert_mention', ({ id, name }) => {
-            this.insertMentionChip(id, name)
+        this.handleEvent('insert_mention', ({ id, name, source }) => {
+            this.insertMentionChip(id, name, source)
         })
 
-        // Listen for clear input
         this.handleEvent('clear_input', () => {
             this.el.innerHTML = ''
             this.mentions = []
@@ -66,7 +61,6 @@ Hooks.MentionInput = {
     },
 
     getTextContent() {
-        // Get text content, replacing mention chips with @name
         let text = ''
         this.el.childNodes.forEach(node => {
             if (node.nodeType === Node.TEXT_NODE) {
@@ -78,49 +72,69 @@ Hooks.MentionInput = {
         return text
     },
 
-    insertMentionChip(contactId, contactName) {
+    insertMentionChip(contactId, contactName, source) {
         const text = this.getTextContent()
 
-        // Find the @query to replace (everything from last @ to cursor)
         const lastAtIndex = text.lastIndexOf('@')
         if (lastAtIndex === -1) return
 
-        // Create the mention chip - keep in sync with chat_live.ex mention_chip_html/2
+        // Get logo path based on source
+        const logoPath = this.getSourceLogoPath(source)
+
+        // Create the mention chip - keep in sync with chat_live.ex mention_chip_html/3
+        // Use DOM APIs to prevent XSS from contact names
         const chip = document.createElement('span')
         chip.className = 'mention-chip inline-flex items-center gap-1 bg-slate-200 text-slate-700 px-1 py-px rounded-full text-xs font-medium mx-0.5'
         chip.contentEditable = 'false'
         chip.dataset.contactId = contactId
         chip.dataset.name = contactName
+        chip.dataset.source = source || 'local'
         const firstName = contactName.split(' ')[0] || contactName
-        chip.innerHTML = `
-            <span class="relative">
-                <span class="w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium">${contactName.charAt(0).toUpperCase()}</span>
-                <img src="/images/jump-logo.svg" class="absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0" />
-            </span>
-            <span>${firstName}</span>
-        `
 
-        // Find and replace the @query text
+        // Build chip structure safely using DOM APIs
+        const relativeSpan = document.createElement('span')
+        relativeSpan.className = 'relative'
+
+        const initialSpan = document.createElement('span')
+        initialSpan.className = 'w-4 h-4 bg-slate-500 rounded-full flex items-center justify-center text-[10px] text-white font-medium'
+        initialSpan.textContent = contactName.charAt(0).toUpperCase()
+
+        const logoImg = document.createElement('img')
+        logoImg.src = logoPath
+        logoImg.className = 'absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-[#f0f5f5] rounded-full p-px border-0'
+
+        relativeSpan.appendChild(initialSpan)
+        relativeSpan.appendChild(logoImg)
+
+        const nameSpan = document.createElement('span')
+        nameSpan.textContent = firstName
+
+        chip.appendChild(relativeSpan)
+        chip.appendChild(nameSpan)
+
         this.replaceAtQuery(chip)
-
-        // Track the mention
-        this.mentions.push({ id: contactId, name: contactName })
-
-        // Move cursor after the chip
+        this.mentions.push({ id: contactId, name: contactName, source: source })
         this.placeCursorAfter(chip)
-
-        // Notify server
         this.pushEvent('message_input_change', { value: this.getTextContent() })
     },
 
+    getSourceLogoPath(source) {
+        switch (source) {
+            case 'hubspot':
+                return '/images/hubspot-logo.svg'
+            case 'salesforce':
+                return '/images/salesforce-logo.svg'
+            default:
+                return '/images/jump-logo.svg'
+        }
+    },
+
     replaceAtQuery(chip) {
-        // Walk through nodes and find the @ text to replace
         const walker = document.createTreeWalker(this.el, NodeFilter.SHOW_TEXT)
         let node
         while (node = walker.nextNode()) {
             const atIndex = node.textContent.lastIndexOf('@')
             if (atIndex !== -1) {
-                // Split the text node and insert the chip
                 const before = node.textContent.substring(0, atIndex)
 
                 const beforeNode = document.createTextNode(before)

@@ -45,7 +45,6 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
   def render(assigns) do
     ~H"""
     <div id="chat-container" class="fixed bottom-4 right-4 z-50">
-      <!-- Chat Bubble -->
       <button
         :if={!@open}
         phx-click="toggle_chat"
@@ -55,13 +54,11 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
       >
         <.icon name="hero-chat-bubble-left-right" class="size-6 text-white" />
       </button>
-      
-    <!-- Chat Panel -->
+
       <div
         :if={@open}
         class="w-96 h-[32rem] bg-white rounded-lg shadow-xl flex flex-col border border-gray-200"
       >
-        <!-- Header -->
         <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-indigo-600 rounded-t-lg">
           <div class="flex items-center gap-2">
             <button
@@ -80,13 +77,10 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
             <.icon name="hero-x-mark" class="size-5" />
           </button>
         </div>
-        
-    <!-- Content Area -->
+
         <div class="flex-1 overflow-hidden flex flex-col">
           <%= if @current_thread do %>
-            <!-- Messages View -->
             <.messages_view messages={@messages} loading={@loading} myself={@myself} />
-            <!-- Message Input -->
             <.message_input
               message_input={@message_input}
               contact_search={@contact_search}
@@ -96,7 +90,6 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
               myself={@myself}
             />
           <% else %>
-            <!-- Thread List -->
             <.thread_list threads={@threads} myself={@myself} />
           <% end %>
         </div>
@@ -109,7 +102,6 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
   defp thread_list(assigns) do
     ~H"""
     <div class="flex-1 overflow-y-auto">
-      <!-- New Thread Button -->
       <button
         phx-click="new_thread"
         phx-target={@myself}
@@ -118,8 +110,7 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
         <.icon name="hero-plus-circle" class="size-5" />
         <span>New Chat</span>
       </button>
-      
-    <!-- Thread Items -->
+
       <div :for={thread <- @threads} class="border-b border-gray-100">
         <button
           phx-click="select_thread"
@@ -175,7 +166,6 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
   defp message_input(assigns) do
     ~H"""
     <div class="p-4 border-t border-gray-200">
-      <!-- Selected Contact Badge -->
       <div :if={@selected_contact} class="mb-2 flex items-center gap-2">
         <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full flex items-center gap-1">
           <.icon name="hero-user" class="size-3" />
@@ -185,8 +175,7 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
           </button>
         </span>
       </div>
-      
-    <!-- Input Area -->
+
       <div class="relative">
         <form phx-submit="send_message" phx-target={@myself}>
           <div class="flex gap-2">
@@ -205,8 +194,7 @@ defmodule SocialScribeWeb.ChatLive.ChatComponent do
                 class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm"
                 autocomplete="off"
               />
-              
-    <!-- Contact Mention Dropdown -->
+
               <div
                 :if={@show_mention_dropdown && length(@contact_results) > 0}
                 class="absolute bottom-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto"

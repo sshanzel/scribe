@@ -17,9 +17,10 @@ defmodule SocialScribe.SalesforceApiTest do
       user = user_fixture()
       credential = salesforce_credential_fixture(%{user_id: user.id})
 
+      # Uses internal field names (lowercase), mapped to API names by FieldMapper
       updates = [
-        %{field: "Phone", new_value: "555-1234", apply: false},
-        %{field: "Email", new_value: "test@example.com", apply: false}
+        %{field: "phone", new_value: "555-1234", apply: false},
+        %{field: "email", new_value: "test@example.com", apply: false}
       ]
 
       {:ok, :no_updates} = SalesforceApi.apply_updates(credential, "003XXXXXXXXXXXX", updates)

@@ -1,6 +1,7 @@
 defmodule SocialScribe.ChatTest do
   use SocialScribe.DataCase, async: true
 
+  import Ecto.Query
   alias SocialScribe.Chat
   alias SocialScribe.Chat.{ChatThread, ChatMessage}
   import SocialScribe.AccountsFixtures
@@ -104,21 +105,33 @@ defmodule SocialScribe.ChatTest do
   describe "list_threads/1" do
     test "returns threads ordered by most recent" do
       user = user_fixture()
+      now = NaiveDateTime.utc_now()
+      past = NaiveDateTime.add(now, -60, :second)
+      older_past = NaiveDateTime.add(now, -120, :second)
+
+      # Create threads with explicit timestamps for deterministic ordering
       {:ok, thread1} = Chat.create_thread(user, %{title: "Thread 1"})
-
-      # Wait to ensure different second for timestamp
-      Process.sleep(1000)
-
       {:ok, thread2} = Chat.create_thread(user, %{title: "Thread 2"})
+
+      # Set thread1 to older timestamp, thread2 to newer
+      SocialScribe.Repo.update_all(
+        from(t in SocialScribe.Chat.ChatThread, where: t.id == ^thread1.id),
+        set: [updated_at: older_past]
+      )
+
+      SocialScribe.Repo.update_all(
+        from(t in SocialScribe.Chat.ChatThread, where: t.id == ^thread2.id),
+        set: [updated_at: past]
+      )
 
       threads = Chat.list_threads(user)
 
       assert length(threads) == 2
-      # thread2 was created later so it should be first
+      # thread2 has more recent timestamp so it should be first
       assert hd(threads).id == thread2.id
 
-      # Now touch thread1 to make it most recent
-      Process.sleep(1000)
+      # Reload thread1 to get fresh data, then touch to make it most recent
+      thread1 = Chat.get_thread!(thread1.id)
       Chat.touch_thread(thread1)
 
       threads = Chat.list_threads(user)
@@ -187,10 +200,17 @@ defmodule SocialScribe.ChatTest do
     test "updates thread's updated_at" do
       user = user_fixture()
       {:ok, thread} = Chat.create_thread(user)
-      original_updated_at = thread.updated_at
 
-      # Wait to ensure different second for timestamp (timestamps are truncated to seconds)
-      Process.sleep(1000)
+      # Set thread to a past timestamp
+      past = NaiveDateTime.add(NaiveDateTime.utc_now(), -60, :second)
+
+      SocialScribe.Repo.update_all(
+        from(t in ChatThread, where: t.id == ^thread.id),
+        set: [updated_at: past]
+      )
+
+      thread = Chat.get_thread!(thread.id)
+      original_updated_at = thread.updated_at
 
       {:ok, _} = Chat.create_user_message(thread, "Hello")
 
