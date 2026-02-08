@@ -15,6 +15,8 @@ defmodule SocialScribeWeb.ChatLive do
   @impl true
   def mount(_params, _session, socket) do
     # No layout for embedded LiveView to avoid duplicate flash groups
+    # This component floats across navigation, so threads are loaded
+    # only when the history tab is opened (not on mount)
     socket =
       socket
       |> assign(:open, false)
@@ -29,15 +31,8 @@ defmodule SocialScribeWeb.ChatLive do
       |> assign(:show_mention_dropdown, false)
       |> assign(:mention_search_start, nil)
       |> assign(:active_tab, :chat)
-
-    # Load threads asynchronously using assign_async
-    socket =
-      if socket.assigns[:current_user] do
-        user = socket.assigns.current_user
-        assign_async(socket, :threads, fn -> {:ok, %{threads: Chat.list_threads(user)}} end)
-      else
-        assign(socket, :threads, AsyncResult.ok(%{threads: []}))
-      end
+      # Threads not loaded yet - will be fetched when history tab opens
+      |> assign(:threads, nil)
 
     # No layout for embedded LiveView
     {:ok, socket, layout: false}
@@ -107,23 +102,25 @@ defmodule SocialScribeWeb.ChatLive do
                 class="flex-1 overflow-y-auto p-3 space-y-3 flex flex-col"
                 phx-hook="ScrollToBottom"
               >
-                <%= if @current_thread do %>
-                  <!-- Welcome message for new/empty threads -->
-                  <div
-                    :if={@messages == []}
-                    class="flex-1 flex flex-col items-center justify-center text-slate-500"
-                  >
-                    <p class="text-sm">
+                <!-- Timestamp -->
+                <.timestamp_separator datetime={
+                  cond do
+                    @current_thread -> @current_thread.inserted_at
+                    true -> DateTime.utc_now()
+                  end
+                } />
+                
+    <!-- Persistent welcome message (always first) -->
+                <div class="flex justify-start">
+                  <div class="text-slate-800 px-3 py-2 max-w-[85%]">
+                    <div class="text-sm leading-relaxed">
                       I can answer questions about Jump meetings and data — just ask!
-                    </p>
+                    </div>
+                    <.sources_indicator :if={!has_assistant_message?(@messages)} />
                   </div>
-                  
-    <!-- Timestamp for first message -->
-                  <.timestamp_separator
-                    :if={@messages != []}
-                    datetime={List.first(@messages).inserted_at}
-                  />
+                </div>
 
+                <%= if @current_thread do %>
                   <div
                     :for={{message, index} <- Enum.with_index(@messages)}
                     class={message_class(message.role)}
@@ -141,11 +138,6 @@ defmodule SocialScribeWeb.ChatLive do
 
                   <.loading_indicator loading={@loading} />
                   <.error_alert :if={@error_message} message={@error_message} />
-                <% else %>
-                  <.empty_state
-                    title="Start a new conversation"
-                    subtitle="Type @ to mention a contact"
-                  />
                 <% end %>
               </div>
               
@@ -251,7 +243,7 @@ defmodule SocialScribeWeb.ChatLive do
             <% else %>
               <!-- History View -->
               <div class="flex-1 overflow-y-auto flex flex-col">
-                <%= if @threads.loading do %>
+                <%= if is_nil(@threads) or @threads.loading do %>
                   <!-- Loading state -->
                   <div class="flex-1 flex flex-col items-center justify-center text-slate-400 py-6">
                     <.icon name="hero-arrow-path" class="size-6 mb-2 animate-spin" />
@@ -315,15 +307,13 @@ defmodule SocialScribeWeb.ChatLive do
   @impl true
   def handle_event("new_thread", _params, socket) do
     {:ok, thread} = Chat.create_thread(socket.assigns.current_user)
-
-    # Get current threads from async result
     current_threads = get_threads(socket.assigns.threads)
 
     socket =
       socket
       |> assign(:current_thread, thread)
       |> assign(:messages, [])
-      |> assign(:threads, AsyncResult.ok(%{threads: [thread | current_threads]}))
+      |> assign(:threads, AsyncResult.ok([thread | current_threads]))
       |> assign(:active_tab, :chat)
       |> assign(:mentions, [])
       |> assign(:message_input, "")
@@ -353,13 +343,25 @@ defmodule SocialScribeWeb.ChatLive do
   end
 
   def handle_event("switch_tab", %{"tab" => "history"}, socket) do
-    # Threads already in socket, just switch tab
-    {:noreply, assign(socket, :active_tab, :history)}
+    socket = assign(socket, :active_tab, :history)
+
+    # Fetch threads when opening history tab (if user is available)
+    socket =
+      if socket.assigns[:current_user] do
+        user = socket.assigns.current_user
+
+        assign_async(socket, :threads, fn ->
+          {:ok, %{threads: Chat.list_threads(user)}}
+        end)
+      else
+        socket
+      end
+
+    {:noreply, socket}
   end
 
   @impl true
   def handle_event("back_to_threads", _params, socket) do
-    # Threads already updated when created/modified, no need to reload
     socket =
       socket
       |> assign(:current_thread, nil)
@@ -614,8 +616,12 @@ defmodule SocialScribeWeb.ChatLive do
   # Private Helpers
   # =============================================================================
 
-  defp get_threads(%AsyncResult{ok?: true, result: %{threads: threads}}), do: threads
+  defp get_threads(%AsyncResult{ok?: true, result: threads}) when is_list(threads), do: threads
   defp get_threads(_), do: []
+
+  defp has_assistant_message?(messages) do
+    Enum.any?(messages, fn msg -> msg.role != "user" end)
+  end
 
   defp maybe_search_contacts(%{assigns: %{current_user: nil}} = socket, _value) do
     socket
