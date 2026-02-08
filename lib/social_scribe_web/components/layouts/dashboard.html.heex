@@ -51,6 +51,8 @@
     <.sidebar
       base_path={~p"/dashboard"}
       current_path={@current_path}
+      show_seed_button={@show_seed_button}
+      seeded={@seeded}
       links={[
         {"Home", "hero-home", ~p"/dashboard"},
         {"Meetings", "hero-calendar", ~p"/dashboard/meetings"},

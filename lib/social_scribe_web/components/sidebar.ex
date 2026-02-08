@@ -11,6 +11,8 @@ defmodule SocialScribeWeb.Sidebar do
   attr :base_path, :string, required: true, doc: "the base path to determine active state"
   attr :current_path, :string, required: true, doc: "the current path to determine active state"
   attr :links, :list, required: true, doc: "the list of links to display in the sidebar"
+  attr :show_seed_button, :boolean, default: false, doc: "whether to show seed button (from env)"
+  attr :seeded, :boolean, default: false, doc: "whether the user has already seeded data"
 
   slot :widget
 
@@ -18,6 +20,24 @@ defmodule SocialScribeWeb.Sidebar do
     ~H"""
     <div class="w-[212px] sticky bg-white text-black flex flex-col">
       <nav class="flex-1 px-2 mt-12">
+        <button
+          :if={@show_seed_button and not @seeded}
+          phx-click="seed_data"
+          phx-disable-with=""
+          class="group w-full flex items-center gap-3 px-2 py-2 mb-4 text-sm rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
+        >
+          <.icon
+            name="hero-beaker"
+            class="size-5 group-[.phx-click-loading]:hidden"
+          />
+          <.icon
+            name="hero-arrow-path"
+            class="size-5 hidden group-[.phx-click-loading]:block animate-spin"
+          />
+          <span class="group-[.phx-click-loading]:hidden">Seed your data!</span>
+          <span class="hidden group-[.phx-click-loading]:inline">Seeding...</span>
+        </button>
+
         <ul class="space-y-1">
           <li :for={{label, icon, path} <- @links}>
             <.sidebar_link
