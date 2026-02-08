@@ -103,16 +103,30 @@ defmodule SocialScribe.Accounts.Credentials do
 
   @doc """
   Gets the user's HubSpot credential if one exists.
+
+  If multiple HubSpot credentials exist for the same user, returns the most
+  recently created one (by `inserted_at`) to ensure deterministic behavior.
   """
   def get_user_hubspot_credential(user_id) do
-    Repo.get_by(UserCredential, user_id: user_id, provider: "hubspot")
+    UserCredential
+    |> where([c], c.user_id == ^user_id and c.provider == "hubspot")
+    |> order_by([c], desc: c.inserted_at)
+    |> limit(1)
+    |> Repo.one()
   end
 
   @doc """
   Gets the user's Salesforce credential if one exists.
+
+  If multiple Salesforce credentials exist for the same user, returns the most
+  recently created one (by `inserted_at`) to ensure deterministic behavior.
   """
   def get_user_salesforce_credential(user_id) do
-    Repo.get_by(UserCredential, user_id: user_id, provider: "salesforce")
+    UserCredential
+    |> where([c], c.user_id == ^user_id and c.provider == "salesforce")
+    |> order_by([c], desc: c.inserted_at)
+    |> limit(1)
+    |> Repo.one()
   end
 
   # =============================================================================

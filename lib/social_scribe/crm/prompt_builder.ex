@@ -65,8 +65,13 @@ defmodule SocialScribe.CRM.PromptBuilder do
 
   This is a generic parser that works for all CRMs since they all use
   the same JSON structure.
+
+  ## Returns
+  - `{:ok, suggestions}` - Successfully parsed suggestions (may be empty list)
+  - `{:error, :invalid_json}` - Response was not valid JSON
+  - `{:error, :invalid_format}` - Response was valid JSON but not an array
   """
-  @spec parse_response(String.t()) :: {:ok, [map()]} | {:error, term()}
+  @spec parse_response(String.t()) :: {:ok, [map()]} | {:error, :invalid_json | :invalid_format}
   def parse_response(response) do
     cleaned =
       response
@@ -93,10 +98,10 @@ defmodule SocialScribe.CRM.PromptBuilder do
         {:ok, formatted}
 
       {:ok, _} ->
-        {:ok, []}
+        {:error, :invalid_format}
 
       {:error, _} ->
-        {:ok, []}
+        {:error, :invalid_json}
     end
   end
 

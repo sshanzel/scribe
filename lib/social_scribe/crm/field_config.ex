@@ -82,8 +82,11 @@ defmodule SocialScribe.CRM.FieldConfig do
       @spec field_to_api_mapping() :: %{String.t() => String.t()}
       def field_to_api_mapping do
         fields()
-        |> Enum.filter(&Map.has_key?(&1, :api_name))
-        |> Map.new(&{&1.name, &1.api_name})
+        |> Enum.filter(fn field ->
+          api_name = field[:api_name]
+          is_binary(api_name) and api_name != field.name
+        end)
+        |> Map.new(&{&1.name, &1[:api_name]})
       end
 
       @doc """
