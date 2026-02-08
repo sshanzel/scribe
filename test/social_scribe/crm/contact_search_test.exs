@@ -99,9 +99,10 @@ defmodule SocialScribe.CRM.ContactSearchTest do
 
   describe "search/2" do
     setup do
+      # Restore Mox modules on exit to avoid order-dependent test failures
       on_exit(fn ->
-        Application.delete_env(:social_scribe, :hubspot_api)
-        Application.delete_env(:social_scribe, :salesforce_api)
+        Application.put_env(:social_scribe, :hubspot_api, SocialScribe.HubspotApiMock)
+        Application.put_env(:social_scribe, :salesforce_api, SocialScribe.SalesforceApiMock)
       end)
 
       :ok
