@@ -551,36 +551,52 @@ defmodule SocialScribeWeb.ChatLive do
 
   @impl true
   def handle_info({:search_contacts, query}, socket) do
-    # Only apply search results if this query matches the pending query.
-    # This prevents stale debounced messages from overwriting newer results.
+    # Only start search if this query matches the pending query.
+    # This prevents stale debounced messages from triggering searches.
+    if query == socket.assigns[:pending_contact_query] do
+      # Run search async to keep LiveView responsive during slow CRM calls
+      user = socket.assigns.current_user
+      parent = self()
+
+      Task.start(fn ->
+        result =
+          try do
+            ContactSearch.search(user, query)
+          rescue
+            _ -> {:ok, []}
+          end
+
+        send(parent, {:contact_search_complete, query, result})
+      end)
+
+      {:noreply, assign(socket, :search_timer, nil)}
+    else
+      # Stale search: ignore this message
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_info({:contact_search_complete, query, result}, socket) do
+    # Only apply results if this query is still the pending query
     socket =
       if query == socket.assigns[:pending_contact_query] do
+        results =
+          case result do
+            {:ok, r} -> r
+            _ -> []
+          end
+
         socket
-        |> assign(:search_timer, nil)
+        |> assign(:searching, false)
+        |> assign(:contact_results, results)
         |> assign(:pending_contact_query, nil)
-        |> perform_contact_search(query)
       else
-        # Stale search: ignore this message to avoid clearing the state of a newer search.
+        # Stale result: ignore
         socket
       end
 
     {:noreply, socket}
-  end
-
-  defp perform_contact_search(%{assigns: %{current_user: user}} = socket, query) do
-    # Wrap in try to prevent LiveView crash on unexpected errors
-    try do
-      {:ok, results} = ContactSearch.search(user, query)
-
-      socket
-      |> assign(:searching, false)
-      |> assign(:contact_results, results)
-    rescue
-      _ ->
-        socket
-        |> assign(:searching, false)
-        |> assign(:contact_results, [])
-    end
   end
 
   defp find_contact_in_results(results, compound_id) do
