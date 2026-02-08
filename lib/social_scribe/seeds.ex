@@ -16,7 +16,7 @@ defmodule SocialScribe.Seeds do
     %{
       first_name: "Sarah",
       last_name: "Chen",
-      email: "sarah.chen@techcorp.io",
+      email: "sarah@techcorp.io",
       phone: "415-555-0123",
       title: "Head of Product"
     },
@@ -170,9 +170,9 @@ defmodule SocialScribe.Seeds do
             "We're aiming to have the API updates done by end of January, dashboard by mid-February, and mobile beta by March 15th.",
           topic2: "the team structure for this",
           topic2_response:
-            "We've got 3 engineers on the API team, 2 on dashboard, and 4 on mobile. I'm leading the mobile effort directly.",
+            "We've got 3 engineers on the API team, 2 on dashboard, and 4 on mobile. I'm leading the mobile effort directly. By the way, I just got promoted to VP of Product last week!",
           contact_info:
-            "Best to reach me on my cell at 415-555-0123, or you can email me at sarah.chen@techcorp.io."
+            "Best to reach me on my new cell at 415-555-9999. My old number doesn't work anymore."
         }
       },
       %{
@@ -263,8 +263,8 @@ defmodule SocialScribe.Seeds do
             "A few crashes on older Android devices, specifically Samsung Galaxy S9 and earlier. We're prioritizing those fixes.",
           topic2: "the launch timeline",
           topic2_response:
-            "Still on track for March 15th. We'll do a soft launch first - 10% of users.",
-          contact_info: "Same as before - 415-555-0123 or sarah.chen@techcorp.io."
+            "Still on track for March 15th. We'll do a soft launch first - 10% of users. As VP of Product, I'm personally overseeing this launch.",
+          contact_info: "You can reach me at my new number 415-555-9999. I changed it last month."
         }
       }
     ]
