@@ -101,8 +101,19 @@ jobs:
             ${{ runner.os }}-mix-build-dev-
             ${{ runner.os }}-mix-build-
 
+      - name: Cache Dialyzer PLT
+        uses: actions/cache@v4
+        with:
+          path: priv/plts
+          key: ${{ runner.os }}-dialyzer-plt-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-dialyzer-plt-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-
+
       - name: Install dependencies
         run: mix deps.get
+
+      - name: Create PLT directory
+        run: mkdir -p priv/plts
 
       - name: Run Dialyzer
         run: mix dialyzer
