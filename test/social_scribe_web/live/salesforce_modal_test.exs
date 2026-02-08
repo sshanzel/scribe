@@ -327,18 +327,20 @@ defmodule SocialScribeWeb.SalesforceModalTest do
     test "update_contact delegates to implementation", %{credential: credential} do
       expect(SocialScribe.SalesforceApiMock, :update_contact, fn _cred, contact_id, updates ->
         assert contact_id == "003DEF456"
-        assert updates == %{"Phone" => "555-1234"}
+        # Uses internal field names (lowercase), mapped to API names by FieldMapper
+        assert updates == %{"phone" => "555-1234"}
         {:ok, %{id: "003DEF456", phone: "555-1234"}}
       end)
 
-      result = ApiBehaviour.update_contact(credential, "003DEF456", %{"Phone" => "555-1234"})
+      result = ApiBehaviour.update_contact(credential, "003DEF456", %{"phone" => "555-1234"})
       assert {:ok, %{id: "003DEF456"}} = result
     end
 
     test "apply_updates delegates to implementation", %{credential: credential} do
+      # Uses internal field names (lowercase), mapped to API names by FieldMapper
       updates_list = [
-        %{field: "Phone", new_value: "555-9999", apply: true},
-        %{field: "Title", new_value: "CEO", apply: false}
+        %{field: "phone", new_value: "555-9999", apply: true},
+        %{field: "title", new_value: "CEO", apply: false}
       ]
 
       expect(SocialScribe.SalesforceApiMock, :apply_updates, fn _cred, contact_id, updates ->
