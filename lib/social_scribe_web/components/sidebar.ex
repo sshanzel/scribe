@@ -143,7 +143,10 @@ defmodule SocialScribeWeb.Sidebar do
   attr :base_path, :string, required: true
   attr :current_path, :string, required: true
   attr :path, :string, required: true
-  attr :on_click, :any, default: nil, doc: "optional JS command to run on click (e.g., close mobile drawer)"
+
+  attr :on_click, :any,
+    default: nil,
+    doc: "optional JS command to run on click (e.g., close mobile drawer)"
 
   def sidebar_link(assigns) do
     active =
