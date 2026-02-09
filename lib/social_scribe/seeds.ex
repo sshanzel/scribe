@@ -168,20 +168,32 @@ defmodule SocialScribe.Seeds do
               # Handle duplicate detection - extract the matched contact ID and update it
               case extract_duplicate_contact_id(errors) do
                 {:ok, contact_id} ->
-                  IO.puts("[Seeds] Duplicate detected, updating existing contact #{contact_id}...")
+                  IO.puts(
+                    "[Seeds] Duplicate detected, updating existing contact #{contact_id}..."
+                  )
 
-                  case SalesforceApi.update_contact(salesforce_credential, contact_id, salesforce_data) do
+                  case SalesforceApi.update_contact(
+                         salesforce_credential,
+                         contact_id,
+                         salesforce_data
+                       ) do
                     {:ok, _updated} ->
                       IO.puts("[Seeds] ✓ Updated #{full_name} - title: #{contact_attrs.title}")
                       Map.merge(contact_attrs, %{name: full_name, salesforce_id: contact_id})
 
                     {:error, update_reason} ->
-                      IO.puts("[Seeds] ✗ Failed to update duplicate #{full_name}: #{inspect(update_reason)}")
+                      IO.puts(
+                        "[Seeds] ✗ Failed to update duplicate #{full_name}: #{inspect(update_reason)}"
+                      )
+
                       Map.put(contact_attrs, :name, full_name)
                   end
 
                 :error ->
-                  IO.puts("[Seeds] ✗ Failed to create #{full_name}: duplicate detected but couldn't extract ID")
+                  IO.puts(
+                    "[Seeds] ✗ Failed to create #{full_name}: duplicate detected but couldn't extract ID"
+                  )
+
                   Map.put(contact_attrs, :name, full_name)
               end
 
