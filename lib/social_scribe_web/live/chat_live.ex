@@ -159,11 +159,6 @@ defmodule SocialScribeWeb.ChatLive do
                       phx-update="ignore"
                       contenteditable="true"
                       data-placeholder="Type @ to mention a contact..."
-                      role="combobox"
-                      aria-haspopup="listbox"
-                      aria-expanded={if @show_mention_dropdown, do: "true", else: "false"}
-                      aria-controls="mention-dropdown"
-                      aria-autocomplete="list"
                       class="min-h-[50px] max-h-[100px] overflow-y-auto w-full focus:outline-none text-sm px-2.5 py-1.5 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
                     ></div>
 
@@ -171,8 +166,6 @@ defmodule SocialScribeWeb.ChatLive do
                       :if={@show_mention_dropdown}
                       id="mention-dropdown"
                       data-mention-dropdown
-                      role="listbox"
-                      aria-label="Contact suggestions"
                       class="absolute bottom-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto z-10"
                     >
                       <div :if={@searching} class="px-3 py-4 text-center">
@@ -197,8 +190,6 @@ defmodule SocialScribeWeb.ChatLive do
                         phx-value-id={contact.id}
                         data-contact-option
                         data-contact-id={contact.id}
-                        role="option"
-                        aria-selected="false"
                         class="w-full px-2.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2"
                       >
                         <div class="relative flex-shrink-0">

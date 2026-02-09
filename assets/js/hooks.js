@@ -239,24 +239,9 @@ Hooks.MentionInput = {
 
     updateSelectedVisual(items) {
         items.forEach((item, index) => {
-            const isSelected = index === this.selectedIndex
-            if (isSelected) {
-                item.classList.add('bg-slate-100')
-                item.setAttribute('aria-selected', 'true')
-                if (!item.id) {
-                    item.id = `mention-option-${index}`
-                }
-                this.el.setAttribute('aria-activedescendant', item.id)
-                item.scrollIntoView({ block: 'nearest' })
-            } else {
-                item.classList.remove('bg-slate-100')
-                item.setAttribute('aria-selected', 'false')
-            }
+            item.classList.toggle('bg-slate-100', index === this.selectedIndex)
         })
-
-        if (this.selectedIndex < 0 || this.selectedIndex >= items.length) {
-            this.el.removeAttribute('aria-activedescendant')
-        }
+        items[this.selectedIndex]?.scrollIntoView({ block: 'nearest' })
     }
 }
 
