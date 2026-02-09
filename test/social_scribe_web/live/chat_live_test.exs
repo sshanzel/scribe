@@ -535,7 +535,7 @@ defmodule SocialScribeWeb.ChatLiveTest do
   end
 
   describe "helper function edge cases" do
-    test "renders timestamp when no thread exists" do
+    test "renders timestamp when no thread exists using current time" do
       # When there's no current_thread, the timestamp separator uses DateTime.utc_now()
       # This tests that the view renders without crashing
       user = user_fixture()

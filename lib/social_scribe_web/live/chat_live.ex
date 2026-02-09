@@ -163,6 +163,7 @@ defmodule SocialScribeWeb.ChatLive do
                       aria-haspopup="listbox"
                       aria-expanded={if @show_mention_dropdown, do: "true", else: "false"}
                       aria-controls="mention-dropdown"
+                      aria-autocomplete="list"
                       class="min-h-[50px] max-h-[100px] overflow-y-auto w-full focus:outline-none text-sm px-2.5 py-1.5 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
                     ></div>
 
@@ -434,7 +435,7 @@ defmodule SocialScribeWeb.ChatLive do
           |> assign(:contact_results, [])
           |> push_event("insert_mention", %{
             id: compound_id,
-            name: contact.name || "",
+            name: get_display_name(contact),
             source: safe_atom_to_string(contact.source)
           })
 
@@ -494,12 +495,12 @@ defmodule SocialScribeWeb.ChatLive do
           |> assign(:error_message, message)
 
         {:error, :not_found} ->
-          # Thread deleted during response; reload messages from DB, keep stale thread reference
-          messages = safe_list_messages(thread)
-
           socket
-          |> assign(:messages, messages)
+          |> assign(:current_thread, nil)
+          |> assign(:messages, [])
           |> assign(:loading, false)
+          |> assign(:error_message, "This conversation no longer exists.")
+          |> refresh_threads()
 
         {:error, :unauthorized} ->
           socket
@@ -693,6 +694,9 @@ defmodule SocialScribeWeb.ChatLive do
   # Private Helpers
   # =============================================================================
 
+  defp get_threads(%AsyncResult{ok?: true, result: %{threads: threads}}) when is_list(threads),
+    do: threads
+
   defp get_threads(%AsyncResult{ok?: true, result: threads}) when is_list(threads), do: threads
   defp get_threads(_), do: []
 
@@ -774,6 +778,26 @@ defmodule SocialScribeWeb.ChatLive do
   defp safe_atom_to_string(atom) when is_atom(atom), do: Atom.to_string(atom)
   defp safe_atom_to_string(str) when is_binary(str), do: str
   defp safe_atom_to_string(_), do: "local"
+
+  defp get_display_name(contact) do
+    name = contact[:name] || contact.name
+
+    case name && String.trim(name) do
+      nil -> get_email_fallback(contact)
+      "" -> get_email_fallback(contact)
+      trimmed -> trimmed
+    end
+  end
+
+  defp get_email_fallback(contact) do
+    email = contact[:email] || contact.email
+
+    case email && String.trim(email) do
+      nil -> "Unknown"
+      "" -> "Unknown"
+      trimmed -> trimmed
+    end
+  end
 
   defp process_send_message(socket, content) do
     with {:ok, thread, socket} <- ensure_thread_exists(socket) do
@@ -1011,6 +1035,7 @@ defmodule SocialScribeWeb.ChatLive do
     end)
   end
 
+  defp get_initial(nil), do: "?"
   defp get_initial(""), do: "?"
 
   defp get_initial(name) when is_binary(name) do
