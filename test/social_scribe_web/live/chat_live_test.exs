@@ -598,7 +598,9 @@ defmodule SocialScribeWeb.ChatLiveTest do
         Chat.create_message(thread, %{
           role: "user",
           content: "Hello @",
-          metadata: %{"mentions" => [%{"name" => nil, "email" => "test@example.com", "source" => "local"}]}
+          metadata: %{
+            "mentions" => [%{"name" => nil, "email" => "test@example.com", "source" => "local"}]
+          }
         })
 
       {:ok, view, _html} =

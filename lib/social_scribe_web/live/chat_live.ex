@@ -1026,7 +1026,6 @@ defmodule SocialScribeWeb.ChatLive do
     end)
   end
 
-  defp get_initial(nil), do: "?"
   defp get_initial(""), do: "?"
 
   defp get_initial(name) when is_binary(name) do
