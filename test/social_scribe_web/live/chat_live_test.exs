@@ -589,6 +589,27 @@ defmodule SocialScribeWeb.ChatLiveTest do
       # Should show fallback initial "?" for empty names
       assert html =~ "?"
     end
+
+    test "renders message with nil mention name without crashing" do
+      user = user_fixture()
+      {:ok, thread} = Chat.create_thread(user)
+
+      {:ok, _message} =
+        Chat.create_message(thread, %{
+          role: "user",
+          content: "Hello @",
+          metadata: %{"mentions" => [%{"name" => nil, "email" => "test@example.com", "source" => "local"}]}
+        })
+
+      {:ok, view, _html} =
+        Phoenix.LiveViewTest.live_isolated(build_conn(), SocialScribeWeb.ChatLive,
+          session: %{"user_token" => SocialScribe.Accounts.generate_user_session_token(user)}
+        )
+
+      html = view |> render_click("select_thread", %{"id" => "#{thread.id}"})
+
+      assert html =~ "chat-container"
+    end
   end
 
   describe "AI response error handling" do
