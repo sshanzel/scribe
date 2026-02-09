@@ -144,20 +144,54 @@ defmodule SocialScribe.Seeds do
 
       case SalesforceApi.search_contacts(salesforce_credential, contact_attrs.email) do
         {:ok, [existing | _]} ->
-          # Update existing contact to reset to seed data
-          SalesforceApi.update_contact(salesforce_credential, existing.id, salesforce_data)
-          Map.merge(contact_attrs, %{name: full_name, salesforce_id: existing.id})
+          IO.puts("[Seeds] Found #{full_name} in Salesforce (#{existing.id}), updating...")
+
+          case SalesforceApi.update_contact(salesforce_credential, existing.id, salesforce_data) do
+            {:ok, _updated} ->
+              IO.puts("[Seeds] ✓ Updated #{full_name} - title: #{contact_attrs.title}")
+              Map.merge(contact_attrs, %{name: full_name, salesforce_id: existing.id})
+
+            {:error, reason} ->
+              IO.puts("[Seeds] ✗ Failed to update #{full_name}: #{inspect(reason)}")
+              Map.merge(contact_attrs, %{name: full_name, salesforce_id: existing.id})
+          end
 
         {:ok, []} ->
+          IO.puts("[Seeds] #{full_name} not found in Salesforce, creating...")
+
           case SalesforceApi.create_contact(salesforce_credential, salesforce_data) do
             {:ok, sf_contact} ->
+              IO.puts("[Seeds] ✓ Created #{full_name} (#{sf_contact.id})")
               Map.merge(contact_attrs, %{name: full_name, salesforce_id: sf_contact.id})
 
-            {:error, _reason} ->
+            {:error, {:api_error, 400, errors}} ->
+              # Handle duplicate detection - extract the matched contact ID and update it
+              case extract_duplicate_contact_id(errors) do
+                {:ok, contact_id} ->
+                  IO.puts("[Seeds] Duplicate detected, updating existing contact #{contact_id}...")
+
+                  case SalesforceApi.update_contact(salesforce_credential, contact_id, salesforce_data) do
+                    {:ok, _updated} ->
+                      IO.puts("[Seeds] ✓ Updated #{full_name} - title: #{contact_attrs.title}")
+                      Map.merge(contact_attrs, %{name: full_name, salesforce_id: contact_id})
+
+                    {:error, update_reason} ->
+                      IO.puts("[Seeds] ✗ Failed to update duplicate #{full_name}: #{inspect(update_reason)}")
+                      Map.put(contact_attrs, :name, full_name)
+                  end
+
+                :error ->
+                  IO.puts("[Seeds] ✗ Failed to create #{full_name}: duplicate detected but couldn't extract ID")
+                  Map.put(contact_attrs, :name, full_name)
+              end
+
+            {:error, reason} ->
+              IO.puts("[Seeds] ✗ Failed to create #{full_name}: #{inspect(reason)}")
               Map.put(contact_attrs, :name, full_name)
           end
 
-        {:error, _reason} ->
+        {:error, reason} ->
+          IO.puts("[Seeds] ✗ Failed to search for #{full_name}: #{inspect(reason)}")
           Map.put(contact_attrs, :name, full_name)
       end
     end)
@@ -256,7 +290,7 @@ defmodule SocialScribe.Seeds do
           topic2_response:
             "We've allocated $150,000 for the consulting engagement over 6 months. I should mention, I'm now Senior Partner - we just announced the promotion last week.",
           contact_info:
-            "My new mobile is 917-555-4444. I switched carriers last month. Our firm also rebranded, so my new email is lisa.thompson@globalconsulting.com."
+            "My new mobile is 917-555-4444. I switched carriers last month. We also just opened a new office in Boston at 200 Newbury Street, so that's where I'm based now."
         }
       },
       %{
@@ -428,4 +462,29 @@ defmodule SocialScribe.Seeds do
 
     {word_list, end_time}
   end
+
+  # Extract contact ID from Salesforce DUPLICATES_DETECTED error
+  defp extract_duplicate_contact_id(errors) when is_list(errors) do
+    Enum.find_value(errors, :error, fn
+      %{"errorCode" => "DUPLICATES_DETECTED", "duplicateResult" => result} ->
+        extract_id_from_match_results(result)
+
+      _ ->
+        nil
+    end)
+  end
+
+  defp extract_duplicate_contact_id(_), do: :error
+
+  defp extract_id_from_match_results(%{"matchResults" => match_results}) do
+    Enum.find_value(match_results, :error, fn
+      %{"matchRecords" => [%{"record" => %{"Id" => id}} | _]} ->
+        {:ok, id}
+
+      _ ->
+        nil
+    end)
+  end
+
+  defp extract_id_from_match_results(_), do: :error
 end

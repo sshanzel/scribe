@@ -100,15 +100,17 @@ defmodule SocialScribe.CRM.Salesforce.Api do
 
   @doc """
   Creates a new contact.
-  `contact_data` should be a map with Salesforce field names.
+  `contact_data` should be a map of internal field names to values.
+  Fields are automatically mapped to Salesforce API field names.
   Automatically refreshes token on 401/expired errors and retries once.
   """
   @impl true
   def create_contact(%UserCredential{} = credential, contact_data) when is_map(contact_data) do
     with_token_refresh(credential, fn cred ->
       url = "#{api_base_url(cred.instance_url)}/sobjects/Contact"
+      mapped_data = FieldMapper.map_fields_for_crm(:salesforce, contact_data)
 
-      case Tesla.post(client(cred.token), url, contact_data) do
+      case Tesla.post(client(cred.token), url, mapped_data) do
         {:ok, %Tesla.Env{status: 201, body: %{"id" => id, "success" => true}}} ->
           # Fetch the full contact after creation
           get_contact(cred, id)
