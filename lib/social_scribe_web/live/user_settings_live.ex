@@ -10,6 +10,10 @@ defmodule SocialScribeWeb.UserSettingsLive do
   def mount(_params, _session, socket) do
     current_user = socket.assigns.current_user
 
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(SocialScribe.PubSub, "user:#{current_user.id}:seeding")
+    end
+
     google_accounts = Credentials.list_user_credentials(current_user, provider: "google")
     linkedin_accounts = Credentials.list_user_credentials(current_user, provider: "linkedin")
     facebook_accounts = Credentials.list_user_credentials(current_user, provider: "facebook")
@@ -31,6 +35,7 @@ defmodule SocialScribeWeb.UserSettingsLive do
       |> assign(:salesforce_accounts, salesforce_accounts)
       |> assign(:user_bot_preference, user_bot_preference)
       |> assign(:user_bot_preference_form, to_form(changeset))
+      |> assign(:seeding_in_progress, false)
       |> assign_seed_button_state()
 
     {:ok, socket}
@@ -123,9 +128,41 @@ defmodule SocialScribeWeb.UserSettingsLive do
   def handle_event("seed_data", _params, socket) do
     user = socket.assigns.current_user
 
-    {:ok, summary} = Seeds.run(user)
+    # Mark as seeded immediately to prevent duplicate seeding on page refresh
     Accounts.update_user_seeded(user, true)
 
+    Task.Supervisor.start_child(SocialScribe.TaskSupervisor, fn ->
+      try do
+        {:ok, summary} = Seeds.run(user)
+
+        Phoenix.PubSub.broadcast(
+          SocialScribe.PubSub,
+          "user:#{user.id}:seeding",
+          {:seeding_complete, summary}
+        )
+      rescue
+        e ->
+          # Reset has_seeded so user can retry
+          Accounts.update_user_seeded(user, false)
+
+          Phoenix.PubSub.broadcast(
+            SocialScribe.PubSub,
+            "user:#{user.id}:seeding",
+            {:seeding_failed, Exception.message(e)}
+          )
+      end
+    end)
+
+    socket =
+      socket
+      |> assign(:seeding_in_progress, true)
+      |> assign(:show_seed_button, false)
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:seeding_complete, summary}, socket) do
     message =
       "Seeded #{summary.meetings_count} meetings with #{summary.contacts_count} contacts!" <>
         if(summary.salesforce_connected, do: " (Salesforce synced)", else: "")
@@ -133,14 +170,22 @@ defmodule SocialScribeWeb.UserSettingsLive do
     socket =
       socket
       |> assign(:seeded, true)
-      |> assign(:show_seed_button, false)
+      |> assign(:seeding_in_progress, false)
       |> put_flash(:info, message)
       |> push_navigate(to: ~p"/dashboard/meetings")
 
     {:noreply, socket}
-  rescue
-    e ->
-      {:noreply, put_flash(socket, :error, "Seeding failed: #{Exception.message(e)}")}
+  end
+
+  @impl true
+  def handle_info({:seeding_failed, reason}, socket) do
+    socket =
+      socket
+      |> assign(:seeding_in_progress, false)
+      |> assign(:show_seed_button, true)
+      |> put_flash(:error, "Seeding failed: #{inspect(reason)}")
+
+    {:noreply, socket}
   end
 
   defp create_or_update_user_bot_preference(bot_preference, params) do

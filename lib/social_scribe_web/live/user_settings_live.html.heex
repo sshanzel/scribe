@@ -317,7 +317,10 @@
     <% end %>
   </div>
 
-  <div :if={@show_seed_button and not @seeded} class="bg-white shadow-xl rounded-lg p-6 md:p-8">
+  <div
+    :if={(@show_seed_button and not @seeded) or @seeding_in_progress}
+    class="bg-white shadow-xl rounded-lg p-6 md:p-8"
+  >
     <h2 class="text-2xl font-semibold mb-6 text-slate-700">
       Developer Tools
     </h2>
@@ -325,18 +328,20 @@
       Seed your account with sample data for testing purposes.
     </p>
     <button
+      :if={not @seeding_in_progress}
       phx-click="seed_data"
-      phx-disable-with=""
-      class="group inline-flex items-center gap-3 px-6 py-3 text-base font-medium rounded-md bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
+      class="inline-flex items-center gap-3 px-6 py-3 text-base font-medium rounded-md bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 transition-all shadow-sm"
     >
-      <.icon name="hero-beaker" class="size-5 group-[.phx-click-loading]:hidden" />
-      <.icon
-        name="hero-arrow-path"
-        class="size-5 hidden group-[.phx-click-loading]:block animate-spin"
-      />
-      <span class="group-[.phx-click-loading]:hidden">Seed your data!</span>
-      <span class="hidden group-[.phx-click-loading]:inline">Seeding...</span>
+      <.icon name="hero-beaker" class="size-5" />
+      <span>Seed your data!</span>
     </button>
+    <div
+      :if={@seeding_in_progress}
+      class="inline-flex items-center gap-3 px-6 py-3 text-base font-medium rounded-md bg-slate-100 text-slate-600"
+    >
+      <.icon name="hero-arrow-path" class="size-5 animate-spin" />
+      <span>Seeding...</span>
+    </div>
   </div>
 </div>
 

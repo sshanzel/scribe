@@ -16,8 +16,8 @@ defmodule SocialScribe.Application do
       {Phoenix.PubSub, name: SocialScribe.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: SocialScribe.Finch},
-      # Start a worker by calling: SocialScribe.Worker.start_link(arg)
-      # {SocialScribe.Worker, arg},
+      # Task supervisor for background jobs like seeding
+      {Task.Supervisor, name: SocialScribe.TaskSupervisor},
       # Start to serve requests, typically the last entry
       SocialScribeWeb.Endpoint
     ]
