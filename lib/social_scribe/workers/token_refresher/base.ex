@@ -18,22 +18,17 @@ defmodule SocialScribe.Workers.TokenRefresher.Base do
   - `:crm` - The provider name (must match `user_credentials.provider`)
   - `:refresher` - The TokenRefresher module with `refresh_credential/1`
   - `:threshold_minutes` - Minutes before expiry to refresh (default: 10)
-  - `:config_key` - Application config key for runtime refresher override (only used in test env)
+  - `:config_key` - Application config key for runtime refresher override (for testing)
   """
-
-  # Capture Mix.env at compile time to avoid runtime dependency on Mix
-  @compile_env Mix.env()
 
   defmacro __using__(opts) do
     crm = Keyword.fetch!(opts, :crm)
     refresher = Keyword.fetch!(opts, :refresher)
     threshold = Keyword.get(opts, :threshold_minutes, 10)
     config_key = Keyword.get(opts, :config_key)
-    compile_env = @compile_env
 
-    # Only use config lookup in test environment, otherwise use the default directly
     get_refresher_fn =
-      if config_key && compile_env == :test do
+      if config_key do
         quote do
           defp get_refresher do
             Application.get_env(:social_scribe, unquote(config_key), @default_refresher)
