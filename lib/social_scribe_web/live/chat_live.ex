@@ -141,7 +141,7 @@ defmodule SocialScribeWeb.ChatLive do
               </div>
 
               <div class="p-2">
-                <div class="rounded-lg border border-slate-200 bg-white">
+                <div class="rounded-lg border border-slate-200 bg-white focus-within:border-[#578cbb]">
                   <div class="px-2.5 pt-1.5">
                     <button
                       type="button"
@@ -250,9 +250,9 @@ defmodule SocialScribeWeb.ChatLive do
                       id="chat-submit-btn"
                       phx-click={JS.dispatch("chat:submit", to: "#mention-input")}
                       disabled={@message_input == ""}
-                      class="w-7 h-7 shrink-0 flex items-center justify-center bg-slate-700 text-white rounded-md hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      class="w-7 h-7 shrink-0 flex items-center justify-center bg-[#e0ebeb] text-slate-700 rounded-md hover:bg-[#d0e0e0] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
-                      <.icon name="hero-paper-airplane" class="size-3.5" />
+                      <.icon name="hero-arrow-up" class="size-3.5" />
                     </button>
                   </div>
                 </div>
