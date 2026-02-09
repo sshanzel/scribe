@@ -6,6 +6,7 @@ defmodule SocialScribeWeb.ChatLive do
   use SocialScribeWeb, :live_view
 
   on_mount {SocialScribeWeb.UserAuth, :mount_current_user}
+  on_mount {SocialScribeWeb.LiveHooks, :assign_timezone}
 
   alias Phoenix.LiveView.AsyncResult
   alias SocialScribe.Chat
@@ -39,6 +40,8 @@ defmodule SocialScribeWeb.ChatLive do
       # Contact search debounce and loading state
       |> assign(:search_timer, nil)
       |> assign(:searching, false)
+      # Timestamp for new chat - captured once, doesn't change until reset
+      |> assign(:chat_started_at, DateTime.utc_now())
 
     # No layout for embedded LiveView
     {:ok, socket, layout: false}
@@ -103,12 +106,10 @@ defmodule SocialScribeWeb.ChatLive do
                 class="flex-1 overflow-y-auto p-3 space-y-3 flex flex-col"
                 phx-hook="ScrollToBottom"
               >
-                <.timestamp_separator datetime={
-                  cond do
-                    @current_thread -> @current_thread.inserted_at
-                    true -> DateTime.utc_now()
-                  end
-                } />
+                <.timestamp_separator
+                  datetime={if @current_thread, do: @current_thread.inserted_at, else: @chat_started_at}
+                  timezone={@timezone}
+                />
 
                 <div class="flex justify-start">
                   <div class="text-slate-800 px-3 py-2 max-w-[85%]">
@@ -276,7 +277,7 @@ defmodule SocialScribeWeb.ChatLive do
                         {thread.title || "New Chat"}
                       </div>
                       <div class="text-xs text-slate-500">
-                        {Calendar.strftime(thread.updated_at, "%b %d, %Y")}
+                        <.local_time datetime={thread.updated_at} timezone={@timezone} format={:short} />
                       </div>
                     </button>
                   </div>
@@ -331,6 +332,7 @@ defmodule SocialScribeWeb.ChatLive do
       |> assign(:mentions, [])
       |> assign(:message_input, "")
       |> assign(:error_message, nil)
+      |> assign(:chat_started_at, DateTime.utc_now())
       |> push_event("clear_input", %{})
 
     {:noreply, socket}
@@ -653,13 +655,16 @@ defmodule SocialScribeWeb.ChatLive do
 
   # Renders the timestamp separator between messages.
   attr :datetime, :any, required: true
+  attr :timezone, :string, default: "UTC"
 
   defp timestamp_separator(assigns) do
+    import SocialScribeWeb.DateHelpers, only: [format_local_time: 3]
+
     ~H"""
     <div class="flex items-center gap-3 pb-1 mx-1">
       <div class="flex-1 h-px bg-slate-200"></div>
       <span class="text-xs text-slate-400 whitespace-nowrap">
-        {format_thread_timestamp(@datetime)}
+        {format_local_time(@datetime, @timezone, :long)}
       </span>
       <div class="flex-1 h-px bg-slate-200"></div>
     </div>
@@ -956,19 +961,6 @@ defmodule SocialScribeWeb.ChatLive do
 
   defp message_bubble_class(_),
     do: "text-slate-800 px-3 py-2 max-w-[85%]"
-
-  defp format_thread_timestamp(nil), do: "Just now"
-
-  defp format_thread_timestamp(datetime) do
-    try do
-      # Format: "11:17am - November 13, 2025"
-      time = Calendar.strftime(datetime, "%-I:%M%P")
-      date = Calendar.strftime(datetime, "%B %-d, %Y")
-      "#{time} - #{date}"
-    rescue
-      _ -> "Just now"
-    end
-  end
 
   defp render_message_content(%{content: nil}), do: ""
 

@@ -803,4 +803,41 @@ defmodule SocialScribeWeb.CoreComponents do
     </div>
     """
   end
+
+  @doc """
+  Renders a datetime in the user's local timezone.
+
+  Uses server-side formatting with Timex. The timezone is passed from
+  socket assigns (detected client-side via LiveSocket connect params).
+
+  ## Formats
+
+  * `:short` - "Feb 9, 2025" (date only)
+  * `:long` - "11:17am - February 9, 2025" (time and date)
+  * `:datetime` - "02/09/2025, 11:17:00 AM" (full datetime)
+
+  ## Examples
+
+      <.local_time datetime={@thread.updated_at} timezone={@timezone} />
+      <.local_time datetime={@event.start_time} timezone={@timezone} format={:datetime} />
+  """
+  attr :datetime, :any, required: true
+  attr :timezone, :string, default: "UTC"
+  attr :format, :atom, default: :short, values: [:short, :long, :datetime]
+  attr :class, :string, default: nil
+
+  def local_time(assigns) do
+    import SocialScribeWeb.DateHelpers, only: [format_local_time: 3]
+
+    ~H"""
+    <time datetime={datetime_to_iso(@datetime)} class={@class}>
+      {format_local_time(@datetime, @timezone, @format)}
+    </time>
+    """
+  end
+
+  defp datetime_to_iso(nil), do: nil
+  defp datetime_to_iso(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
+  defp datetime_to_iso(%NaiveDateTime{} = dt), do: NaiveDateTime.to_iso8601(dt) <> "Z"
+  defp datetime_to_iso(_), do: nil
 end
