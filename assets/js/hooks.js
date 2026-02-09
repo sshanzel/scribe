@@ -222,15 +222,9 @@ Hooks.MentionInput = {
 
     updateSelectedVisual(items) {
         items.forEach((item, index) => {
-            if (index === this.selectedIndex) {
-                item.classList.add('bg-slate-100')
-                item.setAttribute('aria-selected', 'true')
-                item.scrollIntoView({ block: 'nearest' })
-            } else {
-                item.classList.remove('bg-slate-100')
-                item.setAttribute('aria-selected', 'false')
-            }
+            item.classList.toggle('bg-slate-100', index === this.selectedIndex)
         })
+        items[this.selectedIndex]?.scrollIntoView({ block: 'nearest' })
     }
 }
 
