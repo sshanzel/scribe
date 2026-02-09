@@ -47,6 +47,13 @@ defmodule SocialScribe.Seeds do
       email: "lisa.t@consulting.biz",
       phone: "917-555-0890",
       title: "Managing Partner"
+    },
+    %{
+      first_name: "Ty",
+      last_name: "Williams",
+      email: "ty.williams@fintech.io",
+      phone: "312-555-0567",
+      title: "CFO"
     }
   ]
 
@@ -127,19 +134,21 @@ defmodule SocialScribe.Seeds do
     Enum.map(@contacts_data, fn contact_attrs ->
       full_name = "#{contact_attrs.first_name} #{contact_attrs.last_name}"
 
+      salesforce_data = %{
+        "firstname" => contact_attrs.first_name,
+        "lastname" => contact_attrs.last_name,
+        "email" => contact_attrs.email,
+        "phone" => contact_attrs.phone,
+        "title" => contact_attrs.title
+      }
+
       case SalesforceApi.search_contacts(salesforce_credential, contact_attrs.email) do
         {:ok, [existing | _]} ->
+          # Update existing contact to reset to seed data
+          SalesforceApi.update_contact(salesforce_credential, existing.id, salesforce_data)
           Map.merge(contact_attrs, %{name: full_name, salesforce_id: existing.id})
 
         {:ok, []} ->
-          salesforce_data = %{
-            "FirstName" => contact_attrs.first_name,
-            "LastName" => contact_attrs.last_name,
-            "Email" => contact_attrs.email,
-            "Phone" => contact_attrs.phone,
-            "Title" => contact_attrs.title
-          }
-
           case SalesforceApi.create_contact(salesforce_credential, salesforce_data) do
             {:ok, sf_contact} ->
               Map.merge(contact_attrs, %{name: full_name, salesforce_id: sf_contact.id})
@@ -251,21 +260,24 @@ defmodule SocialScribe.Seeds do
         }
       },
       %{
-        contact: Enum.at(contacts, 0),
-        title: "Follow-up: Mobile App Beta Feedback",
-        days_ago: 1,
-        duration: 30,
+        contact: Enum.at(contacts, 5),
+        title: "Q4 Financial Planning Session",
+        days_ago: 10,
+        duration: 45,
+        # Transcript shows "Tyler Williams" but Salesforce has "Ty Williams"
+        transcript_name: "Tyler Williams",
         transcript_details: %{
-          question: "How's the beta testing going so far?",
+          question: "Can you walk us through the Q4 projections?",
           answer:
-            "Really well! We've got 500 beta users now and the feedback is mostly positive.",
-          followup: "Any critical bugs?",
+            "Sure thing. We're looking at about $2.5M in revenue for Q4, with margins around 35%. By the way, it's Tyler now - I stopped going by Ty a few years back.",
+          followup: "That's solid growth. What's driving the margin improvement?",
           response:
-            "A few crashes on older Android devices, specifically Samsung Galaxy S9 and earlier. We're prioritizing those fixes.",
-          topic2: "the launch timeline",
+            "We renegotiated our cloud contracts and reduced headcount in non-core areas.",
+          topic2: "the fundraising plans",
           topic2_response:
-            "Still on track for March 15th. We'll do a soft launch first - 10% of users. As VP of Product, I'm personally overseeing this launch.",
-          contact_info: "You can reach me at my new number 415-555-9999. I changed it last month."
+            "We're planning a Series B in Q1. I've been talking to a few VCs already. Target is $15M at a $60M valuation.",
+          contact_info:
+            "Best to reach me at my new number 312-555-9999. Also, I just got promoted to Chief Financial Officer - the board approved it last week."
         }
       }
     ]
@@ -275,6 +287,8 @@ defmodule SocialScribe.Seeds do
     contact = meeting_data.contact
     contact_name = contact[:name]
     contact_email = contact[:email]
+    # Use transcript_name if provided, otherwise use contact name
+    display_name = Map.get(meeting_data, :transcript_name, contact_name)
     start_time = DateTime.add(DateTime.utc_now(), -meeting_data.days_ago, :day)
     end_time = DateTime.add(start_time, meeting_data.duration, :minute)
 
@@ -304,7 +318,7 @@ defmodule SocialScribe.Seeds do
         "responseStatus" => "accepted",
         "organizer" => true
       },
-      %{"email" => contact_email, "displayName" => contact_name, "responseStatus" => "accepted"}
+      %{"email" => contact_email, "displayName" => display_name, "responseStatus" => "accepted"}
     ]
 
     Contacts.create_attendees_from_event_data(calendar_event.id, attendees_data)
@@ -333,8 +347,8 @@ defmodule SocialScribe.Seeds do
       })
       |> Repo.insert()
 
-    # Create Meeting Transcript
-    transcript_content = generate_transcript(contact_name, meeting_data.transcript_details)
+    # Create Meeting Transcript (uses display_name for speaker)
+    transcript_content = generate_transcript(display_name, meeting_data.transcript_details)
 
     {:ok, _transcript} =
       %MeetingTranscript{}
@@ -345,7 +359,7 @@ defmodule SocialScribe.Seeds do
       })
       |> Repo.insert()
 
-    # Create Meeting Participants
+    # Create Meeting Participants (uses display_name)
     {:ok, _host} =
       %MeetingParticipant{}
       |> MeetingParticipant.changeset(%{
@@ -360,7 +374,7 @@ defmodule SocialScribe.Seeds do
       %MeetingParticipant{}
       |> MeetingParticipant.changeset(%{
         recall_participant_id: "seed_participant_guest_#{:rand.uniform(1_000_000)}",
-        name: contact_name,
+        name: display_name,
         is_host: false,
         meeting_id: meeting.id
       })

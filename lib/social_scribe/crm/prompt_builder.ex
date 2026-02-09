@@ -35,7 +35,10 @@ defmodule SocialScribe.CRM.PromptBuilder do
 
     Look for mentions of:
     #{field_list}
-    IMPORTANT: Only extract information that is EXPLICITLY mentioned in the transcript. Do not infer or guess.
+
+    IMPORTANT RULES:
+    - Only extract information that is EXPLICITLY mentioned in the transcript. Do not infer or guess.
+    - Do NOT suggest name changes for nicknames or preferred names (e.g., "call me Mike" or "I go by Marc now"). Only extract name changes for legal/formal name changes (e.g., "I legally changed my name to...").
 
     The transcript includes timestamps in [MM:SS] format at the start of each line.
 
