@@ -107,7 +107,9 @@ defmodule SocialScribeWeb.ChatLive do
                 phx-hook="ScrollToBottom"
               >
                 <.timestamp_separator
-                  datetime={if @current_thread, do: @current_thread.inserted_at, else: @chat_started_at}
+                  datetime={
+                    if @current_thread, do: @current_thread.inserted_at, else: @chat_started_at
+                  }
                   timezone={@timezone}
                 />
 
@@ -277,7 +279,11 @@ defmodule SocialScribeWeb.ChatLive do
                         {thread.title || "New Chat"}
                       </div>
                       <div class="text-xs text-slate-500">
-                        <.local_time datetime={thread.updated_at} timezone={@timezone} format={:short} />
+                        <.local_time
+                          datetime={thread.updated_at}
+                          timezone={@timezone}
+                          format={:short}
+                        />
                       </div>
                     </button>
                   </div>

@@ -23,7 +23,8 @@ defmodule SocialScribeWeb.DateHelpers do
       iex> format_local_time(~U[2025-02-09 16:17:00Z], "America/New_York", :long)
       "11:17am - February 9, 2025"
   """
-  @spec format_local_time(DateTime.t() | NaiveDateTime.t() | nil, String.t(), atom()) :: String.t()
+  @spec format_local_time(DateTime.t() | NaiveDateTime.t() | nil, String.t(), atom()) ::
+          String.t()
   def format_local_time(datetime, timezone \\ "UTC", format \\ :short)
 
   def format_local_time(nil, _timezone, _format), do: ""
