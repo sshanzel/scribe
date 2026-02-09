@@ -29,6 +29,7 @@ Hooks.MentionInput = {
     mounted() {
         this.mentionStartPos = null
         this.mentions = []
+        this.selectedIndex = -1
 
         this.el.addEventListener('input', (e) => {
             const text = this.getTextContent()
@@ -36,13 +37,55 @@ Hooks.MentionInput = {
         })
 
         this.el.addEventListener('keydown', (e) => {
+            const dropdown = document.querySelector('[data-mention-dropdown]')
+            const items = dropdown ? dropdown.querySelectorAll('[data-contact-option]') : []
+
+            if (dropdown && items.length > 0) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault()
+                    this.selectedIndex = Math.min(this.selectedIndex + 1, items.length - 1)
+                    this.updateSelectedVisual(items)
+                    return
+                }
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault()
+                    this.selectedIndex = Math.max(this.selectedIndex - 1, 0)
+                    this.updateSelectedVisual(items)
+                    return
+                }
+                if ((e.key === 'Enter' || e.key === 'Tab') && this.selectedIndex >= 0) {
+                    e.preventDefault()
+                    const selectedItem = items[this.selectedIndex]
+                    if (selectedItem) {
+                        const contactId = selectedItem.dataset.contactId
+                        this.pushEvent('select_contact', { id: contactId })
+                        this.selectedIndex = -1
+                    }
+                    return
+                }
+            }
+
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
                 this.submitMessage()
             }
             if (e.key === 'Escape') {
+                this.selectedIndex = -1
                 this.pushEvent('close_mention_dropdown', {})
             }
+        })
+
+        this.el.addEventListener('paste', (e) => {
+            e.preventDefault()
+            const text = e.clipboardData.getData('text/plain')
+            if (text) {
+                document.execCommand('insertText', false, text)
+                this.pushEvent('message_input_change', { value: this.getTextContent() })
+            }
+        })
+
+        this.handleEvent('contact_results_changed', () => {
+            this.selectedIndex = -1
         })
 
         this.el.addEventListener('chat:submit', () => {
@@ -175,6 +218,19 @@ Hooks.MentionInput = {
             id: parseInt(chip.dataset.contactId),
             name: chip.dataset.name
         }))
+    },
+
+    updateSelectedVisual(items) {
+        items.forEach((item, index) => {
+            if (index === this.selectedIndex) {
+                item.classList.add('bg-slate-100')
+                item.setAttribute('aria-selected', 'true')
+                item.scrollIntoView({ block: 'nearest' })
+            } else {
+                item.classList.remove('bg-slate-100')
+                item.setAttribute('aria-selected', 'false')
+            }
+        })
     }
 }
 

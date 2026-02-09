@@ -135,8 +135,9 @@ defmodule SocialScribeWeb.ChatLive do
                   </div>
 
                   <.loading_indicator loading={@loading} />
-                  <.error_alert :if={@error_message} message={@error_message} />
                 <% end %>
+
+                <.error_alert :if={@error_message} message={@error_message} />
               </div>
 
               <div class="p-2">
@@ -158,11 +159,19 @@ defmodule SocialScribeWeb.ChatLive do
                       phx-update="ignore"
                       contenteditable="true"
                       data-placeholder="Type @ to mention a contact..."
+                      role="combobox"
+                      aria-haspopup="listbox"
+                      aria-expanded={if @show_mention_dropdown, do: "true", else: "false"}
+                      aria-controls="mention-dropdown"
                       class="min-h-[50px] max-h-[100px] overflow-y-auto w-full focus:outline-none text-sm px-2.5 py-1.5 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
                     ></div>
 
                     <div
                       :if={@show_mention_dropdown}
+                      id="mention-dropdown"
+                      data-mention-dropdown
+                      role="listbox"
+                      aria-label="Contact suggestions"
                       class="absolute bottom-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto z-10"
                     >
                       <div :if={@searching} class="px-3 py-4 text-center">
@@ -185,6 +194,10 @@ defmodule SocialScribeWeb.ChatLive do
                         type="button"
                         phx-click="select_contact"
                         phx-value-id={contact.id}
+                        data-contact-option
+                        data-contact-id={contact.id}
+                        role="option"
+                        aria-selected="false"
                         class="w-full px-2.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2"
                       >
                         <div class="relative flex-shrink-0">
@@ -333,15 +346,19 @@ defmodule SocialScribeWeb.ChatLive do
 
   @impl true
   def handle_event("select_thread", %{"id" => id}, socket) do
-    thread_id = String.to_integer(id)
-    {:ok, thread} = Chat.get_thread_for_user(socket.assigns.current_user, thread_id)
-    messages = Chat.list_messages(thread)
-
     socket =
-      socket
-      |> assign(:current_thread, thread)
-      |> assign(:messages, messages)
-      |> assign(:active_tab, :chat)
+      case parse_thread_id(id) do
+        {:ok, thread_id} ->
+          load_thread(socket, thread_id)
+
+        {:error, :invalid_id} ->
+          # Stay on chat tab to show error
+          socket
+          |> assign(:current_thread, nil)
+          |> assign(:messages, [])
+          |> assign(:error_message, "Invalid conversation ID.")
+          |> assign(:active_tab, :chat)
+      end
 
     {:noreply, socket}
   end
@@ -417,8 +434,8 @@ defmodule SocialScribeWeb.ChatLive do
           |> assign(:contact_results, [])
           |> push_event("insert_mention", %{
             id: compound_id,
-            name: contact.name,
-            source: Atom.to_string(contact.source)
+            name: contact.name || "",
+            source: safe_atom_to_string(contact.source)
           })
 
         {:noreply, socket}
@@ -437,67 +454,12 @@ defmodule SocialScribeWeb.ChatLive do
   def handle_event("send_message", %{"message" => content, "mentions" => _mentions_data}, socket) do
     content = String.trim(content)
 
-    if content == "" do
-      {:noreply, socket}
-    else
-      # Create thread if one doesn't exist
-      {thread, socket} =
-        case socket.assigns.current_thread do
-          nil ->
-            {:ok, new_thread} = Chat.create_thread(socket.assigns.current_user)
-            current_threads = get_threads(socket.assigns.threads)
+    case content do
+      "" ->
+        {:noreply, socket}
 
-            socket =
-              socket
-              |> assign(:current_thread, new_thread)
-              |> assign(:threads, AsyncResult.ok(%{threads: [new_thread | current_threads]}))
-
-            {new_thread, socket}
-
-          existing_thread ->
-            {existing_thread, socket}
-        end
-
-      # Build metadata from mentions
-      # contact_id enables direct meeting lookup for local contacts
-      # crm_data provides enriched info from CRM
-      metadata = %{
-        "mentions" =>
-          Enum.map(socket.assigns.mentions, fn mention ->
-            %{
-              "contact_id" => mention[:contact_id],
-              "name" => mention[:name],
-              "email" => mention[:email],
-              "source" => mention[:source],
-              "crm_id" => mention[:crm_id],
-              "crm_data" => mention[:crm_data]
-            }
-          end)
-      }
-
-      # Create optimistic user message for immediate display
-      optimistic_message = %{
-        id: "pending-#{System.unique_integer()}",
-        role: "user",
-        content: content,
-        metadata: metadata,
-        inserted_at: DateTime.utc_now()
-      }
-
-      # Show loading state, add optimistic message, clear input
-      socket =
-        socket
-        |> assign(:loading, true)
-        |> assign(:error_message, nil)
-        |> assign(:message_input, "")
-        |> assign(:mentions, [])
-        |> assign(:messages, socket.assigns.messages ++ [optimistic_message])
-        |> push_event("clear_input", %{})
-
-      # Generate response asynchronously
-      send(self(), {:generate_response, thread, content, metadata})
-
-      {:noreply, socket}
+      content ->
+        {:noreply, process_send_message(socket, content)}
     end
   end
 
@@ -513,27 +475,43 @@ defmodule SocialScribeWeb.ChatLive do
 
   @impl true
   def handle_info({:generate_response, thread, content, metadata}, socket) do
+    user = socket.assigns.current_user
+
     socket =
-      case ChatAIApi.generate_response(thread, socket.assigns.current_user, content, metadata) do
-        {:ok, _response, _response_metadata} ->
-          # Reload messages
-          messages = Chat.list_messages(thread)
-          {:ok, updated_thread} = Chat.get_thread_for_user(socket.assigns.current_user, thread.id)
-
-          socket
-          |> assign(:messages, messages)
-          |> assign(:current_thread, updated_thread)
-          |> assign(:loading, false)
-          |> assign(:error_message, nil)
-
+      with {:ok, _response, _response_metadata} <-
+             ChatAIApi.generate_response(thread, user, content, metadata),
+           {:ok, messages} <- safe_list_messages_result(thread),
+           {:ok, updated_thread} <- Chat.get_thread_for_user(user, thread.id) do
+        socket
+        |> assign(:messages, messages)
+        |> assign(:current_thread, updated_thread)
+        |> assign(:loading, false)
+        |> assign(:error_message, nil)
+      else
         {:error, {_error_type, message}} when is_binary(message) ->
-          # Display friendly error message in the chat area
           socket
           |> assign(:loading, false)
           |> assign(:error_message, message)
 
+        {:error, :not_found} ->
+          # Thread deleted during response; reload messages from DB, keep stale thread reference
+          messages = safe_list_messages(thread)
+
+          socket
+          |> assign(:messages, messages)
+          |> assign(:loading, false)
+
+        {:error, :unauthorized} ->
+          socket
+          |> assign(:loading, false)
+          |> assign(:error_message, "You no longer have access to this conversation.")
+
+        {:error, :db_error} ->
+          socket
+          |> assign(:loading, false)
+          |> assign(:error_message, "Failed to load messages. Please try again.")
+
         {:error, reason} ->
-          # Fallback for unexpected error formats
           socket
           |> assign(:loading, false)
           |> assign(:error_message, "Something went wrong: #{inspect(reason)}")
@@ -589,6 +567,7 @@ defmodule SocialScribeWeb.ChatLive do
         |> assign(:searching, false)
         |> assign(:contact_results, results)
         |> assign(:pending_contact_query, nil)
+        |> push_event("contact_results_changed", %{})
       else
         # Stale result: ignore
         socket
@@ -717,6 +696,168 @@ defmodule SocialScribeWeb.ChatLive do
   defp get_threads(%AsyncResult{ok?: true, result: threads}) when is_list(threads), do: threads
   defp get_threads(_), do: []
 
+  defp refresh_threads(socket) do
+    case socket.assigns[:current_user] do
+      nil ->
+        socket
+
+      user ->
+        assign_async(socket, :threads, fn ->
+          threads =
+            try do
+              Chat.list_threads(user)
+            rescue
+              _ -> []
+            end
+
+          {:ok, %{threads: threads}}
+        end)
+    end
+  end
+
+  defp safe_list_messages(thread) do
+    try do
+      Chat.list_messages(thread)
+    rescue
+      _ -> []
+    end
+  end
+
+  defp safe_list_messages_result(thread) do
+    try do
+      {:ok, Chat.list_messages(thread)}
+    rescue
+      _ -> {:error, :db_error}
+    end
+  end
+
+  defp parse_thread_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {thread_id, ""} -> {:ok, thread_id}
+      _ -> {:error, :invalid_id}
+    end
+  end
+
+  defp parse_thread_id(_), do: {:error, :invalid_id}
+
+  defp load_thread(socket, thread_id) do
+    case Chat.get_thread_for_user(socket.assigns.current_user, thread_id) do
+      {:ok, thread} ->
+        messages = safe_list_messages(thread)
+
+        socket
+        |> assign(:current_thread, thread)
+        |> assign(:messages, messages)
+        |> assign(:active_tab, :chat)
+        |> assign(:error_message, nil)
+
+      {:error, :not_found} ->
+        # Stay on chat tab to show error, clear stale thread
+        socket
+        |> assign(:current_thread, nil)
+        |> assign(:messages, [])
+        |> assign(:error_message, "This conversation no longer exists.")
+        |> assign(:active_tab, :chat)
+        |> refresh_threads()
+
+      {:error, :unauthorized} ->
+        # Stay on chat tab to show error, clear stale thread
+        socket
+        |> assign(:current_thread, nil)
+        |> assign(:messages, [])
+        |> assign(:error_message, "You don't have access to this conversation.")
+        |> assign(:active_tab, :chat)
+    end
+  end
+
+  defp safe_atom_to_string(nil), do: "local"
+  defp safe_atom_to_string(atom) when is_atom(atom), do: Atom.to_string(atom)
+  defp safe_atom_to_string(str) when is_binary(str), do: str
+  defp safe_atom_to_string(_), do: "local"
+
+  defp process_send_message(socket, content) do
+    with {:ok, thread, socket} <- ensure_thread_exists(socket) do
+      metadata = build_message_metadata(socket.assigns.mentions)
+
+      optimistic_message = %{
+        id: "pending-#{System.unique_integer()}",
+        role: "user",
+        content: content,
+        metadata: metadata,
+        inserted_at: DateTime.utc_now()
+      }
+
+      socket
+      |> assign(:loading, true)
+      |> assign(:error_message, nil)
+      |> assign(:message_input, "")
+      |> assign(:mentions, [])
+      |> assign(:messages, socket.assigns.messages ++ [optimistic_message])
+      |> push_event("clear_input", %{})
+      |> tap(fn _ -> send(self(), {:generate_response, thread, content, metadata}) end)
+    else
+      {:error, :thread_creation_failed, socket} ->
+        socket
+    end
+  end
+
+  defp ensure_thread_exists(%{assigns: %{current_thread: nil, current_user: nil}} = socket) do
+    socket = assign(socket, :error_message, "You must be logged in to start a conversation.")
+    {:error, :thread_creation_failed, socket}
+  end
+
+  defp ensure_thread_exists(%{assigns: %{current_thread: nil, current_user: user}} = socket) do
+    try do
+      case Chat.create_thread(user) do
+        {:ok, new_thread} ->
+          current_threads = get_threads(socket.assigns.threads)
+
+          socket =
+            socket
+            |> assign(:current_thread, new_thread)
+            |> assign(:threads, AsyncResult.ok(%{threads: [new_thread | current_threads]}))
+
+          {:ok, new_thread, socket}
+
+        {:error, _changeset} ->
+          socket =
+            assign(
+              socket,
+              :error_message,
+              "Failed to start a new conversation. Please try again."
+            )
+
+          {:error, :thread_creation_failed, socket}
+      end
+    rescue
+      _ ->
+        socket =
+          assign(socket, :error_message, "Failed to start a new conversation. Please try again.")
+
+        {:error, :thread_creation_failed, socket}
+    end
+  end
+
+  defp ensure_thread_exists(%{assigns: %{current_thread: thread}} = socket) do
+    {:ok, thread, socket}
+  end
+
+  defp build_message_metadata(mentions) do
+    %{
+      "mentions" =>
+        Enum.map(mentions, fn mention ->
+          %{
+            "contact_id" => mention[:contact_id],
+            "name" => mention[:name],
+            "email" => mention[:email],
+            "source" => mention[:source],
+            "crm_id" => mention[:crm_id],
+            "crm_data" => mention[:crm_data]
+          }
+        end)
+    }
+  end
+
   defp has_assistant_message?(messages) do
     Enum.any?(messages, fn msg -> msg.role != "user" end)
   end
@@ -801,16 +942,30 @@ defmodule SocialScribeWeb.ChatLive do
   defp message_bubble_class(_),
     do: "text-slate-800 px-3 py-2 max-w-[85%]"
 
+  defp format_thread_timestamp(nil), do: "Just now"
+
   defp format_thread_timestamp(datetime) do
-    # Format: "11:17am - November 13, 2025"
-    time = Calendar.strftime(datetime, "%-I:%M%P")
-    date = Calendar.strftime(datetime, "%B %-d, %Y")
-    "#{time} - #{date}"
+    try do
+      # Format: "11:17am - November 13, 2025"
+      time = Calendar.strftime(datetime, "%-I:%M%P")
+      date = Calendar.strftime(datetime, "%B %-d, %Y")
+      "#{time} - #{date}"
+    rescue
+      _ -> "Just now"
+    end
+  end
+
+  defp render_message_content(%{content: nil}), do: ""
+
+  defp render_message_content(%{content: content, metadata: nil, role: "user"}) do
+    content
+    |> escape_html()
+    |> render_markdown_simple()
   end
 
   defp render_message_content(%{content: content, metadata: metadata, role: "user"}) do
     # For user messages: escape first, then render mentions with avatars
-    mentions = metadata["mentions"] || []
+    mentions = (metadata || %{})["mentions"] || []
 
     content
     |> escape_html()
@@ -818,9 +973,15 @@ defmodule SocialScribeWeb.ChatLive do
     |> render_mentions(mentions)
   end
 
+  defp render_message_content(%{content: content, metadata: nil, role: _role}) do
+    content
+    |> escape_html()
+    |> render_markdown_simple()
+  end
+
   defp render_message_content(%{content: content, metadata: metadata, role: _role}) do
     # For assistant messages: escape first, then render meeting links and markdown
-    meeting_refs = metadata["meeting_refs"] || []
+    meeting_refs = (metadata || %{})["meeting_refs"] || []
 
     content
     |> escape_html()
@@ -828,13 +989,16 @@ defmodule SocialScribeWeb.ChatLive do
     |> render_markdown_simple()
   end
 
+  # Fallback for unexpected message formats
+  defp render_message_content(_), do: ""
+
   defp render_mentions(content, []), do: content
 
   defp render_mentions(content, mentions) do
     Enum.reduce(mentions, content, fn mention, acc ->
       name = mention["name"] || ""
       first_name = name |> String.split() |> List.first() || name
-      initial = if name != "", do: String.first(name) |> String.upcase(), else: "?"
+      initial = get_initial(name)
       source = mention["source"] || "local"
 
       # The @ was already escaped, so match the escaped version
@@ -845,6 +1009,20 @@ defmodule SocialScribeWeb.ChatLive do
 
       String.replace(acc, pattern, avatar_html)
     end)
+  end
+
+  defp get_initial(""), do: "?"
+
+  defp get_initial(name) when is_binary(name) do
+    trimmed = String.trim(name)
+
+    case trimmed do
+      "" ->
+        "?"
+
+      _ ->
+        trimmed |> String.first() |> String.upcase()
+    end
   end
 
   # Shared mention chip HTML - keep in sync with assets/js/hooks.js MentionInput
