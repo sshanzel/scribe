@@ -1,21 +1,19 @@
 defmodule SocialScribeWeb.UserSettingsLive do
   use SocialScribeWeb, :live_view
 
+  alias SocialScribe.Accounts
   alias SocialScribe.Accounts.Credentials
   alias SocialScribe.Bots
+  alias SocialScribe.Seeds
 
   @impl true
   def mount(_params, _session, socket) do
     current_user = socket.assigns.current_user
 
     google_accounts = Credentials.list_user_credentials(current_user, provider: "google")
-
     linkedin_accounts = Credentials.list_user_credentials(current_user, provider: "linkedin")
-
     facebook_accounts = Credentials.list_user_credentials(current_user, provider: "facebook")
-
     hubspot_accounts = Credentials.list_user_credentials(current_user, provider: "hubspot")
-
     salesforce_accounts = Credentials.list_user_credentials(current_user, provider: "salesforce")
 
     user_bot_preference =
@@ -33,8 +31,22 @@ defmodule SocialScribeWeb.UserSettingsLive do
       |> assign(:salesforce_accounts, salesforce_accounts)
       |> assign(:user_bot_preference, user_bot_preference)
       |> assign(:user_bot_preference_form, to_form(changeset))
+      |> assign_seed_button_state()
 
     {:ok, socket}
+  end
+
+  defp assign_seed_button_state(socket) do
+    user = socket.assigns.current_user
+
+    show_seed_button =
+      System.get_env("SHOW_SEED_BUTTON") != nil &&
+        !user.has_seeded &&
+        Credentials.get_user_latest_credential(user.id, "salesforce") != nil
+
+    socket
+    |> assign(:show_seed_button, show_seed_button)
+    |> assign(:seeded, user.has_seeded || false)
   end
 
   @impl true
@@ -105,6 +117,30 @@ defmodule SocialScribeWeb.UserSettingsLive do
       {:error, changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
     end
+  end
+
+  @impl true
+  def handle_event("seed_data", _params, socket) do
+    user = socket.assigns.current_user
+
+    {:ok, summary} = Seeds.run(user)
+    Accounts.update_user_seeded(user, true)
+
+    message =
+      "Seeded #{summary.meetings_count} meetings with #{summary.contacts_count} contacts!" <>
+        if(summary.salesforce_connected, do: " (Salesforce synced)", else: "")
+
+    socket =
+      socket
+      |> assign(:seeded, true)
+      |> assign(:show_seed_button, false)
+      |> put_flash(:info, message)
+      |> push_navigate(to: ~p"/dashboard/meetings")
+
+    {:noreply, socket}
+  rescue
+    e ->
+      {:noreply, put_flash(socket, :error, "Seeding failed: #{Exception.message(e)}")}
   end
 
   defp create_or_update_user_bot_preference(bot_preference, params) do
