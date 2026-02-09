@@ -11,8 +11,6 @@ defmodule SocialScribeWeb.Sidebar do
   attr :base_path, :string, required: true, doc: "the base path to determine active state"
   attr :current_path, :string, required: true, doc: "the current path to determine active state"
   attr :links, :list, required: true, doc: "the list of links to display in the sidebar"
-  attr :show_seed_button, :boolean, default: false, doc: "whether to show seed button (from env)"
-  attr :seeded, :boolean, default: false, doc: "whether the user has already seeded data"
 
   slot :widget
 
@@ -25,8 +23,6 @@ defmodule SocialScribeWeb.Sidebar do
         base_path={@base_path}
         current_path={@current_path}
         links={@links}
-        show_seed_button={@show_seed_button}
-        seeded={@seeded}
         on_link_click={@on_link_click}
         class="mt-12"
       />
@@ -49,8 +45,6 @@ defmodule SocialScribeWeb.Sidebar do
   attr :base_path, :string, required: true, doc: "the base path to determine active state"
   attr :current_path, :string, required: true, doc: "the current path to determine active state"
   attr :links, :list, required: true, doc: "the list of links to display in the sidebar"
-  attr :show_seed_button, :boolean, default: false, doc: "whether to show seed button (from env)"
-  attr :seeded, :boolean, default: false, doc: "whether the user has already seeded data"
 
   def mobile_sidebar_drawer(assigns) do
     assigns = assign(assigns, :on_link_click, JS.hide(to: "##{assigns.id}"))
@@ -72,8 +66,6 @@ defmodule SocialScribeWeb.Sidebar do
           base_path={@base_path}
           current_path={@current_path}
           links={@links}
-          show_seed_button={@show_seed_button}
-          seeded={@seeded}
           on_link_click={@on_link_click}
           class=""
         />
@@ -86,29 +78,12 @@ defmodule SocialScribeWeb.Sidebar do
   attr :base_path, :string, required: true
   attr :current_path, :string, required: true
   attr :links, :list, required: true
-  attr :show_seed_button, :boolean, default: false
-  attr :seeded, :boolean, default: false
   attr :on_link_click, :any, default: nil
   attr :class, :string, default: ""
 
   defp sidebar_nav(assigns) do
     ~H"""
     <nav class={["flex-1 px-2", @class]}>
-      <button
-        :if={@show_seed_button and not @seeded}
-        phx-click="seed_data"
-        phx-disable-with=""
-        class="group w-full flex items-center gap-3 px-2 py-2 mb-4 text-sm rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
-      >
-        <.icon name="hero-beaker" class="size-5 group-[.phx-click-loading]:hidden" />
-        <.icon
-          name="hero-arrow-path"
-          class="size-5 hidden group-[.phx-click-loading]:block animate-spin"
-        />
-        <span class="group-[.phx-click-loading]:hidden">Seed your data!</span>
-        <span class="hidden group-[.phx-click-loading]:inline">Seeding...</span>
-      </button>
-
       <ul class="space-y-1">
         <li :for={{label, icon, path} <- @links}>
           <.sidebar_link
