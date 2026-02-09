@@ -59,7 +59,7 @@ Hooks.MentionInput = {
                     if (selectedItem) {
                         const contactId = selectedItem.dataset.contactId
                         this.pushEvent('select_contact', { id: contactId })
-                        this.selectedIndex = -1
+                        this.resetSelectedIndex()
                     }
                     return
                 }
@@ -70,7 +70,7 @@ Hooks.MentionInput = {
                 this.submitMessage()
             }
             if (e.key === 'Escape') {
-                this.selectedIndex = -1
+                this.resetSelectedIndex()
                 this.pushEvent('close_mention_dropdown', {})
             }
         })
@@ -79,13 +79,25 @@ Hooks.MentionInput = {
             e.preventDefault()
             const text = e.clipboardData.getData('text/plain')
             if (text) {
-                document.execCommand('insertText', false, text)
+                const selection = window.getSelection()
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0)
+                    range.deleteContents()
+                    const textNode = document.createTextNode(text)
+                    range.insertNode(textNode)
+                    range.setStartAfter(textNode)
+                    range.setEndAfter(textNode)
+                    selection.removeAllRanges()
+                    selection.addRange(range)
+                } else {
+                    document.execCommand('insertText', false, text)
+                }
                 this.pushEvent('message_input_change', { value: this.getTextContent() })
             }
         })
 
         this.handleEvent('contact_results_changed', () => {
-            this.selectedIndex = -1
+            this.resetSelectedIndex()
         })
 
         this.el.addEventListener('chat:submit', () => {
@@ -218,6 +230,11 @@ Hooks.MentionInput = {
             id: parseInt(chip.dataset.contactId),
             name: chip.dataset.name
         }))
+    },
+
+    resetSelectedIndex() {
+        this.selectedIndex = -1
+        this.el.removeAttribute('aria-activedescendant')
     },
 
     updateSelectedVisual(items) {

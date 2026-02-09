@@ -328,3 +328,10 @@ When a function returns a list, always test:
 - If a function has a `DISTINCT`, `ORDER BY`, `LIMIT`, or `WHERE` clause, write tests that specifically exercise those constraints
 - Test with realistic data volumes (e.g., if limit is 10, create 12 records)
 - When fixing a bug, always add a test that would have caught it
+
+# Git Workflow
+
+- Create separate commits for distinct changes instead of amending and force pushing
+- Use descriptive commit messages that explain the "why" not just the "what"
+- Keep commits atomic - each commit should represent one logical change
+- Run tests before committing to ensure changes don't break existing functionality
