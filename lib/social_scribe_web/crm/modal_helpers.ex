@@ -24,6 +24,7 @@ defmodule SocialScribeWeb.CRM.ModalHelpers do
       selected_contact: nil,
       suggestions: [],
       loading: false,
+      submitting: false,
       searching: false,
       dropdown_open: false,
       error: nil
@@ -203,7 +204,7 @@ defmodule SocialScribeWeb.CRM.ModalHelpers do
   - `:apply_message` - The message atom to send for applying updates
   """
   def handle_apply_updates(socket, %{"apply" => selected, "values" => values}, config) do
-    socket = assign(socket, loading: true, error: nil)
+    socket = assign(socket, loading: true, submitting: true, error: nil)
 
     updates =
       selected

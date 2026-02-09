@@ -157,7 +157,8 @@ defmodule SocialScribeWeb.MeetingLive.Show do
         send_update(SocialScribeWeb.MeetingLive.HubspotModalComponent,
           id: "hubspot-modal",
           error: "Failed to update contact: #{inspect(reason)}",
-          loading: false
+          loading: false,
+          submitting: false
         )
 
         {:noreply, socket}
@@ -224,7 +225,8 @@ defmodule SocialScribeWeb.MeetingLive.Show do
         send_update(SocialScribeWeb.MeetingLive.SalesforceModalComponent,
           id: "salesforce-modal",
           error: "Failed to update contact: #{inspect(reason)}",
-          loading: false
+          loading: false,
+          submitting: false
         )
 
         {:noreply, socket}

@@ -469,6 +469,7 @@ defmodule SocialScribeWeb.CRM.ModalComponents do
   """
   attr :suggestions, :list, required: true
   attr :loading, :boolean, required: true
+  attr :submitting, :boolean, default: false
   attr :myself, :any, required: true
   attr :patch, :string, required: true
   attr :submit_text, :string, default: "Update"
@@ -482,7 +483,7 @@ defmodule SocialScribeWeb.CRM.ModalComponents do
       <%= if @loading do %>
         <div class="text-center py-8 text-slate-500">
           <.icon name="hero-arrow-path" class="h-6 w-6 animate-spin mx-auto mb-2" />
-          <p>Generating suggestions...</p>
+          <p><%= if @submitting, do: "Updating contact...", else: "Generating suggestions..." %></p>
         </div>
       <% else %>
         <%= if Enum.empty?(@suggestions) do %>

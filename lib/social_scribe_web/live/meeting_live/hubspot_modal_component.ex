@@ -39,6 +39,7 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
         <.suggestions_section
           suggestions={@suggestions}
           loading={@loading}
+          submitting={@submitting}
           myself={@myself}
           patch={@patch}
           submit_text={@config.submit_text}
