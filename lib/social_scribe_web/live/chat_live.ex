@@ -161,7 +161,7 @@ defmodule SocialScribeWeb.ChatLive do
                       data-placeholder="Type @ to mention a contact..."
                       role="combobox"
                       aria-haspopup="listbox"
-                      aria-expanded={@show_mention_dropdown}
+                      aria-expanded={if @show_mention_dropdown, do: "true", else: "false"}
                       aria-controls="mention-dropdown"
                       class="min-h-[50px] max-h-[100px] overflow-y-auto w-full focus:outline-none text-sm px-2.5 py-1.5 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
                     ></div>
@@ -1014,9 +1014,14 @@ defmodule SocialScribeWeb.ChatLive do
   defp get_initial(""), do: "?"
 
   defp get_initial(name) when is_binary(name) do
-    case String.first(name) do
-      nil -> "?"
-      char -> String.upcase(char)
+    trimmed = String.trim(name)
+
+    case trimmed do
+      "" ->
+        "?"
+
+      _ ->
+        trimmed |> String.first() |> String.upcase()
     end
   end
 

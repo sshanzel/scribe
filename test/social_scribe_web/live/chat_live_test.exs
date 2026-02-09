@@ -535,9 +535,9 @@ defmodule SocialScribeWeb.ChatLiveTest do
   end
 
   describe "helper function edge cases" do
-    test "format_thread_timestamp handles nil datetime" do
-      # Test the private function indirectly through rendering
-      # A thread with nil inserted_at should not crash
+    test "renders timestamp when no thread exists" do
+      # When there's no current_thread, the timestamp separator uses DateTime.utc_now()
+      # This tests that the view renders without crashing
       user = user_fixture()
 
       {:ok, view, _html} =
@@ -545,10 +545,11 @@ defmodule SocialScribeWeb.ChatLiveTest do
           session: %{"user_token" => SocialScribe.Accounts.generate_user_session_token(user)}
         )
 
-      # The default timestamp separator uses DateTime.utc_now() when no thread
-      # This tests that the fallback works
       html = render(view)
+      # Should render the chat and show a timestamp (format: "X:XXam/pm - Month Day, Year")
       assert html =~ "chat-container"
+      # Timestamp separator should be present with current date
+      assert html =~ ~r/\d{1,2}:\d{2}[ap]m - \w+ \d{1,2}, \d{4}/
     end
 
     test "get_initials handles empty and nil names" do
