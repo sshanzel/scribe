@@ -60,6 +60,11 @@ defmodule Ueberauth.Strategy.Salesforce do
     end
   end
 
+  def handle_callback!(%Plug.Conn{params: %{"error" => error_code} = params} = conn) do
+    error_description = params["error_description"] || "No description provided"
+    set_errors!(conn, [error(error_code, error_description)])
+  end
+
   def handle_callback!(conn) do
     set_errors!(conn, [error("missing_code", "No code received")])
   end
