@@ -18,12 +18,32 @@ defmodule SocialScribe.Workers.TokenRefresher.Base do
   - `:crm` - The provider name (must match `user_credentials.provider`)
   - `:refresher` - The TokenRefresher module with `refresh_credential/1`
   - `:threshold_minutes` - Minutes before expiry to refresh (default: 10)
+  - `:config_key` - Application config key for runtime refresher override (only used in test env)
   """
+
+  # Capture Mix.env at compile time to avoid runtime dependency on Mix
+  @compile_env Mix.env()
 
   defmacro __using__(opts) do
     crm = Keyword.fetch!(opts, :crm)
     refresher = Keyword.fetch!(opts, :refresher)
     threshold = Keyword.get(opts, :threshold_minutes, 10)
+    config_key = Keyword.get(opts, :config_key)
+    compile_env = @compile_env
+
+    # Only use config lookup in test environment, otherwise use the default directly
+    get_refresher_fn =
+      if config_key && compile_env == :test do
+        quote do
+          defp get_refresher do
+            Application.get_env(:social_scribe, unquote(config_key), @default_refresher)
+          end
+        end
+      else
+        quote do
+          defp get_refresher, do: @default_refresher
+        end
+      end
 
     quote do
       use Oban.Worker, queue: :default, max_attempts: 3
@@ -36,7 +56,7 @@ defmodule SocialScribe.Workers.TokenRefresher.Base do
       require Logger
 
       @crm unquote(crm)
-      @refresher unquote(refresher)
+      @default_refresher unquote(refresher)
       @threshold_minutes unquote(threshold)
 
       @impl Oban.Worker
@@ -68,8 +88,10 @@ defmodule SocialScribe.Workers.TokenRefresher.Base do
       end
 
       defp refresh_all(credentials) do
+        refresher = get_refresher()
+
         Enum.each(credentials, fn credential ->
-          case @refresher.refresh_credential(credential) do
+          case refresher.refresh_credential(credential) do
             {:ok, _updated} ->
               Logger.info("Proactively refreshed #{@crm} token for credential #{credential.id}")
 
@@ -83,7 +105,9 @@ defmodule SocialScribe.Workers.TokenRefresher.Base do
         :ok
       end
 
-      defoverridable perform: 1, get_expiring_credentials: 0, refresh_all: 1
+      unquote(get_refresher_fn)
+
+      defoverridable perform: 1
     end
   end
 end

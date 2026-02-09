@@ -6,5 +6,6 @@ defmodule SocialScribe.Workers.SalesforceTokenRefresher do
 
   use SocialScribe.Workers.TokenRefresher.Base,
     crm: "salesforce",
-    refresher: SocialScribe.CRM.Salesforce.TokenRefresher
+    refresher: SocialScribe.CRM.Salesforce.TokenRefresher,
+    config_key: :salesforce_token_refresher
 end

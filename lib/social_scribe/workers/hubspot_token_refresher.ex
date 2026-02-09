@@ -6,5 +6,6 @@ defmodule SocialScribe.Workers.HubspotTokenRefresher do
 
   use SocialScribe.Workers.TokenRefresher.Base,
     crm: "hubspot",
-    refresher: SocialScribe.CRM.HubSpot.TokenRefresher
+    refresher: SocialScribe.CRM.HubSpot.TokenRefresher,
+    config_key: :hubspot_token_refresher
 end
